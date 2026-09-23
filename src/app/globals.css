@@ -1,0 +1,28 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::selection {
+    background-color: #FACC15;
+    color: #7C2D12;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gold text-white px-8 py-3 text-sm font-medium tracking-wide hover:bg-jmle-yellow hover:text-luxury-black transition-colors duration-300 rounded-xl shadow-sm;
+  }
+
+  .btn-outline {
+    @apply border border-gold text-gold px-8 py-3 text-sm font-medium tracking-wide hover:bg-gold hover:text-white transition-colors duration-300 rounded-xl;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-white border border-jmle-yellow/50 rounded-xl focus:outline-none focus:border-gold transition-colors text-sm;
+  }
+}
