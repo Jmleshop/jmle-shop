@@ -15,8 +15,10 @@ if ! docker info >/dev/null 2>&1; then
   sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy >/dev/null 2>&1 || true
   sudo mkdir -p /etc/docker
   echo '{ "storage-driver": "fuse-overlayfs" }' | sudo tee /etc/docker/daemon.json >/dev/null
-  sudo bash -c 'nohup dockerd >/tmp/dockerd.log 2>&1 &'
-  for _ in $(seq 1 30); do
+  # Log to a root-owned path and clear any stale log so the redirect never hits
+  # a permission error on a file owned by another user (e.g. captured in a snapshot).
+  sudo bash -c 'rm -f /var/log/jmle-dockerd.log; nohup dockerd >/var/log/jmle-dockerd.log 2>&1 &'
+  for _ in $(seq 1 60); do
     if sudo docker info >/dev/null 2>&1; then break; fi
     sleep 1
   done
