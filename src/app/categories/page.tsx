@@ -13,7 +13,7 @@ export default async function CategoriesPage() {
       {categories.length === 0 ? (
         <p className="text-center text-gray-400 py-12">لا توجد فئات</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {categories.map((category) => (
             <Link
               key={category.id}

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { isAdminError, requireAdmin } from "@/lib/admin-server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { discountCodeCreateSchema } from "@/lib/validations/checkout";
+import { parseJsonBody } from "@/lib/validations";
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -27,12 +29,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const body = await request.json();
-  const { code, type, value, usage_limit, expires_at, active } = body;
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Ungültiges JSON" }, { status: 400 });
+  }
 
-  if (!code || !type || value == null) {
+  const parsed = parseJsonBody(discountCodeCreateSchema, raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const { code, type, value, usage_limit, expires_at, active } = parsed.data;
+
+  if (type === "percent" && value > 100) {
     return NextResponse.json(
-      { error: "Code, Typ und Wert sind erforderlich" },
+      { error: "Prozent-Rabatt maximal 100" },
       { status: 400 }
     );
   }

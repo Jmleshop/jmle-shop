@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { otpResendSchema, otpVerifySchema } from "@/lib/validations/auth";
 
 function VerifyForm() {
   const [token, setToken] = useState("");
@@ -20,9 +21,16 @@ function VerifyForm() {
     setError("");
     setLoading(true);
 
+    const parsed = otpVerifySchema.safeParse({ email, token });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Ungültige Eingabe");
+      setLoading(false);
+      return;
+    }
+
     const { error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token,
+      email: parsed.data.email,
+      token: parsed.data.token,
       type: "signup",
     });
 
@@ -38,9 +46,14 @@ function VerifyForm() {
 
   const handleResend = async () => {
     setResent(false);
+    const parsed = otpResendSchema.safeParse({ email });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "E-Mail fehlt");
+      return;
+    }
     const { error: resendError } = await supabase.auth.resend({
       type: "signup",
-      email,
+      email: parsed.data.email,
     });
 
     if (!resendError) {
@@ -60,7 +73,7 @@ function VerifyForm() {
         </span>
       </p>
 
-      <form onSubmit={handleVerify} className="space-y-4">
+      <form onSubmit={handleVerify} className="space-y-4" noValidate>
         <div>
           <label htmlFor="token" className="block text-sm mb-1.5 text-gray-600">
             رمز التحقق

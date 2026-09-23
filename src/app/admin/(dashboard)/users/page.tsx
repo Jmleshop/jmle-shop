@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { UserProfile } from "@/types";
+import { AdminTable, AdminTd, AdminTh, AdminThead } from "@/components/ui";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -24,24 +25,24 @@ export default function AdminUsersPage() {
       {loading ? (
         <p className="text-gray-500">Lade Benutzer...</p>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+        <div className="max-h-[70vh] overflow-hidden rounded-2xl">
+          <AdminTable minWidth="640px">
+            <AdminThead>
               <tr>
-                <th className="text-left p-4 font-medium">Name</th>
-                <th className="text-left p-4 font-medium">E-Mail</th>
-                <th className="text-left p-4 font-medium">Rolle</th>
-                <th className="text-left p-4 font-medium">Registriert</th>
+                <AdminTh>Name</AdminTh>
+                <AdminTh>E-Mail</AdminTh>
+                <AdminTh>Rolle</AdminTh>
+                <AdminTh>Registriert</AdminTh>
               </tr>
-            </thead>
+            </AdminThead>
             <tbody>
               {users.map((user) => (
                 <tr key={user.id} className="border-b last:border-0">
-                  <td className="p-4 font-medium">
+                  <AdminTd className="font-medium whitespace-nowrap">
                     {user.first_name} {user.last_name}
-                  </td>
-                  <td className="p-4">{user.email}</td>
-                  <td className="p-4">
+                  </AdminTd>
+                  <AdminTd className="whitespace-nowrap">{user.email}</AdminTd>
+                  <AdminTd>
                     <span
                       className={`px-2 py-1 rounded-full text-xs ${
                         user.role === "admin"
@@ -51,19 +52,19 @@ export default function AdminUsersPage() {
                     >
                       {user.role === "admin" ? "Admin" : "Kunde"}
                     </span>
-                  </td>
-                  <td className="p-4 text-gray-500">
+                  </AdminTd>
+                  <AdminTd className="text-gray-500 whitespace-nowrap">
                     {"created_at" in user
                       ? new Date(
                           (user as UserProfile & { created_at: string })
                             .created_at
                         ).toLocaleDateString("de-DE")
                       : "—"}
-                  </td>
+                  </AdminTd>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </AdminTable>
         </div>
       )}
     </div>

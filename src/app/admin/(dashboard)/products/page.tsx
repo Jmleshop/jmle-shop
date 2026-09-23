@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Archive, ArchiveRestore, Pencil, Plus, X } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { categoryDepth, categoryLabel, sortedCategories } from "@/lib/category-tree";
 import ImageUpload from "@/components/admin/ImageUpload";
+import SwipeToDeleteRow from "@/components/admin/SwipeToDeleteRow";
+import { softDeleteWithUndo } from "@/lib/admin-soft-delete";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
+import { isSaleCategoryId } from "@/lib/category-special";
 import type { FoodCategory, FoodProduct } from "@/types";
 
 const DISCOUNT_PRESETS = [0, 5, 10, 15, 20, 50];
@@ -35,7 +39,7 @@ const emptyForm = {
   product_number: "",
   purchase_price: "",
   stock_quantity: "0",
-  max_order_quantity: "10",
+  max_order_quantity: "",
 };
 
 export default function AdminProductsPage() {
@@ -107,7 +111,10 @@ export default function AdminProductsPage() {
       product_number: p.product_number ?? "",
       purchase_price: p.purchase_price != null ? String(p.purchase_price) : "",
       stock_quantity: String(p.stock_quantity ?? 0),
-      max_order_quantity: String(p.max_order_quantity ?? 10),
+      max_order_quantity:
+        p.max_order_quantity == null || Number(p.max_order_quantity) <= 0
+          ? ""
+          : String(p.max_order_quantity),
     });
     setShowForm(true);
     setError("");
@@ -124,6 +131,12 @@ export default function AdminProductsPage() {
       vat_rate: Number(form.vat_rate),
       images: form.images,
       image: form.images[0] ?? "",
+      max_order_quantity:
+        form.max_order_quantity === "" ||
+        form.max_order_quantity === "unlimited" ||
+        form.max_order_quantity === "open"
+          ? null
+          : form.max_order_quantity,
       status,
     };
     const url = editingId
@@ -146,13 +159,29 @@ export default function AdminProductsPage() {
   };
 
   const setArchived = async (id: string, archived: boolean) => {
-    if (!confirm(archived ? t("archive") + "?" : t("restore") + "?")) return;
+    if (
+      !confirm(
+        archived ? t("moveToTrashConfirm") : t("restore") + "?"
+      )
+    )
+      return;
     await fetch(`/api/admin/products/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ archived }),
     });
     load();
+  };
+
+  const swipeToTrash = async (p: FoodProduct) => {
+    if (p.deleted_at) return false;
+    const name = p.name_de || p.name_ar || p.id;
+    return softDeleteWithUndo({
+      kind: "product",
+      id: p.id,
+      name,
+      onDone: load,
+    });
   };
 
   return (
@@ -184,6 +213,12 @@ export default function AdminProductsPage() {
             />
             {t("showArchived")}
           </label>
+          <Link
+            href="/admin/trash"
+            className="text-sm text-gray-600 hover:text-gold underline-offset-2 hover:underline min-h-11 inline-flex items-center"
+          >
+            {t("trash")} →
+          </Link>
           <button onClick={openCreate} className="btn-primary flex items-center gap-2 py-2.5 px-5">
             <Plus size={18} />
             {t("newProduct")}
@@ -301,7 +336,9 @@ export default function AdminProductsPage() {
                   onChange={(e) => setForm({ ...form, category_id: e.target.value })}
                 >
                   <option value="">—</option>
-                  {sortedCategories(categories).map((c) => {
+                  {sortedCategories(categories)
+                    .filter((c) => !isSaleCategoryId(c.id))
+                    .map((c) => {
                     const depth = categoryDepth(c, categories);
                     const indent = "\u00A0".repeat((depth - 1) * 4);
                     const label = `${indent}${depth > 1 ? "↳ " : ""}${categoryLabel(c)}`;
@@ -320,7 +357,18 @@ export default function AdminProductsPage() {
                   })}
                 </select>
               </div>
-              <ImageUpload multiple folder="products" value={form.images} onChange={(v) => setForm({ ...form, images: Array.isArray(v) ? v : v ? [v] : [] })} />
+              <ImageUpload
+                multiple
+                enableCrop
+                folder="products"
+                value={form.images}
+                onChange={(v) =>
+                  setForm({
+                    ...form,
+                    images: Array.isArray(v) ? v : v ? [v] : [],
+                  })
+                }
+              />
               <div>
                 <label className="block text-sm mb-1">{t("ingredients")}</label>
                 <textarea rows={2} className="input-field" value={form.ingredients} onChange={(e) => setForm({ ...form, ingredients: e.target.value })} />
@@ -340,11 +388,36 @@ export default function AdminProductsPage() {
               </div>
               <fieldset className="border border-gray-100 rounded-xl p-3 space-y-2">
                 <legend className="text-sm font-medium px-1">{t("weightCustomer")}</legend>
+                <p className="text-[11px] text-gray-500 leading-relaxed">{t("weightAutoHint")}</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="number" step="0.01" className="input-field" placeholder="z. B. 500" value={form.weight_value} onChange={(e) => setForm({ ...form, weight_value: e.target.value })} />
-                  <select className="input-field" value={form.weight_unit} onChange={(e) => setForm({ ...form, weight_unit: e.target.value })}>
-                    {UNITS.map((u) => <option key={u}>{u}</option>)}
-                  </select>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">{t("weightNetQty")}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="input-field"
+                      placeholder="z. B. 500"
+                      value={form.weight_value}
+                      onChange={(e) => setForm({ ...form, weight_value: e.target.value })}
+                      aria-label="net_quantity"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">{t("weightUnitLabel")}</label>
+                    <select
+                      className="input-field"
+                      value={form.weight_unit}
+                      onChange={(e) => setForm({ ...form, weight_unit: e.target.value })}
+                      aria-label="unit"
+                    >
+                      {UNITS.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </fieldset>
               <fieldset className="border border-amber-100 bg-amber-50/40 rounded-xl p-3 space-y-2">
@@ -377,7 +450,30 @@ export default function AdminProductsPage() {
                 </div>
                 <div>
                   <label className="block text-sm mb-1">{t("maxOrder")}</label>
-                  <input type="number" min="1" className="input-field" value={form.max_order_quantity} onChange={(e) => setForm({ ...form, max_order_quantity: e.target.value })} />
+                  <label className="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                    <input
+                      type="checkbox"
+                      checked={form.max_order_quantity === ""}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          max_order_quantity: e.target.checked ? "" : "10",
+                        })
+                      }
+                    />
+                    Offen / Dynamisch (Limit = Lagerbestand)
+                  </label>
+                  {form.max_order_quantity !== "" && (
+                    <input
+                      type="number"
+                      min="1"
+                      className="input-field"
+                      value={form.max_order_quantity}
+                      onChange={(e) =>
+                        setForm({ ...form, max_order_quantity: e.target.value })
+                      }
+                    />
+                  )}
                 </div>
               </div>
               <div>
@@ -406,47 +502,78 @@ export default function AdminProductsPage() {
       {loading ? (
         <p className="text-gray-500">…</p>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px]">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left p-4">{t("nameDe")}</th>
-                <th className="text-left p-4">{t("productNumber")}</th>
-                <th className="text-left p-4">{t("price")}</th>
-                <th className="text-left p-4">{t("stock")}</th>
-                <th className="text-right p-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {products
-                .filter((p) => {
-                  if (!showArchived && p.deleted_at) return false;
-                  const st = p.status ?? "published";
-                  return listTab === "draft" ? st === "draft" : st !== "draft";
-                })
-                .map((p) => (
-                <tr key={p.id} className="border-t">
-                  <td className="p-4 font-medium">
-                    {p.name_de || p.name_ar}
-                    {p.status === "draft" && (
-                      <span className="ml-2 text-[11px] uppercase tracking-wide text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
-                        {t("drafts")}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <p className="px-4 py-2 text-[11px] text-gray-400 border-b bg-gray-50/80">
+            Tipp: Zeile nach rechts wischen → Papierkorb (Soft Delete). Bearbeiten-Buttons bleiben nutzbar.
+          </p>
+          <div className="hidden sm:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto] gap-2 px-4 py-3 text-xs font-medium text-gray-500 bg-gray-50/95 sticky top-0 z-10 border-b">
+            <span>{t("nameDe")}</span>
+            <span>{t("productNumber")}</span>
+            <span>{t("price")}</span>
+            <span>{t("stock")}</span>
+            <span className="text-right">Aktionen</span>
+          </div>
+          <div className="max-h-[70vh] overflow-y-auto divide-y">
+            {products
+              .filter((p) => {
+                if (!showArchived && p.deleted_at) return false;
+                const st = p.status ?? "published";
+                return listTab === "draft" ? st === "draft" : st !== "draft";
+              })
+              .map((p) => (
+                <SwipeToDeleteRow
+                  key={p.id}
+                  disabled={!!p.deleted_at}
+                  label={t("archive")}
+                  onSwipeDelete={() => swipeToTrash(p)}
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto] gap-1 sm:gap-2 items-center px-4 py-3 sm:py-2.5 text-sm min-h-[52px]">
+                    <div className="font-medium min-w-0">
+                      <span className="truncate block">
+                        {p.name_de || p.name_ar}
                       </span>
-                    )}
-                  </td>
-                  <td className="p-4 text-gray-500">{p.product_number || "—"}</td>
-                  <td className="p-4">{formatEuroDe(Number(p.price))}</td>
-                  <td className="p-4">{p.stock_quantity}</td>
-                  <td className="p-4 text-right">
-                    <button className="p-2" onClick={() => openEdit(p)}><Pencil size={16} /></button>
-                    <button className="p-2" onClick={() => setArchived(p.id, !p.deleted_at)}>
-                      {p.deleted_at ? <ArchiveRestore size={16} /> : <Archive size={16} />}
-                    </button>
-                  </td>
-                </tr>
+                      {p.status === "draft" && (
+                        <span className="text-[11px] uppercase tracking-wide text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+                          {t("drafts")}
+                        </span>
+                      )}
+                      <span className="sm:hidden text-xs text-gray-500">
+                        {formatEuroDe(Number(p.price))} · Bestand {p.stock_quantity}
+                      </span>
+                    </div>
+                    <div className="hidden sm:block text-gray-500 truncate">
+                      {p.product_number || "—"}
+                    </div>
+                    <div className="hidden sm:block">
+                      {formatEuroDe(Number(p.price))}
+                    </div>
+                    <div className="hidden sm:block">{p.stock_quantity}</div>
+                    <div className="flex justify-end gap-0.5">
+                      <button
+                        type="button"
+                        className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center"
+                        onClick={() => openEdit(p)}
+                        aria-label="Bearbeiten"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center"
+                        onClick={() => setArchived(p.id, !p.deleted_at)}
+                        aria-label={p.deleted_at ? t("restore") : t("archive")}
+                      >
+                        {p.deleted_at ? (
+                          <ArchiveRestore size={16} />
+                        ) : (
+                          <Archive size={16} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </SwipeToDeleteRow>
               ))}
-            </tbody>
-          </table>
+          </div>
         </div>
       )}
     </div>

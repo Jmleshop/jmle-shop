@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import type { FoodCategory } from "@/types";
+import { categoryCreateSchema } from "@/lib/validations/product";
+import { parseJsonBody } from "@/lib/validations";
 
 function slugify(value: string) {
   return value
@@ -55,24 +57,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const body = await request.json();
-  const name_ar = String(body.name_ar ?? "").trim();
-  const name_de = String(body.name_de ?? "").trim();
-  if (!name_ar) {
-    return NextResponse.json(
-      { error: "Arabischer Name ist Pflicht" },
-      { status: 400 }
-    );
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Ungültiges JSON" }, { status: 400 });
   }
 
-  const id = String(body.id ?? "").trim() || slugify(name_de || name_ar);
+  const parsed = parseJsonBody(categoryCreateSchema, raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const { name_ar, name_de, image, sort_order, parent_id } = parsed.data;
+  const id =
+    (parsed.data.id && parsed.data.id.trim()) ||
+    slugify(name_de || name_ar) ||
+    `cat-${Date.now()}`;
+
   const payload = {
     id,
     name_ar,
     name_de,
-    image: body.image ? String(body.image) : null,
-    sort_order: Number(body.sort_order ?? 0) || 0,
-    parent_id: body.parent_id || null,
+    image,
+    sort_order,
+    parent_id,
   };
 
   let { data, error } = await auth.supabase
@@ -85,9 +94,9 @@ export async function POST(request: Request) {
     const withoutId = {
       name_ar,
       name_de,
-      image: payload.image,
-      sort_order: payload.sort_order,
-      parent_id: payload.parent_id,
+      image,
+      sort_order,
+      parent_id,
     };
     const retry = await auth.supabase
       .from("categories")

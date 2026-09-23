@@ -104,27 +104,29 @@ export default function AdminActivityPage() {
           Noch keine Einträge.
         </p>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px]">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left p-4 font-medium">Datum & Uhrzeit</th>
-                <th className="text-left p-4 font-medium">Mitarbeiter</th>
-                <th className="text-left p-4 font-medium">Aktion</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.id} className="border-t">
-                  <td className="p-4 whitespace-nowrap text-gray-600">
-                    {formatWhen(entry.created_at)}
-                  </td>
-                  <td className="p-4">{actorEmail(entry)}</td>
-                  <td className="p-4 font-medium">{describeAction(entry)}</td>
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto max-h-[70vh]">
+            <table className="w-full text-sm min-w-[720px]">
+              <thead className="bg-gray-50/95 backdrop-blur-sm sticky top-0 z-10 shadow-[0_1px_0_rgba(0,0,0,0.06)]">
+                <tr>
+                  <th className="text-left p-3 sm:p-4 font-medium whitespace-nowrap">Datum & Uhrzeit</th>
+                  <th className="text-left p-3 sm:p-4 font-medium whitespace-nowrap">Mitarbeiter</th>
+                  <th className="text-left p-3 sm:p-4 font-medium whitespace-nowrap">Aktion</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {entries.map((entry) => (
+                  <tr key={entry.id} className="border-t">
+                    <td className="p-3 sm:p-4 whitespace-nowrap text-gray-600">
+                      {formatWhen(entry.created_at)}
+                    </td>
+                    <td className="p-3 sm:p-4">{actorEmail(entry)}</td>
+                    <td className="p-3 sm:p-4 font-medium">{describeAction(entry)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

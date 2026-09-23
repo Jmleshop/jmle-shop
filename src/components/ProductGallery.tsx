@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 export default function ProductGallery({
   images,
@@ -17,6 +18,7 @@ export default function ProductGallery({
   const [index, setIndex] = useState(0);
   const pausedUntil = useRef(0);
   const touchX = useRef<number | null>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   const pauseAuto = useCallback(() => {
     pausedUntil.current = Date.now() + 8000;
@@ -34,73 +36,107 @@ export default function ProductGallery({
     if (slides.length < 2) return;
     const t = setInterval(() => {
       if (Date.now() >= pausedUntil.current) next();
-    }, 4000);
+    }, 4500);
     return () => clearInterval(t);
   }, [next, slides.length]);
 
   return (
     <div
-      className={`relative aspect-square bg-jmle-warm overflow-hidden rounded-2xl ${
-        dimmed ? "opacity-60" : ""
-      }`}
+      className={cn(
+        "relative aspect-square bg-jmle-warm overflow-hidden rounded-2xl border border-amber-200/40 shadow-boutique select-none touch-pan-y",
+        dimmed && "opacity-60"
+      )}
       onTouchStart={(e) => {
         touchX.current = e.touches[0].clientX;
+      }}
+      onTouchMove={(e) => {
+        // Horizontal-Wisch priorisieren, wenn Delta groß genug
+        if (touchX.current == null) return;
+        const dx = Math.abs(e.touches[0].clientX - touchX.current);
+        if (dx > 12) e.stopPropagation();
       }}
       onTouchEnd={(e) => {
         if (touchX.current == null) return;
         const dx = e.changedTouches[0].clientX - touchX.current;
-        if (Math.abs(dx) > 40) {
+        if (Math.abs(dx) > 36) {
           pauseAuto();
           if (dx < 0) next();
           else prev();
         }
         touchX.current = null;
       }}
+      role="region"
+      aria-roledescription="Karussell"
+      aria-label={alt}
     >
-      <Image
-        src={slides[index]}
-        alt={alt}
-        fill
-        priority
-        className="object-cover"
-        sizes="(max-width: 768px) 100vw, 50vw"
-      />
+      <div
+        ref={trackRef}
+        dir="ltr"
+        className="absolute inset-0 flex transition-transform duration-500 ease-boutique"
+        style={{ transform: `translateX(-${index * 100}%)` }}
+      >
+        {slides.map((src, i) => (
+          <div key={`${src}-${i}`} className="relative min-w-full h-full">
+            <Image
+              src={src}
+              alt={i === index ? alt : ""}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              draggable={false}
+            />
+          </div>
+        ))}
+      </div>
+
       {slides.length > 1 && (
         <>
-          <button
-            type="button"
-            onClick={() => {
-              pauseAuto();
-              prev();
-            }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white"
-            aria-label="Vorheriges Bild"
-          >
-            <ChevronLeft size={18} />
-          </button>
+          {/* In RTL: start = rechts */}
           <button
             type="button"
             onClick={() => {
               pauseAuto();
               next();
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 hover:bg-white"
-            aria-label="Nächstes Bild"
+            className="absolute start-2 top-1/2 -translate-y-1/2 p-2.5 min-h-11 min-w-11 rounded-full bg-white/85 backdrop-blur-sm border border-amber-200/50 text-luxury-ink shadow-gold-sm hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+            aria-label="الصورة التالية"
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={18} className="rtl:rotate-180" />
           </button>
-          <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              pauseAuto();
+              prev();
+            }}
+            className="absolute end-2 top-1/2 -translate-y-1/2 p-2.5 min-h-11 min-w-11 rounded-full bg-white/85 backdrop-blur-sm border border-amber-200/50 text-luxury-ink shadow-gold-sm hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+            aria-label="الصورة السابقة"
+          >
+            <ChevronLeft size={18} className="rtl:rotate-180" />
+          </button>
+
+          <div
+            className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5"
+            role="tablist"
+            aria-label="صور المنتج"
+          >
             {slides.map((_, i) => (
               <button
                 key={i}
                 type="button"
+                role="tab"
+                aria-selected={i === index}
+                aria-label={`صورة ${i + 1}`}
                 onClick={() => {
                   pauseAuto();
                   setIndex(i);
                 }}
-                className={`h-1.5 rounded-full ${
-                  i === index ? "w-5 bg-gold" : "w-1.5 bg-white/70"
-                }`}
+                className={cn(
+                  "h-2 rounded-full transition-all duration-300",
+                  i === index
+                    ? "w-6 bg-gold shadow-gold-sm"
+                    : "w-2 bg-white/75 hover:bg-jmle-yellow"
+                )}
               />
             ))}
           </div>

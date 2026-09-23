@@ -23,7 +23,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Archive, ChevronDown, ChevronRight, GripVertical, Pencil, Plus, X } from "lucide-react";
+import Link from "next/link";
 import ImageUpload from "@/components/admin/ImageUpload";
+import SwipeToDeleteRow from "@/components/admin/SwipeToDeleteRow";
+import { softDeleteWithUndo } from "@/lib/admin-soft-delete";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import {
   CATEGORY_INDENT_PX,
@@ -43,6 +46,8 @@ function SortableCategoryRow({
   toggle,
   onEdit,
   onArchive,
+  onSwipeTrash,
+  trashLabel,
 }: {
   item: FlatCategory;
   projectedDepth?: number;
@@ -51,6 +56,8 @@ function SortableCategoryRow({
   toggle: (id: string) => void;
   onEdit: (c: FoodCategory) => void;
   onArchive: (id: string) => void;
+  onSwipeTrash: (c: FoodCategory) => boolean | void | Promise<boolean | void>;
+  trashLabel: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -68,29 +75,57 @@ function SortableCategoryRow({
       }}
       className="border-b last:border-0 bg-white"
     >
-      <div className="flex items-center gap-2 py-3 pr-2">
-        <button type="button" className="cursor-grab text-gray-400" {...attributes} {...listeners}>
-          <GripVertical size={16} />
-        </button>
-        {hasChildren ? (
-          <button type="button" onClick={() => toggle(item.id)}>
-            {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+      <SwipeToDeleteRow
+        disabled={!!item.deleted_at}
+        label={trashLabel}
+        onSwipeDelete={() => onSwipeTrash(item)}
+      >
+        <div className="flex items-center gap-2 py-3 pr-2 bg-white min-h-[52px]">
+          <button
+            type="button"
+            className="cursor-grab text-gray-400 p-2 min-h-11 min-w-11 inline-flex items-center justify-center"
+            {...attributes}
+            {...listeners}
+            aria-label="Ziehen zum Sortieren"
+          >
+            <GripVertical size={16} />
           </button>
-        ) : (
-          <span className="w-4" />
-        )}
-        <span className="flex-1 font-medium text-sm">{categoryLabel(item)}</span>
-        <span className="text-[11px] text-gray-400">Ebene {depth + 1}</span>
-        <span className="text-xs text-gray-400" dir="rtl">
-          {item.name_ar}
-        </span>
-        <button type="button" className="p-2" onClick={() => onEdit(item)}>
-          <Pencil size={14} />
-        </button>
-        <button type="button" className="p-2" onClick={() => onArchive(item.id)}>
-          <Archive size={14} />
-        </button>
-      </div>
+          {hasChildren ? (
+            <button
+              type="button"
+              className="p-2 min-h-11 min-w-11"
+              onClick={() => toggle(item.id)}
+            >
+              {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </button>
+          ) : (
+            <span className="w-4" />
+          )}
+          <span className="flex-1 font-medium text-sm">{categoryLabel(item)}</span>
+          <span className="text-[11px] text-gray-400 hidden sm:inline">
+            Ebene {depth + 1}
+          </span>
+          <span className="text-xs text-gray-400 hidden md:inline" dir="rtl">
+            {item.name_ar}
+          </span>
+          <button
+            type="button"
+            className="p-2.5 min-h-11 min-w-11"
+            onClick={() => onEdit(item)}
+            aria-label="Bearbeiten"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            type="button"
+            className="p-2.5 min-h-11 min-w-11"
+            onClick={() => onArchive(item.id)}
+            aria-label={trashLabel}
+          >
+            <Archive size={14} />
+          </button>
+        </div>
+      </SwipeToDeleteRow>
     </div>
   );
 }
@@ -263,16 +298,27 @@ export default function AdminCategoriesPage() {
 
   return (
     <div>
-      <div className="flex justify-between mb-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
         <h1 className="text-2xl font-semibold">{t("categories")}</h1>
-        <button className="btn-primary flex items-center gap-2 py-2.5 px-5" onClick={() => openEdit()}>
-          <Plus size={18} />
-          {t("newCategory")}
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/trash"
+            className="text-sm text-gray-600 hover:text-gold underline-offset-2 hover:underline min-h-11 inline-flex items-center"
+          >
+            {t("trash")} →
+          </Link>
+          <button className="btn-primary flex items-center gap-2 py-2.5 px-5" onClick={() => openEdit()}>
+            <Plus size={18} />
+            {t("newCategory")}
+          </button>
+        </div>
       </div>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-gray-500 mb-2">
         Ziehen zum Sortieren. Nach rechts einrücken, um eine Unterkategorie zu erzeugen (max. 3
         Ebenen).
+      </p>
+      <p className="text-[11px] text-gray-400 mb-6">
+        Zeile nach rechts wischen → Papierkorb (Soft Delete). Griff-Icon = Sortieren.
       </p>
       {showForm && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4">
@@ -363,12 +409,23 @@ export default function AdminCategoriesPage() {
                 }}
                 onEdit={openEdit}
                 onArchive={async (id) => {
+                  if (!confirm(t("moveToTrashConfirm"))) return;
                   await fetch(`/api/admin/categories/${id}`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ archived: true }),
                   });
                   load();
+                }}
+                trashLabel={t("archive")}
+                onSwipeTrash={async (c) => {
+                  const name = c.name_de || c.name_ar || c.id;
+                  return softDeleteWithUndo({
+                    kind: "category",
+                    id: c.id,
+                    name,
+                    onDone: load,
+                  });
                 }}
               />
             ))}

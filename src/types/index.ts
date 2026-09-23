@@ -4,6 +4,8 @@ export interface SiteConfig {
   currency: string;
   locale: string;
   categoriesSectionTitle?: string;
+  description?: string;
+  ogImage?: string;
 }
 
 export interface Slide {
@@ -42,7 +44,7 @@ export interface Product {
   weightValue?: number | null;
   weightUnit?: string;
   barcode?: string | null;
-  maxOrderQuantity: number;
+  maxOrderQuantity: number | null;
   ingredients?: string;
   allergens?: string;
   originCountry?: string;
@@ -63,6 +65,14 @@ export interface CartItem {
   quantity: number;
   created_at: string;
   updated_at: string;
+  product?: Product;
+}
+
+export interface WishlistItem {
+  id: string;
+  user_id: string;
+  product_id: string;
+  created_at: string;
   product?: Product;
 }
 
@@ -115,7 +125,7 @@ export interface FoodProduct {
   discount_percent: number;
   barcode: string | null;
   product_number: string | null;
-  max_order_quantity: number;
+  max_order_quantity: number | null;
   stock_quantity: number;
   status?: "published" | "draft";
   deleted_at: string | null;

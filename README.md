@@ -56,78 +56,17 @@ Tragen Sie Ihre echten Werte ein:
 
 ## Inhalte bearbeiten (Produkte, Bilder, Preise)
 
-Alle Shop-Inhalte werden zentral in **`data/products.json`** verwaltet. Sie müssen keinen Code anfassen.
+**Phase 3:** Live-Daten kommen aus **Supabase** (nicht mehr aus `data/products.json`).
 
-### Struktur der Konfigurationsdatei
+| Inhalt | Quelle |
+|--------|--------|
+| Produkte / Kategorien | Tabellen / View `products_public`, `categories` |
+| Hero-Slider | Tabelle `hero_slides` |
+| Site-Name / Tagline | `site_settings` (Key `site`) |
 
-```json
-{
-  "site": {
-    "name": "jmle",
-    "tagline": "أناقة لا تُضاهى",
-    "currency": "EUR",
-    "locale": "ar"
-  },
-  "slider": [ ... ],
-  "categories": [ ... ],
-  "products": [ ... ]
-}
-```
+SQL: `supabase/phase3-catalog-search.sql` im Supabase SQL Editor ausführen.
 
-### Produkt hinzufügen oder ändern
-
-```json
-{
-  "id": "prod-009",
-  "name": "اسم المنتج بالعربية",
-  "description": "وصف المنتج",
-  "price": 199.99,
-  "categoryId": "women",
-  "image": "https://ihre-bild-url.de/bild.jpg",
-  "featured": true
-}
-```
-
-| Feld | Beschreibung |
-|------|-------------|
-| `id` | Eindeutige ID (z.B. `prod-009`) |
-| `name` | Produktname auf Arabisch |
-| `description` | Produktbeschreibung |
-| `price` | Preis in Euro (Dezimalzahl) |
-| `categoryId` | ID einer Kategorie (`women`, `men`, etc.) |
-| `image` | URL zum Produktbild |
-| `featured` | `true` = auf Startseite anzeigen |
-
-### Slider-Bilder ändern
-
-Bearbeiten Sie den `slider`-Abschnitt in `data/products.json`:
-
-```json
-{
-  "id": "slide-1",
-  "image": "https://...",
-  "title": "عنوان الشريحة",
-  "subtitle": "وصف قصير"
-}
-```
-
-### Kategorien verwalten
-
-```json
-{
-  "id": "women",
-  "name": "نساء",
-  "nameEn": "Women",
-  "image": "https://..."
-}
-```
-
-### Bilder hochladen
-
-1. **Einfach**: Bilder auf einen Cloud-Dienst hochladen (z.B. Cloudinary, Supabase Storage) und die URL in `products.json` eintragen
-2. **Lokal**: Bilder in `public/images/` ablegen und `"image": "/images/mein-bild.jpg"` verwenden
-
-> **Tipp**: Für den luxuriösen Look sollten alle Produktfotos den gleichen Hintergrund haben.
+Bilder: in Supabase Storage (`product-images`) hochladen (Admin-UI) oder externe HTTPS-URLs (Unsplash / Storage) nutzen — gerendert über Next.js `<Image />` (AVIF/WebP).
 
 ---
 

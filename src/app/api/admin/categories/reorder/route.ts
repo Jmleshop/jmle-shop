@@ -2,19 +2,28 @@ import { NextResponse } from "next/server";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import { CATEGORY_MAX_DEPTH } from "@/lib/category-dnd";
 import type { FoodCategory } from "@/types";
+import { categoryReorderSchema } from "@/lib/validations/product";
+import { parseJsonBody } from "@/lib/validations";
 
 export async function PUT(request: Request) {
   const auth = await requireStaff();
   if (isAuthError(auth)) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
-  const body = await request.json();
-  const order = body.order as
-    | { id: string; sort_order: number; parent_id?: string | null }[]
-    | undefined;
-  if (!Array.isArray(order)) {
-    return NextResponse.json({ error: "order fehlt" }, { status: 400 });
+
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Ungültiges JSON" }, { status: 400 });
   }
+
+  const parsed = parseJsonBody(categoryReorderSchema, raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const order = parsed.data.order;
 
   const { data: existing } = await auth.supabase.from("categories").select("*");
   const byId = new Map(((existing ?? []) as FoodCategory[]).map((c) => [c.id, c]));
@@ -31,10 +40,16 @@ export async function PUT(request: Request) {
   for (const row of order) {
     const parentId = row.parent_id || null;
     if (parentId === row.id) {
-      return NextResponse.json({ error: "Kategorie kann nicht sich selbst untergeordnet sein" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Kategorie kann nicht sich selbst untergeordnet sein" },
+        { status: 400 }
+      );
     }
     if (parentId && !byId.has(parentId)) {
-      return NextResponse.json({ error: "Übergeordnete Kategorie fehlt" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Übergeordnete Kategorie fehlt" },
+        { status: 400 }
+      );
     }
     const depth = depthOf(row.id);
     if (depth > CATEGORY_MAX_DEPTH + 1) {

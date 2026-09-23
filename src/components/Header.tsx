@@ -1,127 +1,154 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Search, User, ShoppingBag, Menu, X } from "lucide-react";
+import { Search, User, ShoppingBag, Menu, X, Heart } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { formatPrice } from "@/lib/catalog";
+import HeaderSearch from "@/components/HeaderSearch";
 
 export default function Header() {
   const { total, itemCount, user } = useCart();
-  const [searchQuery, setSearchQuery] = useState("");
+  const { count: wishCount } = useWishlist();
   const [showSearch, setShowSearch] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const router = useRouter();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setShowSearch(false);
-      setSearchQuery("");
-    }
-  };
 
   const navLinks = [
     { href: "/", label: "الرئيسية" },
     { href: "/categories", label: "الفئات" },
+    { href: "/wishlist", label: "المفضلة" },
     { href: "/cart", label: "السلة" },
     { href: "/search", label: "البحث" },
-    { href: user ? "/profile" : "/auth/login", label: user ? "الملف الشخصي" : "تسجيل الدخول" },
+    {
+      href: user ? "/profile" : "/auth/login",
+      label: user ? "الملف الشخصي" : "تسجيل الدخول",
+    },
   ];
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-jmle-cream/95 backdrop-blur-sm border-b border-jmle-orange/30">
-        <div className="max-w-7xl mx-auto px-4 h-16 md:h-[72px] grid grid-cols-3 items-center">
-          {/* Rechts (RTL col 1): Hamburger + Suche */}
-          <div className="flex items-center gap-1 justify-start">
+      <header className="sticky top-0 z-50 bg-jmle-cream/95 backdrop-blur-md border-b border-amber-200/50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-16 md:h-[72px] grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="flex items-center gap-0.5 justify-start">
             <button
+              type="button"
               onClick={() => setMenuOpen(true)}
-              className="p-2.5 text-luxury-charcoal hover:text-gold transition-colors"
+              className="lg:hidden p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
               aria-label="القائمة"
             >
               <Menu size={24} />
             </button>
             <button
-              onClick={() => setShowSearch(!showSearch)}
-              className="p-2.5 text-luxury-charcoal hover:text-gold transition-colors"
+              type="button"
+              onClick={() => setShowSearch((v) => !v)}
+              className="md:hidden p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
               aria-label="بحث"
+              aria-expanded={showSearch}
             >
               <Search size={22} />
             </button>
+            <nav
+              className="hidden lg:flex items-center gap-1"
+              aria-label="التنقل الرئيسي"
+            >
+              {navLinks.slice(0, 4).map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="px-3 py-2.5 min-h-11 text-sm font-ui font-medium text-luxury-charcoal hover:text-gold rounded-xl transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
           </div>
 
-          {/* Mitte: Logo */}
           <Link
             href="/"
-            className="text-2xl md:text-[1.75rem] font-semibold tracking-[0.25em] text-gold-dark hover:text-gold transition-colors text-center"
+            className="font-display text-2xl md:text-[1.85rem] tracking-[0.2em] text-gold-dark hover:text-gold transition-colors text-center shrink-0"
           >
             jmle
           </Link>
 
-          {/* Links (RTL col 3): Profil + Warenkorb */}
-          <div className="flex items-center gap-1 justify-end">
+          <div className="flex items-center gap-0.5 justify-end">
+            <button
+              type="button"
+              onClick={() => setShowSearch((v) => !v)}
+              className="hidden md:inline-flex lg:hidden p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
+              aria-label="بحث"
+              aria-expanded={showSearch}
+            >
+              <Search size={22} />
+            </button>
+            <Link
+              href="/wishlist"
+              className="relative p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-red-500 transition-colors rounded-xl"
+              aria-label={`المفضلة، ${wishCount} منتج`}
+            >
+              <Heart size={22} aria-hidden />
+              {wishCount > 0 && (
+                <span className="absolute top-1 start-1 bg-red-500 text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-white/80">
+                  {wishCount > 99 ? "99+" : wishCount}
+                </span>
+              )}
+            </Link>
             <Link
               href={user ? "/profile" : "/auth/login"}
-              className="p-2.5 text-luxury-charcoal hover:text-gold transition-colors"
+              className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
               aria-label="الملف الشخصي"
             >
               <User size={22} />
             </Link>
             <Link
               href="/cart"
-              className="relative flex items-center gap-1.5 p-2 text-luxury-charcoal hover:text-gold transition-colors"
-              aria-label="سلة التسوق"
+              className="relative flex items-center gap-1.5 p-2 min-h-11 text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
+              aria-label={`سلة التسوق، ${itemCount} منتج`}
             >
-              <ShoppingBag size={22} />
+              <ShoppingBag size={22} aria-hidden />
               {itemCount > 0 && (
-                <span className="absolute top-1 right-1 bg-jmle-yellow text-luxury-black text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
-                  {itemCount}
+                <span className="absolute top-1 start-1 bg-jmle-yellow text-luxury-black text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-white/80">
+                  {itemCount > 99 ? "99+" : itemCount}
                 </span>
               )}
-              <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">
+              <span className="text-xs sm:text-sm font-ui font-semibold whitespace-nowrap hidden sm:inline">
                 {formatPrice(total)}
               </span>
             </Link>
           </div>
         </div>
 
-        {showSearch && (
-          <div className="px-4 pb-3">
-            <form onSubmit={handleSearch} className="relative max-w-lg mx-auto">
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ابحث عن منتج..."
-                autoFocus
-                className="w-full px-4 py-2.5 pr-10 text-sm bg-white border border-jmle-orange/40 rounded-full focus:outline-none focus:border-gold"
-              />
-              <button
-                type="submit"
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gold"
-              >
-                <Search size={18} />
-              </button>
-            </form>
-          </div>
-        )}
+        {/* Tablet/Desktop: permanente Suchleiste */}
+        <div className="hidden md:block border-t border-amber-100/80">
+          <HeaderSearch open onClose={() => setShowSearch(false)} persistent />
+        </div>
+
+        {/* Mobile: Toggle-Suche */}
+        <div className="md:hidden">
+          <HeaderSearch open={showSearch} onClose={() => setShowSearch(false)} />
+        </div>
       </header>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-[60]">
+        <div
+          className="fixed inset-0 z-[60] lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="القائمة"
+        >
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-jmle-mahogany/40 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
           />
-          <aside className="absolute top-0 right-0 h-full w-72 bg-jmle-cream shadow-2xl p-6">
+          <aside className="absolute top-0 end-0 h-full w-[min(100%,18rem)] bg-jmle-cream border-s border-amber-200/50 shadow-boutique p-6 animate-fade-up">
             <div className="flex items-center justify-between mb-8">
-              <span className="text-xl tracking-[0.2em] font-semibold">jmle</span>
+              <span className="font-display text-xl tracking-[0.15em] text-gold-dark">
+                jmle
+              </span>
               <button
+                type="button"
                 onClick={() => setMenuOpen(false)}
-                className="p-2 hover:text-gold transition-colors"
+                className="p-2 min-h-11 min-w-11 hover:text-gold transition-colors rounded-xl"
                 aria-label="إغلاق"
               >
                 <X size={22} />
@@ -133,11 +160,21 @@ export default function Header() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-3 text-sm font-medium text-luxury-charcoal hover:bg-jmle-yellow/40 hover:text-gold-dark rounded-lg transition-colors"
+                  className="block px-4 py-3.5 min-h-12 text-sm font-ui font-medium text-luxury-charcoal hover:bg-jmle-yellow/40 hover:text-gold-dark rounded-xl transition-colors"
                 >
                   {link.label}
                 </Link>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setShowSearch(true);
+                }}
+                className="w-full text-start block px-4 py-3.5 min-h-12 text-sm font-ui font-medium text-luxury-charcoal hover:bg-jmle-yellow/40 hover:text-gold-dark rounded-xl"
+              >
+                بحث سريع
+              </button>
             </nav>
           </aside>
         </div>

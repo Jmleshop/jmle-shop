@@ -11,6 +11,14 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { CartItem, Product } from "@/types";
 import type { User } from "@supabase/supabase-js";
+import { toast } from "@/components/AppToaster";
+import {
+  FREE_SHIPPING_THRESHOLD_EUR,
+  amountUntilFreeShipping,
+  estimateShipping,
+  qualifiesForFreeShipping,
+} from "@/lib/shipping";
+import { formatEuroDe, maxBuyQuantity } from "@/lib/pricing";
 
 interface CartContextType {
   items: CartItem[];
@@ -19,6 +27,11 @@ interface CartContextType {
   loading: boolean;
   user: User | null;
   products: Map<string, Product>;
+  /** Schwelle Gratisversand (EUR) */
+  freeShippingThreshold: number;
+  amountUntilFreeShipping: number;
+  qualifiesForFreeShipping: boolean;
+  estimatedShipping: number;
   addItem: (productId: string, quantity?: number) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   removeItem: (cartItemId: string) => Promise<void>;
@@ -87,18 +100,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .eq("user_id", currentUser.id);
 
       if (!error && data) {
-        const enriched: CartItem[] = data.map((item) => ({
-          ...item,
-          product: resolveProduct(item.product_id),
-        }));
+        const enriched: CartItem[] = data.map((item) => {
+          const product = resolveProduct(item.product_id);
+          const max = product
+            ? maxBuyQuantity(product.stock, product.maxOrderQuantity)
+            : Number(item.quantity);
+          const quantity = Math.min(Number(item.quantity), Math.max(0, max));
+          return {
+            ...item,
+            quantity,
+            product,
+          };
+        });
         setItems(enriched);
       } else {
         setItems([]);
       }
     } else {
       const guestItems = getGuestCart();
+      let changed = false;
+      const clamped = guestItems.map((item) => {
+        const product = resolveProduct(item.product_id);
+        if (!product) return item;
+        const max = maxBuyQuantity(product.stock, product.maxOrderQuantity);
+        if (item.quantity > max) {
+          changed = true;
+          return { ...item, quantity: Math.max(0, max) };
+        }
+        return item;
+      }).filter((item) => item.quantity > 0);
+      if (changed || clamped.length !== guestItems.length) {
+        setGuestCart(clamped);
+      }
       setItems(
-        guestItems.map((item, index) => ({
+        clamped.map((item, index) => ({
           id: `guest-${index}`,
           user_id: "guest",
           product_id: item.product_id,
@@ -155,16 +190,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     async (productId: string, quantity = 1) => {
       const product = resolveProduct(productId);
       if (product && !product.inStock) {
+        toast.error("هذا المنتج غير متوفر حالياً");
         return;
       }
-      if (product?.stock !== undefined && product.stock < quantity) {
+
+      const max = product
+        ? maxBuyQuantity(product.stock, product.maxOrderQuantity)
+        : 0;
+      if (max < 1) {
+        toast.error("الكمية غير متوفرة في المخزون");
         return;
       }
 
       if (user) {
         const existing = items.find((i) => i.product_id === productId);
-        const newQty = (existing?.quantity ?? 0) + quantity;
-        if (product?.stock !== undefined && product.stock < newQty) {
+        const newQty = Math.min(max, (existing?.quantity ?? 0) + quantity);
+        if (newQty <= (existing?.quantity ?? 0)) {
+          toast.error(`الحد الأقصى: ${max}`);
           return;
         }
 
@@ -177,25 +219,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           await supabase.from("cart_items").insert({
             user_id: user.id,
             product_id: productId,
-            quantity,
+            quantity: Math.min(max, quantity),
           });
         }
       } else {
         const guestCart = getGuestCart();
         const existing = guestCart.find((i) => i.product_id === productId);
-        const newQty = (existing?.quantity ?? 0) + quantity;
-        if (product?.stock !== undefined && product.stock < newQty) {
+        const newQty = Math.min(max, (existing?.quantity ?? 0) + quantity);
+        if (newQty <= (existing?.quantity ?? 0)) {
+          toast.error(`الحد الأقصى: ${max}`);
           return;
         }
 
         if (existing) {
           existing.quantity = newQty;
         } else {
-          guestCart.push({ product_id: productId, quantity });
+          guestCart.push({
+            product_id: productId,
+            quantity: Math.min(max, quantity),
+          });
         }
         setGuestCart(guestCart);
       }
       await refreshCart();
+      toast.success(
+        product?.name
+          ? `تمت إضافة «${product.name}» إلى السلة`
+          : "تمت إضافة المنتج إلى السلة"
+      );
     },
     [user, items, supabase, refreshCart, resolveProduct]
   );
@@ -204,22 +255,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     async (cartItemId: string, quantity: number) => {
       if (quantity < 1) return;
 
+      const current = items.find((i) => i.id === cartItemId);
+      const product = current
+        ? resolveProduct(current.product_id)
+        : undefined;
+      const max = product
+        ? maxBuyQuantity(product.stock, product.maxOrderQuantity)
+        : quantity;
+      const clamped = Math.min(quantity, max);
+      if (clamped < 1) return;
+
       if (user) {
         await supabase
           .from("cart_items")
-          .update({ quantity })
+          .update({ quantity: clamped })
           .eq("id", cartItemId);
       } else {
         const guestCart = getGuestCart();
         const index = parseInt(cartItemId.replace("guest-", ""), 10);
         if (guestCart[index]) {
-          guestCart[index].quantity = quantity;
+          guestCart[index].quantity = clamped;
           setGuestCart(guestCart);
         }
       }
       await refreshCart();
     },
-    [user, supabase, refreshCart]
+    [user, items, supabase, refreshCart, resolveProduct]
   );
 
   const removeItem = useCallback(
@@ -233,6 +294,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setGuestCart(guestCart);
       }
       await refreshCart();
+      toast("تم حذف المنتج من السلة", { icon: "🛒" });
     },
     [user, supabase, refreshCart]
   );
@@ -260,6 +322,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [items]
   );
 
+  const shippingMeta = useMemo(() => {
+    const remaining = amountUntilFreeShipping(total);
+    const free = qualifiesForFreeShipping(total);
+    const shipping = estimateShipping(total);
+    return {
+      freeShippingThreshold: FREE_SHIPPING_THRESHOLD_EUR,
+      amountUntilFreeShipping: remaining,
+      qualifiesForFreeShipping: free,
+      estimatedShipping: shipping,
+    };
+  }, [total]);
+
   return (
     <CartContext.Provider
       value={{
@@ -269,6 +343,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         loading,
         user,
         products,
+        ...shippingMeta,
         addItem,
         updateQuantity,
         removeItem,
@@ -297,4 +372,13 @@ export function useCartTotal(): number {
 export function useCartItemCount(): number {
   const { itemCount } = useCart();
   return itemCount;
+}
+
+/** Hilfstext für UI (z. B. Mini-Cart) */
+export function formatFreeShippingHint(
+  remaining: number,
+  qualifies: boolean
+): string {
+  if (qualifies) return "شحن مجاني ✓";
+  return `باقي ${formatEuroDe(remaining)} للشحن المجاني`;
 }

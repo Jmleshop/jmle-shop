@@ -186,45 +186,47 @@ export default function AdminDiscountsPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left p-4 font-medium">Code</th>
-                <th className="text-left p-4 font-medium">Typ</th>
-                <th className="text-left p-4 font-medium">Wert</th>
-                <th className="text-left p-4 font-medium">Genutzt</th>
-                <th className="text-left p-4 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {discounts.map((d) => (
-                <tr key={d.id} className="border-b last:border-0">
-                  <td className="p-4 font-mono font-medium">{d.code}</td>
-                  <td className="p-4">
-                    {d.type === "percent" ? "Prozent" : "Festbetrag"}
-                  </td>
-                  <td className="p-4">
-                    {d.type === "percent" ? `${d.value}%` : `${d.value} €`}
-                  </td>
-                  <td className="p-4">
-                    {d.usage_count}
-                    {d.usage_limit ? ` / ${d.usage_limit}` : ""}
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        d.active
-                          ? "bg-green-50 text-green-700"
-                          : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {d.active ? "Aktiv" : "Inaktiv"}
-                    </span>
-                  </td>
+          <div className="overflow-x-auto max-h-[70vh]">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead className="bg-gray-50/95 backdrop-blur-sm sticky top-0 z-10 border-b shadow-[0_1px_0_rgba(0,0,0,0.06)]">
+                <tr>
+                  <th className="text-left p-3 sm:p-4 font-medium whitespace-nowrap">Code</th>
+                  <th className="text-left p-3 sm:p-4 font-medium whitespace-nowrap">Typ</th>
+                  <th className="text-left p-3 sm:p-4 font-medium whitespace-nowrap">Wert</th>
+                  <th className="text-left p-3 sm:p-4 font-medium whitespace-nowrap">Genutzt</th>
+                  <th className="text-left p-3 sm:p-4 font-medium whitespace-nowrap">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {discounts.map((d) => (
+                  <tr key={d.id} className="border-b last:border-0">
+                    <td className="p-3 sm:p-4 font-mono font-medium">{d.code}</td>
+                    <td className="p-3 sm:p-4">
+                      {d.type === "percent" ? "Prozent" : "Festbetrag"}
+                    </td>
+                    <td className="p-3 sm:p-4">
+                      {d.type === "percent" ? `${d.value}%` : `${d.value} €`}
+                    </td>
+                    <td className="p-3 sm:p-4">
+                      {d.usage_count}
+                      {d.usage_limit ? ` / ${d.usage_limit}` : ""}
+                    </td>
+                    <td className="p-3 sm:p-4">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          d.active
+                            ? "bg-green-50 text-green-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {d.active ? "Aktiv" : "Inaktiv"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

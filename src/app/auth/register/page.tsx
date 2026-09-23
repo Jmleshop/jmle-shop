@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { registerSchema } from "@/lib/validations/auth";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -27,14 +28,23 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
 
+    const parsed = registerSchema.safeParse(form);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Ungültige Eingabe");
+      setLoading(false);
+      return;
+    }
+
+    const { firstName, lastName, street, email, password } = parsed.data;
+
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
+      email,
+      password,
       options: {
         data: {
-          first_name: form.firstName,
-          last_name: form.lastName,
-          street: form.street,
+          first_name: firstName,
+          last_name: lastName,
+          street,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -46,17 +56,18 @@ export default function RegisterPage() {
       return;
     }
 
+    // Niemals role mitsenden — DB-Trigger erzwingt 'customer'
     if (data.user) {
       await supabase.from("profiles").upsert({
         id: data.user.id,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        street: form.street,
-        email: form.email,
+        first_name: firstName,
+        last_name: lastName,
+        street,
+        email,
       });
     }
 
-    router.push(`/auth/verify?email=${encodeURIComponent(form.email)}`);
+    router.push(`/auth/verify?email=${encodeURIComponent(email)}`);
   };
 
   return (
@@ -69,7 +80,7 @@ export default function RegisterPage() {
           انضم إلى عالم jmle الفاخر
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="block text-sm mb-1.5 text-gray-600">
@@ -124,6 +135,7 @@ export default function RegisterPage() {
               value={form.email}
               onChange={handleChange}
               required
+              autoComplete="email"
               className="input-field"
               dir="ltr"
             />
@@ -140,10 +152,14 @@ export default function RegisterPage() {
               value={form.password}
               onChange={handleChange}
               required
-              minLength={6}
+              minLength={8}
+              autoComplete="new-password"
               className="input-field"
               dir="ltr"
             />
+            <p className="text-xs text-gray-400 mt-1" dir="ltr">
+              Mind. 8 Zeichen, Buchstabe und Ziffer
+            </p>
           </div>
 
           {error && (

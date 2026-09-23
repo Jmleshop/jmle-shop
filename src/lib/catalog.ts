@@ -1,15 +1,4 @@
-import catalogData from "../../data/products.json";
-import type { CatalogData, Slide } from "@/types";
-
-const data = catalogData as CatalogData;
-
-export function getSiteConfig() {
-  return data.site;
-}
-
-export function getSlides(): Slide[] {
-  return data.slider;
-}
+import type { SiteConfig } from "@/types";
 
 export function formatPrice(price: number, locale = "ar-DE"): string {
   return new Intl.NumberFormat(locale, {
@@ -28,4 +17,15 @@ export function calcDiscountPercent(
 ): number | null {
   if (!originalPrice || originalPrice <= price) return null;
   return Math.round(((originalPrice - price) / originalPrice) * 100);
+}
+
+/** @deprecated Use getSiteConfigAsync from catalog-server */
+export function getSiteConfig(): SiteConfig {
+  return {
+    name: "jmle",
+    tagline: "أجود المنتجات العربية",
+    currency: "EUR",
+    locale: "ar",
+    categoriesSectionTitle: "تسوق على حسب الفئة",
+  };
 }

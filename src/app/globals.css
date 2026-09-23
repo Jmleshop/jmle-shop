@@ -7,22 +7,109 @@
     scroll-behavior: smooth;
   }
 
+  body {
+    font-feature-settings: "kern" 1, "liga" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Arabische Display-Überschriften: Amiri mit edlem Zeilenabstand */
+  h1,
+  h2,
+  .font-display {
+    font-family: var(--font-amiri), serif;
+    letter-spacing: 0.01em;
+    line-height: 1.45;
+  }
+
+  h3,
+  h4,
+  .font-ui {
+    font-family: var(--font-tajawal), var(--font-noto-arabic), sans-serif;
+    line-height: 1.55;
+  }
+
+  p,
+  li,
+  label,
+  .font-body {
+    font-family: var(--font-noto-arabic), var(--font-tajawal), sans-serif;
+    line-height: 1.7;
+  }
+
   ::selection {
-    background-color: #FACC15;
-    color: #7C2D12;
+    background-color: #facc15;
+    color: #7c2d12;
+  }
+
+  /* RTL: native Form-Controls */
+  [dir="rtl"] input,
+  [dir="rtl"] textarea,
+  [dir="rtl"] select {
+    text-align: right;
+  }
+
+  [dir="rtl"] input[dir="ltr"],
+  [dir="rtl"] textarea[dir="ltr"] {
+    text-align: left;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-gold text-white px-8 py-3 text-sm font-medium tracking-wide hover:bg-jmle-yellow hover:text-luxury-black transition-colors duration-300 rounded-xl shadow-sm;
+    @apply inline-flex items-center justify-center gap-2 bg-gold text-white px-8 py-3 text-sm font-medium tracking-wide rounded-xl shadow-gold-sm transition-all duration-300 ease-boutique hover:bg-jmle-yellow hover:text-luxury-black hover:shadow-gold active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-outline {
-    @apply border border-gold text-gold px-8 py-3 text-sm font-medium tracking-wide hover:bg-gold hover:text-white transition-colors duration-300 rounded-xl;
+    @apply inline-flex items-center justify-center gap-2 border border-amber-200/80 text-gold px-8 py-3 text-sm font-medium tracking-wide rounded-xl bg-white/60 transition-all duration-300 ease-boutique hover:bg-gold hover:text-white hover:border-gold active:scale-[0.98];
   }
 
   .input-field {
-    @apply w-full px-4 py-3 bg-white border border-jmle-yellow/50 rounded-xl focus:outline-none focus:border-gold transition-colors text-sm;
+    @apply w-full px-4 py-3 min-h-[48px] bg-white border border-amber-200/50 rounded-xl text-sm text-luxury-ink placeholder:text-gray-400 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20 transition-colors;
+  }
+
+  .card-boutique {
+    @apply bg-white rounded-2xl border border-amber-200/50 shadow-sm transition-all duration-300 ease-boutique;
+  }
+
+  .section-title {
+    @apply font-display text-2xl md:text-3xl text-luxury-ink text-center;
+  }
+
+  .gold-divider {
+    @apply mx-auto mt-3 mb-8 h-px w-16 bg-gradient-to-l from-transparent via-gold to-transparent;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .safe-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Touch-Ziele ≥ 44px */
+  .tap-target {
+    @apply min-h-11 min-w-11;
+  }
+}
+
+/* Responsive Feinschliff: arabische Lesbarkeit auf schmalen Screens */
+@media (max-width: 639px) {
+  .font-display {
+    font-size: clamp(1.35rem, 5.5vw, 1.75rem);
+  }
+
+  .section-title {
+    font-size: clamp(1.35rem, 5vw, 1.75rem);
+  }
+}
+
+/* Desktop: Admin-Tabellen nutzen volle Breite mit horizontalem Scroll */
+@media (min-width: 1024px) {
+  .admin-table-wrap {
+    @apply overflow-x-auto max-w-full;
   }
 }

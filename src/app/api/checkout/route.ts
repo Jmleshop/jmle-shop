@@ -2,22 +2,26 @@ import { NextResponse } from "next/server";
 import { getStripe, formatAmountForStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { getProductsAsync } from "@/lib/catalog-server";
-
-interface CheckoutItem {
-  productId: string;
-  quantity: number;
-}
+import { checkoutSchema } from "@/lib/validations/checkout";
+import { parseJsonBody } from "@/lib/validations";
+import { estimateShipping } from "@/lib/shipping";
+import { maxBuyQuantity, roundMoney } from "@/lib/pricing";
 
 export async function POST(request: Request) {
   try {
-    const { items, discountCode } = (await request.json()) as {
-      items: CheckoutItem[];
-      discountCode?: string;
-    };
-
-    if (!items || items.length === 0) {
-      return NextResponse.json({ error: "No items" }, { status: 400 });
+    let raw: unknown;
+    try {
+      raw = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Ungültiges JSON" }, { status: 400 });
     }
+
+    const parsed = parseJsonBody(checkoutSchema, raw);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+
+    const { items, discountCode } = parsed.data;
 
     const products = await getProductsAsync();
     const productMap = new Map(products.map((p) => [p.id, p]));
@@ -52,6 +56,17 @@ export async function POST(request: Request) {
         );
       }
 
+      const maxQty = maxBuyQuantity(
+        product.stock ?? 0,
+        product.maxOrderQuantity
+      );
+      if (item.quantity > maxQty) {
+        return NextResponse.json(
+          { error: `Maximale Bestellmenge für ${product.name}: ${maxQty}` },
+          { status: 400 }
+        );
+      }
+
       validatedItems.push({
         productId: product.id,
         name: product.name,
@@ -60,9 +75,8 @@ export async function POST(request: Request) {
       });
     }
 
-    let subtotal = validatedItems.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
+    const subtotal = roundMoney(
+      validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
     );
     let discountAmount = 0;
     let appliedCode: string | null = null;
@@ -74,7 +88,7 @@ export async function POST(request: Request) {
         .select("*")
         .eq("code", discountCode.toUpperCase())
         .eq("active", true)
-        .single();
+        .maybeSingle();
 
       if (code) {
         const expired =
@@ -84,25 +98,29 @@ export async function POST(request: Request) {
 
         if (!expired && !limitReached) {
           if (code.type === "percent") {
-            discountAmount = subtotal * (Number(code.value) / 100);
+            discountAmount = roundMoney(subtotal * (Number(code.value) / 100));
           } else {
-            discountAmount = Math.min(Number(code.value), subtotal);
+            discountAmount = roundMoney(Math.min(Number(code.value), subtotal));
           }
           appliedCode = code.code;
         }
       }
     }
 
-    const total = Math.max(0, subtotal - discountAmount);
-    const discountRatio = subtotal > 0 ? total / subtotal : 1;
+    const afterDiscount = Math.max(0, roundMoney(subtotal - discountAmount));
+    const shipping = estimateShipping(afterDiscount);
+    const discountRatio = subtotal > 0 ? afterDiscount / subtotal : 1;
 
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Lagerabzug atomar nach Zahlung: Webhook ruft decrement_product_stock auf.
     const stripe = getStripe();
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+    if (!appUrl) {
+      return NextResponse.json({ error: "App-URL fehlt" }, { status: 500 });
+    }
 
     const lineItems = validatedItems.map((item) => ({
       price_data: {
@@ -113,18 +131,33 @@ export async function POST(request: Request) {
       quantity: item.quantity,
     }));
 
+    if (shipping > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "eur",
+          product_data: { name: "Versand / الشحن" },
+          unit_amount: formatAmountForStripe(shipping),
+        },
+        quantity: 1,
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/cart`,
+      success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/cart`,
       locale: "de",
+      shipping_address_collection: {
+        allowed_countries: ["DE", "AT", "CH"],
+      },
       metadata: {
         user_id: user?.id ?? "",
         subtotal: subtotal.toFixed(2),
         discount_amount: discountAmount.toFixed(2),
         discount_code: appliedCode ?? "",
+        shipping_amount: shipping.toFixed(2),
         items: JSON.stringify(validatedItems),
       },
     });

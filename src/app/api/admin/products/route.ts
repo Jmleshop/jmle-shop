@@ -3,8 +3,7 @@ import { isAuthError, requireStaff } from "@/lib/admin-server";
 import {
   PRODUCT_SELECT,
   PRODUCT_SELECT_BASE,
-  productPayload,
-  validateProductPayload,
+  parseProductBody,
 } from "@/lib/admin-payloads";
 import type { FoodProduct } from "@/types";
 
@@ -56,12 +55,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const body = await request.json();
-  const payload = productPayload(body);
-  const invalid = validateProductPayload(payload);
-  if (invalid) {
-    return NextResponse.json({ error: invalid }, { status: 400 });
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Ungültiges JSON" }, { status: 400 });
   }
+
+  const parsed = parseProductBody(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+  const payload = parsed.data;
 
   let { data, error } = await auth.supabase
     .from("products")

@@ -1,23 +1,53 @@
 import type { Metadata } from "next";
-import { getSlides, getSiteConfig } from "@/lib/catalog";
 import {
   getCategoriesAsync,
   getFeaturedProductsAsync,
+  getSiteConfigAsync,
+  getSlidesAsync,
 } from "@/lib/catalog-server";
+import { getAppUrl } from "@/lib/site-defaults";
 import HeroSlider from "@/components/HeroSlider";
 import CategoryGrid from "@/components/CategoryGrid";
 import { ProductGrid } from "@/components/ProductCard";
 
-const site = getSiteConfig();
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getSiteConfigAsync();
+  const slides = await getSlidesAsync();
+  const appUrl = getAppUrl();
+  const ogImage = site.ogImage || slides[0]?.image;
 
-export const metadata: Metadata = {
-  title: `${site.name} — ${site.tagline}`,
-  description: "متجر jmle للمواد الغذائية العربية الأصيلة",
-};
+  return {
+    title: `${site.name} — ${site.tagline}`,
+    description:
+      site.description ||
+      "متجر jmle للمواد الغذائية العربية الأصيلة",
+    alternates: { canonical: appUrl },
+    openGraph: {
+      type: "website",
+      locale: "ar_DE",
+      url: appUrl,
+      siteName: site.name,
+      title: `${site.name} — ${site.tagline}`,
+      description:
+        site.description ||
+        "متجر jmle للمواد الغذائية العربية الأصيلة",
+      ...(ogImage
+        ? { images: [{ url: ogImage, width: 1200, height: 630, alt: site.name }] }
+        : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${site.name} — ${site.tagline}`,
+      description: site.description || site.tagline,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
+  };
+}
 
 export default async function HomePage() {
-  const slides = getSlides();
-  const [categories, featured] = await Promise.all([
+  const [site, slides, categories, featured] = await Promise.all([
+    getSiteConfigAsync(),
+    getSlidesAsync(),
     getCategoriesAsync(),
     getFeaturedProductsAsync(),
   ]);

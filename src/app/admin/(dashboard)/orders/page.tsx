@@ -75,8 +75,8 @@ export default function AdminOrdersPage() {
               )}
 
               {order.order_items && order.order_items.length > 0 && (
-                <div className="border-t pt-4">
-                  <table className="w-full text-sm">
+                <div className="border-t pt-4 overflow-x-auto">
+                  <table className="w-full text-sm min-w-[320px]">
                     <thead>
                       <tr className="text-gray-500">
                         <th className="text-left pb-2 font-medium">Produkt</th>
@@ -87,11 +87,11 @@ export default function AdminOrdersPage() {
                     <tbody>
                       {order.order_items.map((item) => (
                         <tr key={item.id}>
-                          <td className="py-1" dir="rtl">
+                          <td className="py-2" dir="rtl">
                             {item.product_name}
                           </td>
-                          <td className="py-1 text-center">{item.quantity}</td>
-                          <td className="py-1 text-right">
+                          <td className="py-2 text-center">{item.quantity}</td>
+                          <td className="py-2 text-right">
                             {formatPriceDe(Number(item.price) * item.quantity)}
                           </td>
                         </tr>

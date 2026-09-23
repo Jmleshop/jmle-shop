@@ -1,19 +1,19 @@
--- jmle Admin Schema Extension
--- Führen Sie dieses SQL NACH schema.sql im Supabase SQL Editor aus
+-- jmle Admin Schema Extension (Korrigiert)
+-- Führen Sie dieses SQL im Supabase SQL Editor aus
 
--- Admin role on profiles
+-- 1. Admin-Rolle zu profiles hinzufügen
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'customer'
   CHECK (role IN ('customer', 'admin'));
 
--- Helper: check if current user is admin
+-- 2. Hilfsfunktion: Prüfen, ob der aktuelle Benutzer Admin ist (verhindert Rekursion durch SECURITY DEFINER)
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS BOOLEAN AS $$
   SELECT EXISTS (
-    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+    SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
   );
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
+$$ LANGUAGE sql SECURITY DEFINER SET search_path = public STABLE;
 
--- Shop products (managed by admin)
+-- 3. Shop-Produkte (vom Admin verwaltet)
 CREATE TABLE IF NOT EXISTS shop_products (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -31,6 +31,11 @@ CREATE TABLE IF NOT EXISTS shop_products (
 
 ALTER TABLE shop_products ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view active products" ON shop_products;
+DROP POLICY IF EXISTS "Admins can insert products" ON shop_products;
+DROP POLICY IF EXISTS "Admins can update products" ON shop_products;
+DROP POLICY IF EXISTS "Admins can delete products" ON shop_products;
+
 CREATE POLICY "Anyone can view active products"
   ON shop_products FOR SELECT
   USING (active = true OR is_admin());
@@ -47,7 +52,7 @@ CREATE POLICY "Admins can delete products"
   ON shop_products FOR DELETE
   USING (is_admin());
 
--- Orders
+-- 4. Bestellungen (Orders & Order Items)
 CREATE TABLE IF NOT EXISTS orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -75,6 +80,11 @@ CREATE TABLE IF NOT EXISTS order_items (
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own orders" ON orders;
+DROP POLICY IF EXISTS "Admins can manage orders" ON orders;
+DROP POLICY IF EXISTS "Users can view own order items" ON order_items;
+DROP POLICY IF EXISTS "Admins can manage order items" ON order_items;
+
 CREATE POLICY "Users can view own orders"
   ON orders FOR SELECT
   USING (auth.uid() = user_id OR is_admin());
@@ -97,7 +107,7 @@ CREATE POLICY "Admins can manage order items"
   ON order_items FOR ALL
   USING (is_admin());
 
--- Discount codes
+-- 5. Rabattcodes (Discount codes)
 CREATE TABLE IF NOT EXISTS discount_codes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   code TEXT UNIQUE NOT NULL,
@@ -112,6 +122,9 @@ CREATE TABLE IF NOT EXISTS discount_codes (
 
 ALTER TABLE discount_codes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view active discount codes" ON discount_codes;
+DROP POLICY IF EXISTS "Admins can manage discount codes" ON discount_codes;
+
 CREATE POLICY "Anyone can view active discount codes"
   ON discount_codes FOR SELECT
   USING (active = true OR is_admin());
@@ -120,17 +133,27 @@ CREATE POLICY "Admins can manage discount codes"
   ON discount_codes FOR ALL
   USING (is_admin());
 
--- Admins can view all profiles
+-- 6. Profile-Richtlinien (Sicherer Zugriff ohne Endlosschleife)
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow users to read own profile" ON profiles;
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+
+CREATE POLICY "Allow users to read own profile"
+  ON profiles FOR SELECT
+  USING (auth.uid() = id);
+
 CREATE POLICY "Admins can view all profiles"
   ON profiles FOR SELECT
-  USING (is_admin());
+  USING (auth.uid() = id OR is_admin());
 
--- Triggers
+-- 7. Trigger für shop_products (aktualisiert updated_at automatisch)
+DROP TRIGGER IF EXISTS shop_products_updated_at ON shop_products;
 CREATE TRIGGER shop_products_updated_at
   BEFORE UPDATE ON shop_products
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- Seed products from catalog (run once)
+-- 8. Produkte initial befüllen (Catalog Seed)
 INSERT INTO shop_products (id, name, description, price, original_price, category_id, image, featured, stock)
 VALUES
   ('prod-001', 'بهار سبعة أصناف', 'خلطة بهارات عربية أصيلة من سبعة أصناف مختارة بعناية.', 4.99, 6.99, 'spices', 'https://images.unsplash.com/photo-1596040033229-a0b517a33173?w=600&q=80', true, 100),
@@ -149,4 +172,4 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- Admin-Benutzer einrichten (E-Mail anpassen!):
--- UPDATE profiles SET role = 'admin' WHERE email = 'ihre-admin@email.de';
+-- UPDATE profiles SET role = 'admin' WHERE id = 'b0582163-df04-45f8-88d6-074fa1de1d11';
