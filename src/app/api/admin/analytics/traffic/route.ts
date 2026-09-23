@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireAdmin } from "@/lib/admin-server";
-import { parseAnalyticsRange } from "@/lib/analytics-periods";
+import { bucketKey, parseAnalyticsRange } from "@/lib/analytics-periods";
 
 export async function GET(request: Request) {
   const auth = await requireAdmin();
@@ -30,9 +30,11 @@ export async function GET(request: Request) {
           ? "Tabelle page_views fehlt — bitte supabase/feature-page-views.sql ausführen."
           : error.message,
         todayViews: 0,
+        periodViews: 0,
         devices: [],
         regions: [],
         topPages: [],
+        series: [],
       },
       { status: missing ? 200 : 500 }
     );
@@ -48,6 +50,7 @@ export async function GET(request: Request) {
   const deviceMap = new Map<string, number>();
   const regionMap = new Map<string, number>();
   const pathMap = new Map<string, number>();
+  const seriesMap = new Map<string, number>();
 
   for (const row of rows) {
     deviceMap.set(row.device, (deviceMap.get(row.device) ?? 0) + 1);
@@ -55,6 +58,8 @@ export async function GET(request: Request) {
       row.country_code || row.region_hint || row.language || "Unbekannt";
     regionMap.set(region, (regionMap.get(region) ?? 0) + 1);
     pathMap.set(row.path, (pathMap.get(row.path) ?? 0) + 1);
+    const key = bucketKey(new Date(row.created_at), ranges.bucket);
+    seriesMap.set(key, (seriesMap.get(key) ?? 0) + 1);
   }
 
   const devices = [...deviceMap.entries()].map(([name, value]) => ({
@@ -77,12 +82,18 @@ export async function GET(request: Request) {
     .sort((a, b) => b.views - a.views)
     .slice(0, 15);
 
+  const series = Array.from(seriesMap.entries())
+    .map(([label, views]) => ({ label, views }))
+    .sort((a, b) => a.label.localeCompare(b.label, "de"));
+
   return NextResponse.json({
     period: ranges.period,
+    bucket: ranges.bucket,
     todayViews: todayCount ?? 0,
     periodViews: rows.length,
     devices,
     regions,
     topPages,
+    series,
   });
 }

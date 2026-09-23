@@ -89,10 +89,12 @@ export default function ProductsAnalyticsPage() {
         <>
           <div className="grid lg:grid-cols-2 gap-4">
             <AnalyticsChartCard
+              trading
               title="Top-5 Bestseller (Umsatzanteil)"
               subtitle="Donut — Klick öffnet Produktdetail"
             >
               <DonutChart
+                dark
                 data={data.bestsellers.map((b) => ({
                   id: b.id,
                   name: b.name,
@@ -102,38 +104,40 @@ export default function ProductsAnalyticsPage() {
               />
             </AnalyticsChartCard>
             <AnalyticsChartCard
+              trading
               title="Ranking nach Stückzahl"
               subtitle="Balken — Klick öffnet Produktdetail"
             >
               <HorizontalRankChart
+                dark
                 data={data.ranking}
                 onBarClick={(id) => openProduct(id)}
               />
             </AnalyticsChartCard>
           </div>
 
-          <div className="bg-white rounded-2xl border overflow-hidden">
+          <div className="rounded-2xl border border-white/10 bg-[#0b1220] overflow-hidden">
             <div className="overflow-x-auto max-h-[50vh]">
-              <table className="w-full text-sm min-w-[560px]">
-                <thead className="bg-gray-50 sticky top-0">
+              <table className="w-full text-sm min-w-[560px] text-slate-200">
+                <thead className="bg-white/5 sticky top-0">
                   <tr>
-                    <th className="text-left p-3 font-medium">Produkt</th>
-                    <th className="text-left p-3 font-medium">Stück</th>
-                    <th className="text-left p-3 font-medium">Umsatz</th>
-                    <th className="text-left p-3 font-medium">Gewinn</th>
+                    <th className="text-left p-3 font-medium text-slate-400">Produkt</th>
+                    <th className="text-left p-3 font-medium text-slate-400">Stück</th>
+                    <th className="text-left p-3 font-medium text-slate-400">Umsatz</th>
+                    <th className="text-left p-3 font-medium text-slate-400">Gewinn</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.ranking.map((r) => (
                     <tr
                       key={r.id}
-                      className="border-t hover:bg-amber-50/40 cursor-pointer"
+                      className="border-t border-white/5 hover:bg-gold/10 cursor-pointer"
                       onClick={() => openProduct(r.id)}
                     >
-                      <td className="p-3 font-medium">{r.name}</td>
-                      <td className="p-3">{r.units}</td>
-                      <td className="p-3">{formatEuroDe(r.revenue)}</td>
-                      <td className="p-3 text-emerald-700">
+                      <td className="p-3 font-medium text-white">{r.name}</td>
+                      <td className="p-3 tabular-nums">{r.units}</td>
+                      <td className="p-3 tabular-nums">{formatEuroDe(r.revenue)}</td>
+                      <td className="p-3 tabular-nums text-emerald-400">
                         {formatEuroDe(r.profit)}
                       </td>
                     </tr>

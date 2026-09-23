@@ -12,6 +12,7 @@ import {
 import {
   ComparisonBarChart,
   DonutChart,
+  TrafficAreaChart,
 } from "@/components/admin/analytics/AnalyticsCharts";
 
 type TrafficPayload = {
@@ -20,6 +21,7 @@ type TrafficPayload = {
   devices: { name: string; value: number }[];
   regions: { label: string; value: number }[];
   topPages: { path: string; views: number }[];
+  series?: { label: string; views: number }[];
   error?: string;
 };
 
@@ -91,33 +93,44 @@ export default function TrafficAnalyticsPage() {
         <>
           <div className="grid grid-cols-2 gap-3 max-w-lg">
             <AnalyticsKpiCard
+              trading
               title="Aufrufe heute"
               value={data.todayViews}
               accent="gold"
             />
             <AnalyticsKpiCard
+              trading
               title="Aufrufe im Zeitraum"
               value={data.periodViews}
             />
           </div>
 
+          <AnalyticsChartCard
+            trading
+            title="Besucherverlauf"
+            subtitle="Anonymes In-House-Tracking · Brush zum Zoomen"
+          >
+            <TrafficAreaChart data={data.series ?? []} />
+          </AnalyticsChartCard>
+
           <div className="grid lg:grid-cols-2 gap-4">
-            <AnalyticsChartCard title="Geräteverteilung">
-              <DonutChart data={data.devices} />
+            <AnalyticsChartCard trading title="Geräteverteilung">
+              <DonutChart dark money={false} data={data.devices} />
             </AnalyticsChartCard>
-            <AnalyticsChartCard title="Region / Sprache">
+            <AnalyticsChartCard trading title="Region / Sprache">
               <ComparisonBarChart
+                dark
                 data={data.regions}
                 name="Aufrufe"
               />
             </AnalyticsChartCard>
           </div>
 
-          <AnalyticsChartCard title="Top-Seiten (auch ohne Kauf)">
+          <AnalyticsChartCard trading title="Top-Seiten (auch ohne Kauf)">
             <div className="overflow-x-auto max-h-72">
-              <table className="w-full text-sm min-w-[400px]">
+              <table className="w-full text-sm min-w-[400px] text-slate-200">
                 <thead>
-                  <tr className="text-left text-gray-500">
+                  <tr className="text-left text-slate-400">
                     <th className="pb-2 font-medium">Pfad</th>
                     <th className="pb-2 font-medium">Aufrufe</th>
                   </tr>
@@ -125,13 +138,13 @@ export default function TrafficAnalyticsPage() {
                 <tbody>
                   {data.topPages.length === 0 ? (
                     <tr>
-                      <td colSpan={2} className="py-6 text-gray-400 text-center">
+                      <td colSpan={2} className="py-6 text-slate-500 text-center">
                         Noch keine Seitenaufrufe erfasst
                       </td>
                     </tr>
                   ) : (
                     data.topPages.map((p) => (
-                      <tr key={p.path} className="border-t">
+                      <tr key={p.path} className="border-t border-white/5">
                         <td className="py-2 font-mono text-xs sm:text-sm">
                           {p.path}
                         </td>

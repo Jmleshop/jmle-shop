@@ -101,6 +101,7 @@ export default function FinanceAnalyticsPage() {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <AnalyticsKpiCard
+              trading
               title="Gesamtumsatz"
               value={data.metrics.revenue.value}
               previous={data.metrics.revenue.previous}
@@ -109,6 +110,7 @@ export default function FinanceAnalyticsPage() {
               accent="gold"
             />
             <AnalyticsKpiCard
+              trading
               title="Reingewinn"
               value={data.metrics.profit.value}
               previous={data.metrics.profit.previous}
@@ -117,6 +119,7 @@ export default function FinanceAnalyticsPage() {
               accent="emerald"
             />
             <AnalyticsKpiCard
+              trading
               title="AOV"
               value={data.metrics.aov.value}
               previous={data.metrics.aov.previous}
@@ -124,6 +127,7 @@ export default function FinanceAnalyticsPage() {
               money
             />
             <AnalyticsKpiCard
+              trading
               title="Bestellungen"
               value={data.metrics.orders.value}
               previous={data.metrics.orders.previous}
@@ -132,8 +136,9 @@ export default function FinanceAnalyticsPage() {
           </div>
 
           <AnalyticsChartCard
-            title="Umsatz vs. Gewinn"
-            subtitle="Hover für Details · Klick auf Punkt filtert die KPIs"
+            trading
+            title="Marktchart · Umsatz / Gewinn / Volumen"
+            subtitle="Trading-Style · Hover = Crosshair · Brush zoomen · Klick filtert KPIs"
           >
             <RevenueProfitAreaChart
               data={data.series}
@@ -142,10 +147,11 @@ export default function FinanceAnalyticsPage() {
           </AnalyticsChartCard>
 
           <AnalyticsChartCard
+            trading
             title="Vergleich (Wochentage / Monate)"
             subtitle="Umsatzverteilung im Zeitraum"
           >
-            <ComparisonBarChart data={data.comparison} money name="Umsatz" />
+            <ComparisonBarChart dark data={data.comparison} money name="Umsatz" />
           </AnalyticsChartCard>
         </>
       )}
