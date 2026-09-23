@@ -27,8 +27,20 @@ fi
 sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
 
 # --- Supabase local stack ----------------------------------------------------
+# On a cold first boot the DB container may still be initializing, which makes
+# `supabase start` fail transiently; retry a few times before giving up.
 echo "[start] Starting Supabase (applies migrations + seed on first run)..."
-supabase start
+supabase_up=0
+for attempt in $(seq 1 6); do
+  if supabase start; then supabase_up=1; break; fi
+  echo "[start] supabase start attempt ${attempt} failed (DB may still be initializing); retrying in 10s..."
+  sleep 10
+done
+if [ "$supabase_up" -ne 1 ]; then
+  echo "[start] ERROR: Supabase did not become ready after multiple attempts." >&2
+  supabase status || true
+  exit 1
+fi
 
 # --- Environment file for Next.js -------------------------------------------
 echo "[start] Writing .env.local from supabase status..."
