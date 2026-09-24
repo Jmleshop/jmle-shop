@@ -6,6 +6,7 @@ import { checkoutSchema } from "@/lib/validations/checkout";
 import { parseJsonBody } from "@/lib/validations";
 import { estimateShipping } from "@/lib/shipping";
 import { maxBuyQuantity, roundMoney } from "@/lib/pricing";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function POST(request: Request) {
   try {
@@ -117,7 +118,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     const stripe = getStripe();
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+    const appUrl = getAppUrl();
     if (!appUrl) {
       return NextResponse.json({ error: "App-URL fehlt" }, { status: 500 });
     }

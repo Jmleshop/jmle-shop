@@ -9,6 +9,7 @@ import PageViewTracker from "@/components/PageViewTracker";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import AppToaster from "@/components/AppToaster";
+import { getAppUrl } from "@/lib/app-url";
 import "./globals.css";
 
 const notoArabic = Noto_Sans_Arabic({
@@ -33,9 +34,7 @@ const tajawal = Tajawal({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000"
-  ),
+  metadataBase: new URL(getAppUrl()),
   title: {
     default: "jmle — أجود المنتجات العربية",
     template: "%s",

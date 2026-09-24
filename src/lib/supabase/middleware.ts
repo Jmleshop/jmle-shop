@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { absoluteAppUrl } from "@/lib/app-url";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
 
 const STAFF_ROLES = new Set(["admin", "employee"]);
@@ -47,7 +48,8 @@ function unauthorizedApi(message: string, status: number) {
 function redirectToLogin(request: NextRequest, path: string, error?: string) {
   // Staff-Einstieg bleibt /admin/login (ungated). Gate-Fails ohne Session
   // und ohne Staff-Rolle landen auf /auth/login laut Phase-1-Vorgabe.
-  const loginUrl = new URL("/auth/login", request.url);
+  // absoluteAppUrl verhindert Redirects auf Vercel-Preview-Hosts.
+  const loginUrl = absoluteAppUrl("/auth/login", request.url);
   if (path.startsWith("/admin") && path !== "/admin/login") {
     loginUrl.searchParams.set(
       "redirect",
@@ -93,8 +95,7 @@ export async function updateSession(request: NextRequest) {
   const path = cleanPathname(rawPath);
 
   if (path !== rawPath && isAdminUiPath(path)) {
-    const cleanUrl = request.nextUrl.clone();
-    cleanUrl.pathname = path || "/admin";
+    const cleanUrl = absoluteAppUrl(path || "/admin", request.url);
     return NextResponse.redirect(cleanUrl);
   }
 
@@ -143,7 +144,9 @@ export async function updateSession(request: NextRequest) {
     if (wantsJson) {
       return unauthorizedApi("Keine Admin-Berechtigung", 403);
     }
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    return NextResponse.redirect(
+      absoluteAppUrl("/admin/dashboard", request.url)
+    );
   }
 
   return supabaseResponse;

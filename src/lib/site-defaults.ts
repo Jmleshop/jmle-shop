@@ -35,7 +35,4 @@ export const DEFAULT_HERO_SLIDES: Slide[] = [
   },
 ];
 
-export function getAppUrl(): string {
-  const raw = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").trim();
-  return raw.replace(/\/$/, "");
-}
+export { getAppUrl } from "@/lib/app-url";

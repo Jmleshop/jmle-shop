@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getClientAppOrigin } from "@/lib/app-url";
 import { createClient } from "@/lib/supabase/client";
 import { registerSchema } from "@/lib/validations/auth";
 
@@ -46,7 +47,7 @@ export default function RegisterPage() {
           last_name: lastName,
           street,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${getClientAppOrigin()}/auth/callback`,
       },
     });
 
