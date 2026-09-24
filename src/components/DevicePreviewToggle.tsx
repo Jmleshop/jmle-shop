@@ -1,11 +1,10 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Smartphone, Monitor, X, EyeOff } from "lucide-react";
+import { Smartphone, Monitor, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-const HIDE_KEY = "jmle_hide_device_preview";
 const PREVIEW_PARAM = "_preview";
 
 function DevicePreviewInner() {
@@ -13,7 +12,6 @@ function DevicePreviewInner() {
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [hiddenByUser, setHiddenByUser] = useState(false);
 
   const isNestedPreview =
     searchParams.get(PREVIEW_PARAM) === "1" ||
@@ -26,16 +24,8 @@ function DevicePreviewInner() {
       return;
     }
 
-    try {
-      if (localStorage.getItem(HIDE_KEY) === "1") {
-        setHiddenByUser(true);
-        setVisible(false);
-        return;
-      }
-    } catch {
-      /* ignore */
-    }
-
+    // Der Handy-Ansicht-Button bleibt dauerhaft sichtbar und kann nicht mehr
+    // versehentlich ausgeblendet werden.
     if (process.env.NODE_ENV === "development") {
       setVisible(true);
       return;
@@ -46,17 +36,6 @@ function DevicePreviewInner() {
       .catch(() => setVisible(false));
   }, [pathname, isNestedPreview]);
 
-  const hidePermanently = useCallback(() => {
-    try {
-      localStorage.setItem(HIDE_KEY, "1");
-    } catch {
-      /* ignore */
-    }
-    setHiddenByUser(true);
-    setOpen(false);
-    setVisible(false);
-  }, []);
-
   const buildPreviewUrl = () => {
     const params = new URLSearchParams(searchParams.toString());
     params.set(PREVIEW_PARAM, "1");
@@ -64,7 +43,7 @@ function DevicePreviewInner() {
     return `${pathname}${qs ? `?${qs}` : ""}`;
   };
 
-  if (isNestedPreview || !visible || hiddenByUser) return null;
+  if (isNestedPreview || !visible) return null;
 
   return (
     <>
@@ -101,15 +80,6 @@ function DevicePreviewInner() {
             >
               <Monitor size={16} aria-hidden />
               Desktop-Ansicht
-            </button>
-            <button
-              type="button"
-              onClick={hidePermanently}
-              className="inline-flex items-center gap-2 min-h-11 px-4 py-2 rounded-full bg-white/90 text-sm font-ui text-gray-600 border border-gray-200 hover:bg-white"
-              title="Vorschau-Button ausblenden"
-            >
-              <EyeOff size={16} aria-hidden />
-              Ausblenden
             </button>
             <button
               type="button"

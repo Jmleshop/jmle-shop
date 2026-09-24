@@ -29,21 +29,16 @@ function normalizeOrigin(raw: string): string | null {
 }
 
 /**
- * Server/Build: stabile Site-URL ohne Preview-Deployments.
- * Bevorzugt NEXT_PUBLIC_APP_URL, fällt sonst auf Produktionsdomain zurück.
+ * Server/Build: feste Site-URL ohne Preview-Deployments.
+ * Lokal darf NEXT_PUBLIC_APP_URL (z. B. http://localhost:3000) genutzt werden;
+ * in Produktion wird IMMER die feste Hauptdomain verwendet — niemals
+ * dynamische Vercel-URLs (VERCEL_URL / VERCEL_PROJECT_PRODUCTION_URL).
  */
 export function getAppUrl(): string {
-  const fromEnv = normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL ?? "");
-  if (fromEnv) return fromEnv;
-
   if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000";
+    const fromEnv = normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL ?? "");
+    return fromEnv ?? "http://localhost:3000";
   }
-
-  const vercelProd = normalizeOrigin(
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ?? ""
-  );
-  if (vercelProd) return vercelProd;
 
   return PRODUCTION_APP_URL;
 }
