@@ -15,7 +15,7 @@ function OfferCard({ product }: { product: Product }) {
   return (
     <Link
       href={`/products/${product.id}`}
-      className="group block w-[70%] sm:w-[45%] md:w-[31%] lg:w-[23%] shrink-0 px-2"
+      className="group block w-44 sm:w-52 md:w-60 shrink-0 px-2"
       aria-label={product.name}
     >
       <div className="card-boutique overflow-hidden transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
