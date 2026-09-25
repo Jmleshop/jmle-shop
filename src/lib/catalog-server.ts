@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { discountedPrice } from "@/lib/pricing";
 import { normalizeBadges } from "@/lib/product-badges";
+import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from "@/lib/fallback-catalog";
 import { searchQueryVariants } from "@/lib/search";
 import {
   DEFAULT_HERO_SLIDES,
@@ -298,11 +299,14 @@ const getSlidesCached = unstable_cache(
  * lediglich innerhalb eines einzelnen Requests.
  */
 export const getProductsAsync = cache(async (): Promise<Product[]> => {
-  return fetchAllPublicProducts();
+  const products = await fetchAllPublicProducts();
+  // Nie eine leere Seite: wenn die DB (noch) nichts liefert, Demo-Katalog zeigen.
+  return products.length ? products : FALLBACK_PRODUCTS;
 });
 
 export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
-  const tree = await getCategoriesCached();
+  const dbTree = await getCategoriesCached();
+  const tree = dbTree.length ? dbTree : FALLBACK_CATEGORIES;
   // Virtuelle Sammelkategorie „Alle Produkte" ganz vorne (listet ALLE Produkte)
   const all: Category = {
     id: ALL_CATEGORY.id,
