@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 import { ArchiveRestore, Trash2, Package, FolderTree } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
+import { useRowSelection } from "@/lib/use-row-selection";
 import type { FoodCategory, FoodProduct } from "@/types";
 
 type Tab = "products" | "categories";
@@ -17,6 +19,12 @@ export default function AdminTrashPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const sel = useRowSelection();
+
+  const switchTab = (next: Tab) => {
+    setTab(next);
+    sel.clear();
+  };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -92,6 +100,54 @@ export default function AdminTrashPage() {
     load();
   };
 
+  const bulkRestore = async () => {
+    const ids = [...sel.selected];
+    if (!ids.length) return;
+    setError("");
+    const base =
+      tab === "products" ? "/api/admin/products" : "/api/admin/categories";
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`${base}/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archived: false }),
+        })
+      )
+    );
+    sel.clear();
+    toast.success(`${ids.length} wiederhergestellt`);
+    load();
+  };
+
+  const bulkPurge = async () => {
+    const ids = [...sel.selected];
+    if (!ids.length) return;
+    if (
+      !confirm(
+        `${ids.length} Eintrag/Einträge endgültig löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden.`
+      )
+    )
+      return;
+    setError("");
+    const base =
+      tab === "products" ? "/api/admin/products" : "/api/admin/categories";
+    const results = await Promise.all(
+      ids.map((id) => fetch(`${base}/${id}`, { method: "DELETE" }).then((r) => r.ok))
+    );
+    sel.clear();
+    const okCount = results.filter(Boolean).length;
+    if (okCount > 0) toast.success(`${okCount} endgültig gelöscht`);
+    if (results.some((ok) => !ok)) {
+      setError("Einige Einträge konnten nicht gelöscht werden.");
+      toast.error("Einige Einträge konnten nicht gelöscht werden");
+    }
+    load();
+  };
+
+  const currentIds =
+    tab === "products" ? products.map((p) => p.id) : categories.map((c) => c.id);
+
   const formatDeleted = (iso: string | null | undefined) => {
     if (!iso) return "—";
     try {
@@ -128,7 +184,7 @@ export default function AdminTrashPage() {
           className={`px-4 py-2.5 min-h-11 inline-flex items-center gap-2 ${
             tab === "products" ? "bg-gold text-white" : "bg-white"
           }`}
-          onClick={() => setTab("products")}
+          onClick={() => switchTab("products")}
         >
           <Package size={16} />
           {t("products")} ({products.length})
@@ -138,12 +194,45 @@ export default function AdminTrashPage() {
           className={`px-4 py-2.5 min-h-11 inline-flex items-center gap-2 ${
             tab === "categories" ? "bg-gold text-white" : "bg-white"
           }`}
-          onClick={() => setTab("categories")}
+          onClick={() => switchTab("categories")}
         >
           <FolderTree size={16} />
           {t("categories")} ({categories.length})
         </button>
       </div>
+
+      {sel.selected.size > 0 && (
+        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 mb-4 p-3 rounded-xl bg-gold/10 border border-gold/30">
+          <span className="text-sm font-medium">
+            {sel.selected.size} ausgewählt
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => sel.clear()}
+              className="px-3 py-2 rounded-xl border border-gray-300 text-sm min-h-11"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              onClick={() => void bulkRestore()}
+              className="px-4 py-2 rounded-xl border border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-sm font-medium inline-flex items-center gap-2 min-h-11"
+            >
+              <ArchiveRestore size={16} />
+              Ausgewählte wiederherstellen
+            </button>
+            <button
+              type="button"
+              onClick={() => void bulkPurge()}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium inline-flex items-center gap-2 min-h-11"
+            >
+              <Trash2 size={16} />
+              Ausgewählte endgültig löschen
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="text-red-500 text-sm mb-4" role="alert">
@@ -164,6 +253,15 @@ export default function AdminTrashPage() {
               <table className="w-full text-sm min-w-[640px]">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
+                    <th className="p-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={sel.allSelected(currentIds)}
+                        onChange={() => sel.toggleAll(currentIds)}
+                        aria-label="Alle auswählen"
+                        className="w-4 h-4 accent-gold"
+                      />
+                    </th>
                     <th className="text-left p-3 font-medium">Name</th>
                     <th className="text-left p-3 font-medium">Preis</th>
                     <th className="text-left p-3 font-medium">Gelöscht am</th>
@@ -171,10 +269,23 @@ export default function AdminTrashPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((p) => {
+                  {products.map((p, idx) => {
                     const name = p.name_de || p.name_ar || p.id;
                     return (
                       <tr key={p.id} className="border-t">
+                        <td className="p-3">
+                          <input
+                            type="checkbox"
+                            checked={sel.isSelected(p.id)}
+                            onChange={() => {}}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sel.onSelect(currentIds, idx, e.shiftKey);
+                            }}
+                            aria-label={`${name} auswählen`}
+                            className="w-4 h-4 accent-gold"
+                          />
+                        </td>
                         <td className="p-3 font-medium">{name}</td>
                         <td className="p-3">{formatEuroDe(Number(p.price))}</td>
                         <td className="p-3 text-gray-500">
@@ -218,16 +329,38 @@ export default function AdminTrashPage() {
             <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
+                  <th className="p-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={sel.allSelected(currentIds)}
+                      onChange={() => sel.toggleAll(currentIds)}
+                      aria-label="Alle auswählen"
+                      className="w-4 h-4 accent-gold"
+                    />
+                  </th>
                   <th className="text-left p-3 font-medium">Name</th>
                   <th className="text-left p-3 font-medium">Gelöscht am</th>
                   <th className="text-right p-3" />
                 </tr>
               </thead>
               <tbody>
-                {categories.map((c) => {
+                {categories.map((c, idx) => {
                   const name = c.name_de || c.name_ar || c.id;
                   return (
                     <tr key={c.id} className="border-t">
+                      <td className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={sel.isSelected(c.id)}
+                          onChange={() => {}}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sel.onSelect(currentIds, idx, e.shiftKey);
+                          }}
+                          aria-label={`${name} auswählen`}
+                          className="w-4 h-4 accent-gold"
+                        />
+                      </td>
                       <td className="p-3 font-medium">{name}</td>
                       <td className="p-3 text-gray-500">
                         {formatDeleted(c.deleted_at)}

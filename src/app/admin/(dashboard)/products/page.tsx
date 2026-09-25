@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 import { Archive, ArchiveRestore, Pencil, Plus, X, Trash2 } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { categoryDepth, categoryLabel, sortedCategories } from "@/lib/category-tree";
@@ -11,6 +12,7 @@ import { softDeleteWithUndo } from "@/lib/admin-soft-delete";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { isSaleCategoryId } from "@/lib/category-special";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
+import { useRowSelection } from "@/lib/use-row-selection";
 import type { FoodCategory, FoodProduct } from "@/types";
 
 const DISCOUNT_PRESETS = [0, 5, 10, 15, 20, 50];
@@ -57,18 +59,10 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  const toggleSelect = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const sel = useRowSelection();
 
   const load = () => {
-    setSelected(new Set());
+    sel.clear();
     const params = new URLSearchParams();
     if (showArchived) params.set("archived", "true");
     params.set("status", listTab);
@@ -144,23 +138,26 @@ export default function AdminProductsPage() {
     }));
 
   const bulkDelete = async () => {
-    if (selected.size === 0) return;
+    if (sel.selected.size === 0) return;
     if (
       !confirm(
-        `${selected.size} ${t("products")} in den Papierkorb verschieben?`
+        `${sel.selected.size} ${t("products")} in den Papierkorb verschieben?`
       )
     )
       return;
-    const ids = [...selected];
-    await Promise.all(
+    const ids = [...sel.selected];
+    const results = await Promise.all(
       ids.map((id) =>
         fetch(`/api/admin/products/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ archived: true }),
-        })
+        }).then((r) => r.ok)
       )
     );
+    const okCount = results.filter(Boolean).length;
+    if (okCount > 0) toast.success(`${okCount} in den Papierkorb verschoben`);
+    if (okCount < ids.length) toast.error("Einige Aktionen fehlgeschlagen");
     load();
   };
 
@@ -211,11 +208,17 @@ export default function AdminProductsPage() {
       )
     )
       return;
-    await fetch(`/api/admin/products/${id}`, {
+    const res = await fetch(`/api/admin/products/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ archived }),
     });
+    if (!res.ok) {
+      const d = (await res.json().catch(() => ({}))) as { error?: string };
+      toast.error(d.error || "Aktion fehlgeschlagen");
+      return;
+    }
+    toast.success(archived ? "In den Papierkorb verschoben" : "Wiederhergestellt");
     load();
   };
 
@@ -229,6 +232,13 @@ export default function AdminProductsPage() {
       onDone: load,
     });
   };
+
+  const displayed = products.filter((p) => {
+    if (!showArchived && p.deleted_at) return false;
+    const st = p.status ?? "published";
+    return listTab === "draft" ? st === "draft" : st !== "draft";
+  });
+  const displayedIds = displayed.map((p) => p.id);
 
   return (
     <div>
@@ -593,15 +603,15 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {selected.size > 0 && (
-        <div className="flex items-center justify-between gap-3 mb-3 p-3 rounded-xl bg-gold/10 border border-gold/30">
+      {sel.selected.size > 0 && (
+        <div className="sticky top-0 z-20 flex items-center justify-between gap-3 mb-3 p-3 rounded-xl bg-gold/10 border border-gold/30">
           <span className="text-sm font-medium">
-            {selected.size} ausgewählt
+            {sel.selected.size} ausgewählt
           </span>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setSelected(new Set())}
+              onClick={() => sel.clear()}
               className="px-3 py-2 rounded-xl border border-gray-300 text-sm min-h-11"
             >
               Abbrechen
@@ -612,7 +622,7 @@ export default function AdminProductsPage() {
               className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium inline-flex items-center gap-2 min-h-11"
             >
               <Trash2 size={16} />
-              Ausgewählte löschen
+              Ausgewählte in den Papierkorb
             </button>
           </div>
         </div>
@@ -626,20 +636,23 @@ export default function AdminProductsPage() {
             Tipp: Zeile nach rechts wischen → Papierkorb (Soft Delete). Bearbeiten-Buttons bleiben nutzbar.
           </p>
           <div className="hidden sm:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto] gap-2 px-4 py-3 text-xs font-medium text-gray-500 bg-gray-50/95 sticky top-0 z-10 border-b">
-            <span>{t("nameDe")}</span>
+            <span className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={sel.allSelected(displayedIds)}
+                onChange={() => sel.toggleAll(displayedIds)}
+                aria-label="Alle auswählen"
+                className="w-4 h-4 accent-gold"
+              />
+              {t("nameDe")}
+            </span>
             <span>{t("productNumber")}</span>
             <span>{t("price")}</span>
             <span>{t("stock")}</span>
             <span className="text-right">Aktionen</span>
           </div>
           <div className="max-h-[70vh] overflow-y-auto divide-y">
-            {products
-              .filter((p) => {
-                if (!showArchived && p.deleted_at) return false;
-                const st = p.status ?? "published";
-                return listTab === "draft" ? st === "draft" : st !== "draft";
-              })
-              .map((p) => (
+            {displayed.map((p, idx) => (
                 <SwipeToDeleteRow
                   key={p.id}
                   disabled={!!p.deleted_at}
@@ -650,9 +663,12 @@ export default function AdminProductsPage() {
                     <div className="font-medium min-w-0 flex items-center gap-2">
                       <input
                         type="checkbox"
-                        checked={selected.has(p.id)}
-                        onChange={() => toggleSelect(p.id)}
-                        onClick={(e) => e.stopPropagation()}
+                        checked={sel.isSelected(p.id)}
+                        onChange={() => {}}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sel.onSelect(displayedIds, idx, e.shiftKey);
+                        }}
                         aria-label={`${p.name_de || p.name_ar} auswählen`}
                         className="shrink-0 w-4 h-4 accent-gold"
                       />
