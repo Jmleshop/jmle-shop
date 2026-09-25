@@ -18,7 +18,7 @@ export async function GET() {
     .not("deleted_at", "is", null)
     .order("deleted_at", { ascending: false });
 
-  if (pErr && /status/i.test(pErr.message)) {
+  if (pErr && /(status|badges|custom_note)/i.test(pErr.message)) {
     const retry = await auth.supabase
       .from("products")
       .select(PRODUCT_SELECT_BASE)

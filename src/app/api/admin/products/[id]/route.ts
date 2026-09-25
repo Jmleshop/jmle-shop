@@ -97,13 +97,15 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
+  // Minimaler Select (id, deleted_at) — unabhängig von optionalen Spalten wie
+  // badges/custom_note/status, damit Soft-Delete auf jeder DB funktioniert.
   const { data, error } = await auth.supabase
     .from("products")
     .update({
       deleted_at: parsed.data.archived ? new Date().toISOString() : null,
     })
     .eq("id", id)
-    .select(PRODUCT_SELECT)
+    .select("id, deleted_at")
     .single();
 
   if (error) {
