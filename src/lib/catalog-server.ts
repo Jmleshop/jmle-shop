@@ -123,6 +123,13 @@ export function nestCategories(flat: Category[]): Category[] {
   return roots;
 }
 
+/**
+ * Lädt den öffentlichen Katalog mit mehrstufigem Fallback, damit Produkte
+ * IMMER erscheinen — unabhängig von fehlender View oder RLS-Konfiguration:
+ *   1) View `products_public` über anon (bevorzugt, schlanke Public-Spalten)
+ *   2) Basistabelle `products` über anon (falls View fehlt/leer)
+ *   3) Basistabelle `products` über Service-Role (umgeht RLS; nur serverseitig)
+ */
 async function fetchAllPublicProducts(): Promise<Product[]> {
   const supabase = createPublicClient();
   const { data, error } = await supabase
@@ -138,18 +145,36 @@ async function fetchAllPublicProducts(): Promise<Product[]> {
     console.error(
       "[catalog] products_public nicht verfügbar:",
       error.message,
-      "→ Fallback auf Basistabelle products"
+      "→ Fallback auf Basistabelle products (anon)"
     );
   }
 
-  // Fallback: View fehlt oder liefert nichts (z. B. veraltetes DB-Schema oder
-  // frisch importierte Produkte, die noch nicht über die View sichtbar sind)
-  // → direkt aus public.products lesen (RLS lässt anon aktive Produkte lesen).
-  return fetchProductsFromBaseTable();
+  // Stufe 2: anon direkt auf die Basistabelle (RLS lässt aktive Produkte zu)
+  const anonRows = await fetchProductsFromBaseTable(false);
+  if (anonRows.length > 0) return anonRows;
+
+  // Stufe 3: Service-Role umgeht RLS komplett (z. B. wenn keine Public-Policy
+  // gesetzt ist). Läuft ausschließlich serverseitig, Key gelangt nie zum Client.
+  return fetchProductsFromBaseTable(true);
 }
 
-async function fetchProductsFromBaseTable(): Promise<Product[]> {
-  const supabase = createPublicClient();
+async function fetchProductsFromBaseTable(
+  useServiceRole: boolean
+): Promise<Product[]> {
+  let supabase;
+  if (useServiceRole) {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return [];
+    try {
+      const { createServiceClient } = await import("@/lib/supabase/admin");
+      supabase = createServiceClient();
+    } catch (e) {
+      console.error("[catalog] Service-Role-Client nicht verfügbar:", e);
+      return [];
+    }
+  } else {
+    supabase = createPublicClient();
+  }
+
   // select("*") ist robust gegen fehlende Spalten in älteren Schemas.
   const { data, error } = await supabase
     .from("products")
@@ -158,7 +183,10 @@ async function fetchProductsFromBaseTable(): Promise<Product[]> {
     .order("created_at", { ascending: false });
 
   if (error || !data) {
-    console.error("[catalog] products (Fallback):", error?.message);
+    console.error(
+      `[catalog] products (${useServiceRole ? "service-role" : "anon"} Fallback):`,
+      error?.message
+    );
     return [];
   }
 
