@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeBadges } from "@/lib/product-badges";
 
 function asString(v: unknown, fallback = ""): string {
   if (v == null) return fallback;
@@ -48,6 +49,8 @@ export const productCreateSchema = z
     max_order_quantity: z.unknown().optional(),
     stock_quantity: z.unknown().optional(),
     status: z.unknown().optional(),
+    badges: z.unknown().optional(),
+    custom_note: z.unknown().optional(),
   })
   .transform((raw, ctx) => {
     const name_ar = asString(raw.name_ar);
@@ -128,6 +131,8 @@ export const productCreateSchema = z
       max_order_quantity,
       stock_quantity,
       status: status as "draft" | "published",
+      badges: normalizeBadges(raw.badges),
+      custom_note: asString(raw.custom_note).slice(0, 200),
     };
   })
   .superRefine((data, ctx) => {

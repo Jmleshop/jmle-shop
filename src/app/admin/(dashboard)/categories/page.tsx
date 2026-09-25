@@ -22,7 +22,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, ChevronDown, ChevronRight, GripVertical, Pencil, Plus, X } from "lucide-react";
+import { Archive, ChevronDown, ChevronRight, GripVertical, Pencil, Plus, X, Trash2 } from "lucide-react";
 import Link from "next/link";
 import ImageUpload from "@/components/admin/ImageUpload";
 import SwipeToDeleteRow from "@/components/admin/SwipeToDeleteRow";
@@ -48,6 +48,8 @@ function SortableCategoryRow({
   onArchive,
   onSwipeTrash,
   trashLabel,
+  selected,
+  onToggleSelect,
 }: {
   item: FlatCategory;
   projectedDepth?: number;
@@ -58,6 +60,8 @@ function SortableCategoryRow({
   onArchive: (id: string) => void;
   onSwipeTrash: (c: FoodCategory) => boolean | void | Promise<boolean | void>;
   trashLabel: string;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -81,6 +85,15 @@ function SortableCategoryRow({
         onSwipeDelete={() => onSwipeTrash(item)}
       >
         <div className="flex items-center gap-2 py-3 pr-2 bg-white min-h-[52px]">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(item.id)}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label={`${categoryLabel(item)} auswählen`}
+            className="shrink-0 w-4 h-4 accent-gold ms-2"
+          />
           <button
             type="button"
             className="cursor-grab text-gray-400 p-2 min-h-11 min-w-11 inline-flex items-center justify-center"
@@ -147,6 +160,33 @@ export default function AdminCategoriesPage() {
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`${selected.size} ${t("categories")} in den Papierkorb verschieben?`))
+      return;
+    const ids = [...selected];
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/admin/categories/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archived: true }),
+        })
+      )
+    );
+    setSelected(new Set());
+    load();
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -378,6 +418,28 @@ export default function AdminCategoriesPage() {
           </form>
         </div>
       )}
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-3 mb-3 p-3 rounded-xl bg-gold/10 border border-gold/30">
+          <span className="text-sm font-medium">{selected.size} ausgewählt</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="px-3 py-2 rounded-xl border border-gray-300 text-sm min-h-11"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              onClick={bulkDelete}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium inline-flex items-center gap-2 min-h-11"
+            >
+              <Trash2 size={16} />
+              Ausgewählte löschen
+            </button>
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <DndContext
           sensors={sensors}
@@ -418,6 +480,8 @@ export default function AdminCategoriesPage() {
                   load();
                 }}
                 trashLabel={t("archive")}
+                selected={selected.has(item.id)}
+                onToggleSelect={toggleSelect}
                 onSwipeTrash={async (c) => {
                   const name = c.name_de || c.name_ar || c.id;
                   return softDeleteWithUndo({

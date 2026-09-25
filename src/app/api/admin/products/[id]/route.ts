@@ -49,12 +49,19 @@ export async function PUT(request: Request, { params }: RouteParams) {
     .select(PRODUCT_SELECT)
     .single();
 
-  if (error && /status/i.test(error.message)) {
-    const { status: _ignored, ...withoutStatus } = payload;
-    void _ignored;
+  if (error && /(status|badges|custom_note)/i.test(error.message)) {
+    const {
+      status: _s,
+      badges: _b,
+      custom_note: _c,
+      ...withoutOptional
+    } = payload;
+    void _s;
+    void _b;
+    void _c;
     const retry = await auth.supabase
       .from("products")
-      .update(withoutStatus)
+      .update(withoutOptional)
       .eq("id", id)
       .select(PRODUCT_SELECT_BASE)
       .single();

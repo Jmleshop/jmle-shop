@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Archive, ArchiveRestore, Pencil, Plus, X } from "lucide-react";
+import { Archive, ArchiveRestore, Pencil, Plus, X, Trash2 } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { categoryDepth, categoryLabel, sortedCategories } from "@/lib/category-tree";
 import ImageUpload from "@/components/admin/ImageUpload";
@@ -10,6 +10,7 @@ import SwipeToDeleteRow from "@/components/admin/SwipeToDeleteRow";
 import { softDeleteWithUndo } from "@/lib/admin-soft-delete";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { isSaleCategoryId } from "@/lib/category-special";
+import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import type { FoodCategory, FoodProduct } from "@/types";
 
 const DISCOUNT_PRESETS = [0, 5, 10, 15, 20, 50];
@@ -40,6 +41,8 @@ const emptyForm = {
   purchase_price: "",
   stock_quantity: "0",
   max_order_quantity: "",
+  badges: [] as string[],
+  custom_note: "",
 };
 
 export default function AdminProductsPage() {
@@ -54,8 +57,18 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const load = () => {
+    setSelected(new Set());
     const params = new URLSearchParams();
     if (showArchived) params.set("archived", "true");
     params.set("status", listTab);
@@ -115,9 +128,40 @@ export default function AdminProductsPage() {
         p.max_order_quantity == null || Number(p.max_order_quantity) <= 0
           ? ""
           : String(p.max_order_quantity),
+      badges: normalizeBadges(p.badges),
+      custom_note: p.custom_note ?? "",
     });
     setShowForm(true);
     setError("");
+  };
+
+  const toggleBadge = (key: string) =>
+    setForm((f) => ({
+      ...f,
+      badges: f.badges.includes(key)
+        ? f.badges.filter((b) => b !== key)
+        : [...f.badges, key],
+    }));
+
+  const bulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (
+      !confirm(
+        `${selected.size} ${t("products")} in den Papierkorb verschieben?`
+      )
+    )
+      return;
+    const ids = [...selected];
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/admin/products/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archived: true }),
+        })
+      )
+    );
+    load();
   };
 
   const handleSubmit = async (e: React.FormEvent, status: "published" | "draft") => {
@@ -137,6 +181,8 @@ export default function AdminProductsPage() {
         form.max_order_quantity === "open"
           ? null
           : form.max_order_quantity,
+      badges: form.badges,
+      custom_note: form.custom_note,
       status,
     };
     const url = editingId
@@ -480,6 +526,54 @@ export default function AdminProductsPage() {
                 <label className="block text-sm mb-1">{t("bestBefore")}</label>
                 <input className="input-field" value={form.best_before_note} onChange={(e) => setForm({ ...form, best_before_note: e.target.value })} />
               </div>
+              <fieldset className="border border-gray-100 rounded-xl p-3 space-y-3">
+                <legend className="text-sm font-medium px-1">Badges &amp; Notiz</legend>
+                <div className="flex flex-wrap gap-2">
+                  {PRODUCT_BADGES.map((b) => {
+                    const active = form.badges.includes(b.key);
+                    return (
+                      <button
+                        type="button"
+                        key={b.key}
+                        onClick={() => toggleBadge(b.key)}
+                        aria-pressed={active}
+                        className={`inline-flex items-center gap-2 px-3 py-2 min-h-11 rounded-xl border text-sm transition-colors ${
+                          active
+                            ? "border-gold bg-gold/10 text-gold-dark"
+                            : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block w-9 h-5 rounded-full relative transition-colors ${
+                            active ? "bg-gold" : "bg-gray-300"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                              active ? "left-4" : "left-0.5"
+                            }`}
+                          />
+                        </span>
+                        {b.labelDe}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">
+                    Eigene Notiz (z. B. Frisch eingetroffen)
+                  </label>
+                  <input
+                    className="input-field"
+                    maxLength={200}
+                    placeholder="Frisch eingetroffen"
+                    value={form.custom_note}
+                    onChange={(e) =>
+                      setForm({ ...form, custom_note: e.target.value })
+                    }
+                  />
+                </div>
+              </fieldset>
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <div className="grid sm:grid-cols-2 gap-3">
                 <button
@@ -495,6 +589,31 @@ export default function AdminProductsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-3 mb-3 p-3 rounded-xl bg-gold/10 border border-gold/30">
+          <span className="text-sm font-medium">
+            {selected.size} ausgewählt
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="px-3 py-2 rounded-xl border border-gray-300 text-sm min-h-11"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              onClick={bulkDelete}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium inline-flex items-center gap-2 min-h-11"
+            >
+              <Trash2 size={16} />
+              Ausgewählte löschen
+            </button>
           </div>
         </div>
       )}
@@ -528,7 +647,16 @@ export default function AdminProductsPage() {
                   onSwipeDelete={() => swipeToTrash(p)}
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto] gap-1 sm:gap-2 items-center px-4 py-3 sm:py-2.5 text-sm min-h-[52px]">
-                    <div className="font-medium min-w-0">
+                    <div className="font-medium min-w-0 flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(p.id)}
+                        onChange={() => toggleSelect(p.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`${p.name_de || p.name_ar} auswählen`}
+                        className="shrink-0 w-4 h-4 accent-gold"
+                      />
+                      <div className="min-w-0">
                       <span className="truncate block">
                         {p.name_de || p.name_ar}
                       </span>
@@ -540,6 +668,7 @@ export default function AdminProductsPage() {
                       <span className="sm:hidden text-xs text-gray-500">
                         {formatEuroDe(Number(p.price))} · Bestand {p.stock_quantity}
                       </span>
+                      </div>
                     </div>
                     <div className="hidden sm:block text-gray-500 truncate">
                       {p.product_number || "—"}

@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   }
 
   let { data, error } = await query;
-  if (error && /status/i.test(error.message)) {
+  if (error && /(status|badges|custom_note)/i.test(error.message)) {
     let fallback = auth.supabase
       .from("products")
       .select(PRODUCT_SELECT_BASE)
@@ -74,12 +74,19 @@ export async function POST(request: Request) {
     .select(PRODUCT_SELECT)
     .single();
 
-  if (error && /status/i.test(error.message)) {
-    const { status: _ignored, ...withoutStatus } = payload;
-    void _ignored;
+  if (error && /(status|badges|custom_note)/i.test(error.message)) {
+    const {
+      status: _s,
+      badges: _b,
+      custom_note: _c,
+      ...withoutOptional
+    } = payload;
+    void _s;
+    void _b;
+    void _c;
     const retry = await auth.supabase
       .from("products")
-      .insert(withoutStatus)
+      .insert(withoutOptional)
       .select(PRODUCT_SELECT_BASE)
       .single();
     data = retry.data as typeof data;
