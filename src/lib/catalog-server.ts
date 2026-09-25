@@ -2,6 +2,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { discountedPrice } from "@/lib/pricing";
+import { normalizeBadges } from "@/lib/product-badges";
 import { searchQueryVariants } from "@/lib/search";
 import {
   DEFAULT_HERO_SLIDES,
@@ -24,7 +25,7 @@ const PLACEHOLDER_IMAGE = "/placeholder.svg";
 const REVALIDATE_SECONDS = 60;
 
 const PUBLIC_SELECT =
-  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, deleted_at, created_at";
+  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
 
 type PublicRow = {
   id: string;
@@ -46,6 +47,8 @@ type PublicRow = {
   barcode?: string | null;
   max_order_quantity?: number | null;
   stock_quantity?: number | null;
+  badges?: unknown;
+  custom_note?: string | null;
 };
 
 type CategoryRow = {
@@ -90,6 +93,8 @@ export function mapPublicProduct(row: PublicRow): Product {
     allergens: row.allergens ?? "",
     originCountry: row.origin_country ?? "",
     bestBeforeNote: row.best_before_note ?? "",
+    badges: normalizeBadges(row.badges),
+    customNote: row.custom_note ?? "",
   };
 }
 
@@ -404,6 +409,12 @@ export const getFeaturedProductsAsync = cache(async (): Promise<Product[]> => {
   const products = await getProductsAsync();
   const offers = products.filter(productIsOnSale);
   return offers.length ? offers : products.slice(0, 8);
+});
+
+/** Nur reduzierte Produkte (für das Angebote-Karussell). */
+export const getOffersAsync = cache(async (): Promise<Product[]> => {
+  const products = await getProductsAsync();
+  return products.filter(productIsOnSale);
 });
 
 export const getProductByIdAsync = cache(

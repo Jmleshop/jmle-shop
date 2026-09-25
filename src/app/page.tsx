@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import {
   getCategoriesAsync,
   getFeaturedProductsAsync,
+  getOffersAsync,
   getSiteConfigAsync,
   getSlidesAsync,
 } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
 import HeroSlider from "@/components/HeroSlider";
+import OffersCarousel from "@/components/OffersCarousel";
 import CategoryGrid from "@/components/CategoryGrid";
 import { ProductGrid } from "@/components/ProductCard";
 
@@ -48,16 +50,18 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [site, slides, categories, featured] = await Promise.all([
+  const [site, slides, categories, featured, offers] = await Promise.all([
     getSiteConfigAsync(),
     getSlidesAsync(),
     getCategoriesAsync(),
     getFeaturedProductsAsync(),
+    getOffersAsync(),
   ]);
 
   return (
     <>
       <HeroSlider slides={slides} />
+      <OffersCarousel products={offers} title="عروض خاصة" />
       <CategoryGrid
         categories={categories}
         title={site.categoriesSectionTitle}

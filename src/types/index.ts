@@ -49,6 +49,10 @@ export interface Product {
   allergens?: string;
   originCountry?: string;
   bestBeforeNote?: string;
+  /** Feste Highlight-Badges (z. B. bestseller, sale, quality) */
+  badges?: string[];
+  /** Freie kurze Notiz, wird als Highlight-Badge angezeigt */
+  customNote?: string;
 }
 
 export interface CatalogData {
@@ -128,6 +132,8 @@ export interface FoodProduct {
   max_order_quantity: number | null;
   stock_quantity: number;
   status?: "published" | "draft";
+  badges?: string[];
+  custom_note?: string;
   deleted_at: string | null;
   created_at?: string;
   updated_at?: string;

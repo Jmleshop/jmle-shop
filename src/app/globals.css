@@ -113,3 +113,31 @@
     @apply overflow-x-auto max-w-full;
   }
 }
+
+/* Angebote-Karussell: sanftes, endloses Auto-Scrollen (Marquee) */
+@keyframes jmle-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* -50% da die Liste dupliziert ist → nahtlose Endlosschleife */
+    transform: translateX(-50%);
+  }
+}
+
+.jmle-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: jmle-marquee var(--marquee-duration, 40s) linear infinite;
+}
+
+.jmle-marquee:hover .jmle-marquee-track,
+.jmle-marquee:focus-within .jmle-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jmle-marquee-track {
+    animation: none;
+  }
+}
