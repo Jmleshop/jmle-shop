@@ -16,6 +16,7 @@ export default function Header() {
 
   const navLinks = [
     { href: "/", label: "الرئيسية" },
+    { href: "/products", label: "جميع المنتجات" },
     { href: "/categories", label: "الفئات" },
     { href: "/wishlist", label: "المفضلة" },
     { href: "/cart", label: "السلة" },

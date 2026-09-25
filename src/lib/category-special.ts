@@ -1,3 +1,31 @@
+/** Systemweite „Alle Produkte"-Sammelkategorie (virtuell — listet ALLE Produkte) */
+export const ALL_CATEGORY_ID = "all";
+
+export const ALL_CATEGORY = {
+  id: ALL_CATEGORY_ID,
+  name: "جميع المنتجات",
+  nameEn: "All Products",
+  image:
+    "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
+  parentId: null as string | null,
+  sortOrder: -200,
+} as const;
+
+/** ID der „Alle Produkte"-Sammelkategorie erkennen */
+export function isAllCategoryId(id: string): boolean {
+  const n = id.trim().toLowerCase();
+  return (
+    n === ALL_CATEGORY_ID ||
+    n === "alle" ||
+    n === "all-products" ||
+    n === "جميع المنتجات"
+  );
+}
+
+export function isAllCategory(cat: { id: string }): boolean {
+  return isAllCategoryId(cat.id);
+}
+
 /** Systemweite Sale-Kategorie (virtuell — keine manuelle Produktzuweisung) */
 export const SALE_CATEGORY_ID = "sale";
 

@@ -8,8 +8,11 @@ import {
   DEFAULT_SITE_CONFIG,
 } from "@/lib/site-defaults";
 import {
+  ALL_CATEGORY,
   SALE_CATEGORY,
   collectCategoryAndDescendantIds,
+  isAllCategory,
+  isAllCategoryId,
   isSaleCategory,
   isSaleCategoryId,
   isSaleCategoryName,
@@ -295,7 +298,17 @@ export const getProductsAsync = cache(async (): Promise<Product[]> => {
 
 export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
   const tree = await getCategoriesCached();
-  // Virtuelle Sale-Kategorie an den Anfang (Produkte kommen dynamisch über Rabatt)
+  // Virtuelle Sammelkategorie „Alle Produkte" ganz vorne (listet ALLE Produkte)
+  const all: Category = {
+    id: ALL_CATEGORY.id,
+    name: ALL_CATEGORY.name,
+    nameEn: ALL_CATEGORY.nameEn,
+    image: ALL_CATEGORY.image,
+    parentId: null,
+    sortOrder: ALL_CATEGORY.sortOrder,
+    children: [],
+  };
+  // Virtuelle Sale-Kategorie (Produkte kommen dynamisch über Rabatt)
   const sale: Category = {
     id: SALE_CATEGORY.id,
     name: SALE_CATEGORY.name,
@@ -305,7 +318,7 @@ export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
     sortOrder: SALE_CATEGORY.sortOrder,
     children: [],
   };
-  return [sale, ...tree];
+  return [all, sale, ...tree];
 });
 
 export const getSiteConfigAsync = cache(async (): Promise<SiteConfig> => {
@@ -331,6 +344,18 @@ export const getFlatCategoriesAsync = cache(async (): Promise<Category[]> => {
 
 export const getCategoryByIdAsync = cache(
   async (id: string): Promise<Category | undefined> => {
+    if (isAllCategoryId(id)) {
+      return {
+        id: ALL_CATEGORY.id,
+        name: ALL_CATEGORY.name,
+        nameEn: ALL_CATEGORY.nameEn,
+        image: ALL_CATEGORY.image,
+        parentId: null,
+        sortOrder: ALL_CATEGORY.sortOrder,
+        children: [],
+      };
+    }
+
     if (isSaleCategoryId(id)) {
       return {
         id: SALE_CATEGORY.id,
@@ -402,6 +427,11 @@ export const getProductByIdAsync = cache(
 export const getProductsByCategoryAsync = cache(
   async (categoryId: string): Promise<Product[]> => {
     const products = await getProductsAsync();
+
+    // Sammelkategorie „Alle Produkte": ausnahmslos ALLE Produkte, kategorieübergreifend.
+    if (isAllCategoryId(categoryId)) {
+      return products;
+    }
     // products_public: nur deleted_at IS NULL & published
 
     const flat = await getFlatCategoriesAsync();
@@ -430,7 +460,7 @@ export const getProductsByCategoryAsync = cache(
       return products.filter(productIsOnSale);
     }
 
-    const realFlat = flat.filter((c) => !isSaleCategory(c));
+    const realFlat = flat.filter((c) => !isSaleCategory(c) && !isAllCategory(c));
     const ids = collectCategoryAndDescendantIds(categoryId, realFlat);
 
     if (ids.size <= 1) {
