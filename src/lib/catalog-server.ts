@@ -411,10 +411,20 @@ export const getFeaturedProductsAsync = cache(async (): Promise<Product[]> => {
   return offers.length ? offers : products.slice(0, 8);
 });
 
-/** Nur reduzierte Produkte (für das Angebote-Karussell). */
+/** Nur reduzierte Produkte (für die obere Angebote-Reihe). */
 export const getOffersAsync = cache(async (): Promise<Product[]> => {
   const products = await getProductsAsync();
   return products.filter(productIsOnSale);
+});
+
+/**
+ * Reguläre / neueste Produkte (für die zweite Auto-Reihe).
+ * Bevorzugt Produkte OHNE Rabatt; falls alle reduziert sind, die neuesten.
+ */
+export const getRegularProductsAsync = cache(async (): Promise<Product[]> => {
+  const products = await getProductsAsync();
+  const regular = products.filter((p) => !productIsOnSale(p));
+  return regular.length ? regular : products;
 });
 
 export const getProductByIdAsync = cache(

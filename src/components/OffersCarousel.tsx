@@ -9,6 +9,8 @@ import type { Product } from "@/types";
 interface OffersCarouselProps {
   products: Product[];
   title?: string;
+  /** Laufrichtung umkehren (für die zweite Reihe) */
+  reverse?: boolean;
 }
 
 function OfferCard({ product }: { product: Product }) {
@@ -52,7 +54,11 @@ function OfferCard({ product }: { product: Product }) {
   );
 }
 
-export default function OffersCarousel({ products, title }: OffersCarouselProps) {
+export default function OffersCarousel({
+  products,
+  title,
+  reverse = false,
+}: OffersCarouselProps) {
   if (!products.length) return null;
 
   // Für einen nahtlosen Loop die Liste duplizieren.
@@ -67,7 +73,11 @@ export default function OffersCarousel({ products, title }: OffersCarouselProps)
         <div className="gold-divider" aria-hidden />
       </div>
 
-      <div className="jmle-marquee relative w-full overflow-hidden">
+      <div
+        className={`jmle-marquee relative w-full overflow-hidden ${
+          reverse ? "jmle-marquee-reverse" : ""
+        }`}
+      >
         <div
           className="jmle-marquee-track"
           style={{ ["--marquee-duration" as string]: `${duration}s` }}

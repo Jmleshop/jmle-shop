@@ -131,6 +131,10 @@
   animation: jmle-marquee var(--marquee-duration, 40s) linear infinite;
 }
 
+.jmle-marquee-reverse .jmle-marquee-track {
+  animation-direction: reverse;
+}
+
 .jmle-marquee:hover .jmle-marquee-track,
 .jmle-marquee:focus-within .jmle-marquee-track {
   animation-play-state: paused;

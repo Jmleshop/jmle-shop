@@ -3,6 +3,7 @@ import {
   getCategoriesAsync,
   getFeaturedProductsAsync,
   getOffersAsync,
+  getRegularProductsAsync,
   getSiteConfigAsync,
   getSlidesAsync,
 } from "@/lib/catalog-server";
@@ -50,18 +51,23 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [site, slides, categories, featured, offers] = await Promise.all([
-    getSiteConfigAsync(),
-    getSlidesAsync(),
-    getCategoriesAsync(),
-    getFeaturedProductsAsync(),
-    getOffersAsync(),
-  ]);
+  const [site, slides, categories, featured, offers, regular] =
+    await Promise.all([
+      getSiteConfigAsync(),
+      getSlidesAsync(),
+      getCategoriesAsync(),
+      getFeaturedProductsAsync(),
+      getOffersAsync(),
+      getRegularProductsAsync(),
+    ]);
 
   return (
     <>
       <HeroSlider slides={slides} />
+      {/* Obere Reihe: nur Rabatt-/Angebotsprodukte */}
       <OffersCarousel products={offers} title="عروض خاصة" />
+      {/* Untere Reihe: reguläre / neueste Produkte (Gegenrichtung) */}
+      <OffersCarousel products={regular} title="أحدث المنتجات" reverse />
       <CategoryGrid
         categories={categories}
         title={site.categoriesSectionTitle}
