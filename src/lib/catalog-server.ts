@@ -130,11 +130,45 @@ async function fetchAllPublicProducts(): Promise<Product[]> {
     .select(PUBLIC_SELECT)
     .order("created_at", { ascending: false });
 
+  if (!error && data && data.length > 0) {
+    return (data as PublicRow[]).map(mapPublicProduct);
+  }
+
+  if (error) {
+    console.error(
+      "[catalog] products_public nicht verfügbar:",
+      error.message,
+      "→ Fallback auf Basistabelle products"
+    );
+  }
+
+  // Fallback: View fehlt oder liefert nichts (z. B. veraltetes DB-Schema oder
+  // frisch importierte Produkte, die noch nicht über die View sichtbar sind)
+  // → direkt aus public.products lesen (RLS lässt anon aktive Produkte lesen).
+  return fetchProductsFromBaseTable();
+}
+
+async function fetchProductsFromBaseTable(): Promise<Product[]> {
+  const supabase = createPublicClient();
+  // select("*") ist robust gegen fehlende Spalten in älteren Schemas.
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
   if (error || !data) {
-    console.error("[catalog] products_public:", error?.message);
+    console.error("[catalog] products (Fallback):", error?.message);
     return [];
   }
-  return (data as PublicRow[]).map(mapPublicProduct);
+
+  return (data as Array<PublicRow & { status?: string | null }>)
+    .filter((row) => {
+      // Nur veröffentlichte Produkte; fehlende status-Spalte = veröffentlicht.
+      const status = row.status;
+      return status == null || status === "published";
+    })
+    .map(mapPublicProduct);
 }
 
 async function fetchAllCategories(): Promise<Category[]> {
@@ -204,12 +238,6 @@ async function fetchHeroSlides(): Promise<Slide[]> {
   }));
 }
 
-const getProductsCached = unstable_cache(
-  fetchAllPublicProducts,
-  ["catalog-products-v2"],
-  { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "products"] }
-);
-
 const getCategoriesCached = unstable_cache(
   fetchAllCategories,
   ["catalog-categories-v2"],
@@ -228,9 +256,13 @@ const getSlidesCached = unstable_cache(
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides"] }
 );
 
-/** Request-dedup + cross-request cache */
+/**
+ * Produkte werden bewusst NICHT über unstable_cache zwischengespeichert, damit
+ * frisch in die DB importierte Produkte sofort sichtbar sind. `cache` dedupt
+ * lediglich innerhalb eines einzelnen Requests.
+ */
 export const getProductsAsync = cache(async (): Promise<Product[]> => {
-  return getProductsCached();
+  return fetchAllPublicProducts();
 });
 
 export const getCategoriesAsync = cache(async (): Promise<Category[]> => {

@@ -5,6 +5,8 @@ import {
 } from "@/lib/catalog-server";
 import { ProductGrid } from "@/components/ProductCard";
 
+export const dynamic = "force-dynamic";
+
 interface SearchPageProps {
   searchParams: Promise<{ q?: string }>;
 }

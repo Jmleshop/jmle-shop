@@ -9,6 +9,8 @@ import { getAppUrl } from "@/lib/site-defaults";
 import { ProductGrid } from "@/components/ProductCard";
 import CategoryGrid from "@/components/CategoryGrid";
 
+export const dynamic = "force-dynamic";
+
 interface CategoryPageProps {
   params: Promise<{ id: string }>;
 }

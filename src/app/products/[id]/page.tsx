@@ -10,6 +10,8 @@ import { getAppUrl } from "@/lib/site-defaults";
 import { ProductPrice, StockBadge } from "@/components/ProductPrice";
 import AddToCartButton from "@/components/AddToCartButton";
 import ProductGallery from "@/components/ProductGallery";
+
+export const dynamic = "force-dynamic";
 import ProductDetailExtras from "@/components/ProductDetailExtras";
 import WishlistButton from "@/components/WishlistButton";
 import { formatUnitPriceLabel } from "@/lib/pricing";

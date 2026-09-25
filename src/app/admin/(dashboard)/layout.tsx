@@ -4,6 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { displayNameFromProfile } from "@/lib/admin-server";
 import type { StaffRole } from "@/types";
 
+// Admin ist auth- und datengetrieben: niemals statisch cachen, sonst wird eine
+// veraltete Version ausgeliefert.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 export default async function AdminDashboardLayout({
   children,
 }: {

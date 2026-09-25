@@ -10,6 +10,9 @@ import HeroSlider from "@/components/HeroSlider";
 import CategoryGrid from "@/components/CategoryGrid";
 import { ProductGrid } from "@/components/ProductCard";
 
+// Immer serverseitig frisch rendern, damit importierte Produkte sofort erscheinen.
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getSiteConfigAsync();
   const slides = await getSlidesAsync();
