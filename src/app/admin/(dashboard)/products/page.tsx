@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { Archive, ArchiveRestore, Pencil, Plus, X, Trash2 } from "lucide-react";
@@ -13,7 +13,12 @@ import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { isSaleCategoryId } from "@/lib/category-special";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import { useRowSelection } from "@/lib/use-row-selection";
+import { parseCsv, productAltText, productsToCsv } from "@/lib/admin-catalog-io";
+import BarcodeScanModal from "@/components/admin/BarcodeScanModal";
+import { downloadPriceLabels } from "@/components/admin/PriceLabelPdf";
 import type { FoodCategory, FoodProduct } from "@/types";
+
+type SortKey = "newest" | "oldest" | "priceAsc" | "priceDesc" | "az" | "za";
 
 const DISCOUNT_PRESETS = [0, 5, 10, 15, 20, 50];
 const ORIGINS = ["Syrien", "Türkei", "Palästina"];
@@ -52,6 +57,12 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<FoodProduct[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("newest");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out" | "ok">("all");
+  const [scanning, setScanning] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [listTab, setListTab] = useState<"published" | "draft">("published");
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -233,12 +244,72 @@ export default function AdminProductsPage() {
     });
   };
 
-  const displayed = products.filter((p) => {
-    if (!showArchived && p.deleted_at) return false;
-    const st = p.status ?? "published";
-    return listTab === "draft" ? st === "draft" : st !== "draft";
-  });
+  const displayed = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const rows = products.filter((p) => {
+      if (!showArchived && p.deleted_at) return false;
+      const st = p.status ?? "published";
+      if (listTab === "draft" ? st !== "draft" : st === "draft") return false;
+      if (categoryFilter && p.category_id !== categoryFilter) return false;
+      const stock = Number(p.stock_quantity ?? 0);
+      if (stockFilter === "low" && !(stock > 0 && stock < 5)) return false;
+      if (stockFilter === "out" && stock !== 0) return false;
+      if (stockFilter === "ok" && stock < 5) return false;
+      if (!needle) return true;
+      const hay = [p.name_de, p.name_ar, p.product_number, p.barcode]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(needle);
+    });
+    const nameOf = (p: FoodProduct) => (p.name_de || p.name_ar || "").toLocaleLowerCase("de");
+    rows.sort((a, b) => {
+      if (sortKey === "oldest") {
+        return String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""));
+      }
+      if (sortKey === "priceAsc") return Number(a.price) - Number(b.price);
+      if (sortKey === "priceDesc") return Number(b.price) - Number(a.price);
+      if (sortKey === "az") return nameOf(a).localeCompare(nameOf(b), "de");
+      if (sortKey === "za") return nameOf(b).localeCompare(nameOf(a), "de");
+      return String(b.created_at ?? "").localeCompare(String(a.created_at ?? ""));
+    });
+    return rows;
+  }, [products, showArchived, listTab, query, categoryFilter, stockFilter, sortKey]);
   const displayedIds = displayed.map((p) => p.id);
+  const lowStock = products.filter(
+    (p) => !p.deleted_at && Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity) < 5
+  );
+  const altText = productAltText(form.name_de, form.name_ar);
+
+  const exportCsv = () => {
+    const blob = new Blob([productsToCsv(displayed)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "produkte.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importCsv = async (file: File) => {
+    const rows = parseCsv(await file.text());
+    let ok = 0;
+    for (const row of rows) {
+      const payload = {
+        ...row,
+        category_id: row.category_id || categoryFilter || categories[0]?.id || "",
+        vat_rate: row.vat_rate || "7",
+      };
+      const res = await fetch("/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) ok += 1;
+    }
+    toast.success(`${ok} von ${rows.length} importiert`);
+    load();
+  };
 
   return (
     <div>
@@ -281,6 +352,63 @@ export default function AdminProductsPage() {
           </button>
         </div>
       </div>
+
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Suche: Name DE/AR, SKU, Barcode"
+          className="input-field"
+          aria-label="Produktsuche"
+        />
+        <select className="input-field" value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+          <option value="newest">Neueste</option>
+          <option value="oldest">Älteste</option>
+          <option value="priceAsc">Preis aufsteigend</option>
+          <option value="priceDesc">Preis absteigend</option>
+          <option value="az">A–Z</option>
+          <option value="za">Z–A</option>
+        </select>
+        <select className="input-field" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="">Alle Kategorien</option>
+          {sortedCategories(categories).map((c) => (
+            <option key={c.id} value={c.id}>{categoryLabel(c)}</option>
+          ))}
+        </select>
+        <select className="input-field" value={stockFilter} onChange={(e) => setStockFilter(e.target.value as typeof stockFilter)}>
+          <option value="all">Bestand: alle</option>
+          <option value="low">Unter 5 Stück</option>
+          <option value="out">Ausverkauft</option>
+          <option value="ok">Ausreichend</option>
+        </select>
+      </div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={exportCsv}>CSV exportieren</button>
+        <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => csvInputRef.current?.click()}>CSV importieren</button>
+        <input
+          ref={csvInputRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void importCsv(file);
+            e.target.value = "";
+          }}
+        />
+        <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => setScanning(true)}>Barcode scannen</button>
+        <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => void downloadPriceLabels(displayed)}>
+          Etiketten-PDF
+        </button>
+      </div>
+      {lowStock.length > 0 && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Lagerwarnung: {lowStock.length} Produkt{lowStock.length === 1 ? "" : "e"} unter 5 Stück
+          {" — "}
+          {lowStock.slice(0, 4).map((p) => p.name_de || p.name_ar).join(", ")}
+          {lowStock.length > 4 ? "…" : ""}
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -425,6 +553,7 @@ export default function AdminProductsPage() {
                   })
                 }
               />
+              <p className="text-xs text-gray-500">SEO-Alt-Text: {altText}</p>
               <div>
                 <label className="block text-sm mb-1">{t("ingredients")}</label>
                 <textarea rows={2} className="input-field" value={form.ingredients} onChange={(e) => setForm({ ...form, ingredients: e.target.value })} />
@@ -692,7 +821,10 @@ export default function AdminProductsPage() {
                     <div className="hidden sm:block">
                       {formatEuroDe(Number(p.price))}
                     </div>
-                    <div className="hidden sm:block">{p.stock_quantity}</div>
+                    <div className={`hidden sm:block ${Number(p.stock_quantity) < 5 ? "font-semibold text-amber-700" : ""}`}>
+                      {p.stock_quantity}
+                      {Number(p.stock_quantity) < 5 ? " · niedrig" : ""}
+                    </div>
                     <div className="flex justify-end gap-0.5">
                       <button
                         type="button"
@@ -720,6 +852,15 @@ export default function AdminProductsPage() {
               ))}
           </div>
         </div>
+      )}
+      {scanning && (
+        <BarcodeScanModal
+          onClose={() => setScanning(false)}
+          onDetect={(code) => {
+            setQuery(code);
+            setScanning(false);
+          }}
+        />
       )}
     </div>
   );
