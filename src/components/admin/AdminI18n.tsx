@@ -24,10 +24,14 @@ export function AdminI18nProvider({ children }: { children: ReactNode }) {
     if (stored === "ar" || stored === "de") setLangState(stored);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = lang === "ar" ? "ar" : "de";
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
+
   const setLang = (l: AdminLang) => {
     setLangState(l);
     localStorage.setItem("jmle-admin-lang", l);
-    document.documentElement.lang = l === "ar" ? "ar" : "de";
   };
 
   const value = useMemo(

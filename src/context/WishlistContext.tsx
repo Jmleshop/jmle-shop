@@ -89,19 +89,28 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
+    setIds(readGuest());
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     (async () => {
       setLoading(true);
-      const {
-        data: { user: u },
-      } = await supabase.auth.getUser();
-      if (cancelled) return;
-      setUser(u);
-      if (u) await mergeGuestIntoDb(u);
-      if (cancelled) return;
-      await loadForUser(u);
-      if (!cancelled) setLoading(false);
+      try {
+        const {
+          data: { user: u },
+        } = await supabase.auth.getUser();
+        if (cancelled) return;
+        setUser(u);
+        if (u) await mergeGuestIntoDb(u);
+        if (cancelled) return;
+        await loadForUser(u);
+      } catch {
+        if (!cancelled) setIds(readGuest());
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
 
     const {
@@ -126,34 +135,34 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const toggle = useCallback(
     async (productId: string) => {
       const exists = ids.includes(productId);
-      if (user) {
-        if (exists) {
-          await supabase
-            .from("wishlist_items")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("product_id", productId);
-          setIds((prev) => prev.filter((id) => id !== productId));
-          toast("تمت الإزالة من المفضلة");
-        } else {
-          const { error } = await supabase.from("wishlist_items").insert({
-            user_id: user.id,
-            product_id: productId,
-          });
-          if (error) {
-            toast.error("تعذر الحفظ في المفضلة");
-            return;
-          }
-          setIds((prev) => [productId, ...prev.filter((id) => id !== productId)]);
-          toast.success("أضيف إلى المفضلة");
+      const next = exists
+        ? ids.filter((id) => id !== productId)
+        : [productId, ...ids.filter((id) => id !== productId)];
+      setIds(next);
+      writeGuest(next);
+      toast(exists ? "تمت الإزالة من المفضلة" : "أضيف إلى المفضلة ❤️");
+      if (!user) return;
+      if (exists) {
+        const { error } = await supabase
+          .from("wishlist_items")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("product_id", productId);
+        if (error) {
+          setIds(ids);
+          writeGuest(ids);
+          toast.error("تعذر الحفظ في المفضلة");
         }
       } else {
-        const next = exists
-          ? ids.filter((id) => id !== productId)
-          : [productId, ...ids];
-        writeGuest(next);
-        setIds(next);
-        toast(exists ? "تمت الإزالة من المفضلة" : "أضيف إلى المفضلة ❤️");
+        const { error } = await supabase.from("wishlist_items").insert({
+          user_id: user.id,
+          product_id: productId,
+        });
+        if (error) {
+          setIds(ids);
+          writeGuest(ids);
+          toast.error("تعذر الحفظ في المفضلة");
+        }
       }
     },
     [ids, user, supabase]

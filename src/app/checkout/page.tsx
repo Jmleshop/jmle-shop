@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import { productShippingGrams } from "@/lib/shipping";
 import { formatPrice } from "@/lib/catalog";
 import { BasePriceHint } from "@/components/ProductPrice";
 import FreeShippingBar from "@/components/cart/FreeShippingBar";
@@ -107,7 +108,11 @@ export default function CheckoutPage() {
     );
   }
 
-  const { total: grandTotal } = computeCheckoutTotals(total, discount);
+  const weightGrams = items.reduce(
+    (sum, item) => sum + productShippingGrams(item.product ?? {}) * item.quantity,
+    0
+  );
+  const { total: grandTotal } = computeCheckoutTotals(total, discount, weightGrams);
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 md:py-12 animate-fade-up">
@@ -144,7 +149,7 @@ export default function CheckoutPage() {
           onApply={setDiscount}
           onClear={() => setDiscount(null)}
         />
-        <OrderCostBreakdown subtotal={total} discount={discount} />
+        <OrderCostBreakdown subtotal={total} discount={discount} weightGrams={weightGrams} />
       </div>
 
       <p className="text-xs text-gray-400 mb-4 text-center font-ui">

@@ -1,7 +1,9 @@
 "use client";
 
+import type { ReactElement } from "react";
 import {
   Document,
+  type DocumentProps,
   Page,
   Text,
   View,
@@ -17,6 +19,7 @@ import {
   invoiceNumber,
   lineTotal,
 } from "@/lib/orders";
+import { vatIncludedFromGross } from "@/lib/shipping";
 
 const styles = StyleSheet.create({
   page: {
@@ -158,6 +161,32 @@ function InvoiceDoc({
             </View>
           )}
           <View style={styles.row}>
+            <Text>MwSt. 7 % (Lebensmittel)</Text>
+            <Text>
+              {formatEuroDe(
+                vatIncludedFromGross(
+                  Math.max(0, Number(order.subtotal) - Number(order.discount_amount)),
+                  7
+                )
+              )}
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <Text>MwSt. 19 % (Versand)</Text>
+            <Text>
+              {formatEuroDe(
+                vatIncludedFromGross(
+                  Math.max(
+                    0,
+                    Number(order.total) -
+                      Math.max(0, Number(order.subtotal) - Number(order.discount_amount))
+                  ),
+                  19
+                )
+              )}
+            </Text>
+          </View>
+          <View style={styles.row}>
             <Text style={styles.totalStrong}>Gesamt inkl. MwSt.</Text>
             <Text style={styles.totalStrong}>
               {formatEuroDe(Number(order.total))}
@@ -174,17 +203,79 @@ function InvoiceDoc({
   );
 }
 
+function DeliveryNoteDoc({
+  order,
+  profile,
+}: {
+  order: Order;
+  profile: InvoiceProfile | null;
+}) {
+  const items = order.order_items ?? [];
+  const name = customerDisplayName(profile, order.customer_email);
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.brand}>jmle</Text>
+            <Text style={styles.muted}>Lieferschein · Coswig (Anhalt)</Text>
+          </View>
+          <View>
+            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 12 }}>
+              Lieferschein
+            </Text>
+            <Text style={styles.muted}>LS-{invoiceNumber(order)}</Text>
+            <Text style={styles.muted}>{formatOrderDate(order.created_at)}</Text>
+          </View>
+        </View>
+        <Text style={styles.title}>Lieferadresse</Text>
+        <Text>{name}</Text>
+        {profile?.street ? <Text>{profile.street}</Text> : null}
+        <View style={styles.tableHeader}>
+          <Text style={styles.colName}>Produkt</Text>
+          <Text style={styles.colQty}>Menge</Text>
+          <Text style={styles.colPrice}>MwSt.</Text>
+          <Text style={styles.colTotal}>Preis</Text>
+        </View>
+        {items.map((item) => (
+          <View key={item.id} style={styles.tableRow}>
+            <Text style={styles.colName}>{item.product_name}</Text>
+            <Text style={styles.colQty}>{item.quantity}</Text>
+            <Text style={styles.colPrice}>7 %</Text>
+            <Text style={styles.colTotal}>{formatEuroDe(lineTotal(item))}</Text>
+          </View>
+        ))}
+        <Text style={styles.footer}>
+          Lebensmittel 7 % MwSt. · Versand 19 % MwSt. · jmle
+        </Text>
+      </Page>
+    </Document>
+  );
+}
+
+async function savePdf(doc: ReactElement<DocumentProps>, filename: string) {
+  const blob = await pdf(doc).toBlob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function downloadOrderInvoice(
   order: Order,
   profile: InvoiceProfile | null
 ) {
-  const blob = await pdf(
-    <InvoiceDoc order={order} profile={profile} />
-  ).toBlob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${invoiceNumber(order)}.pdf`;
-  a.click();
-  URL.revokeObjectURL(url);
+  await savePdf(<InvoiceDoc order={order} profile={profile} />, `${invoiceNumber(order)}.pdf`);
+}
+
+export async function downloadDeliveryNote(
+  order: Order,
+  profile: InvoiceProfile | null
+) {
+  await savePdf(
+    <DeliveryNoteDoc order={order} profile={profile} />,
+    `LS-${invoiceNumber(order)}.pdf`
+  );
 }

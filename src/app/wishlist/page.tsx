@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingBag, Trash2 } from "lucide-react";
 import { useWishlist } from "@/context/WishlistContext";
+import { useShopLocale } from "@/components/ShopLocale";
+import { productTitle } from "@/lib/shop-i18n";
 import { useCart } from "@/context/CartContext";
 import type { Product } from "@/types";
 import { ProductPrice } from "@/components/ProductPrice";
@@ -13,6 +15,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function WishlistPage() {
   const { ids, count, loading: wlLoading, remove, clear } = useWishlist();
+  const { lang, t } = useShopLocale();
   const { addItem } = useCart();
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +32,25 @@ export default function WishlistPage() {
 
   const products = useMemo(() => {
     const map = new Map(catalog.map((p) => [p.id, p]));
-    return ids.map((id) => map.get(id)).filter(Boolean) as Product[];
-  }, [ids, catalog]);
+    return ids.map((id) => {
+      const found = map.get(id);
+      if (found) return found;
+      return {
+        id,
+        name: t("wishlistSaved"),
+        description: "",
+        price: 0,
+        discountPercent: 0,
+        vatRate: 7,
+        categoryId: "",
+        image: "/placeholder.svg",
+        images: [],
+        stock: 0,
+        inStock: false,
+        maxOrderQuantity: null,
+      } satisfies Product;
+    });
+  }, [ids, catalog, t]);
 
   const busy = wlLoading || loading;
 
@@ -40,7 +60,7 @@ export default function WishlistPage() {
         <div>
           <h1 className="font-display text-3xl md:text-4xl text-luxury-ink flex items-center gap-2">
             <Heart className="text-red-500" size={28} aria-hidden />
-            المفضلة
+            {t("wishlistTitle")}
           </h1>
           <p className="text-sm text-gray-500 font-ui mt-1">
             {count === 0
@@ -54,7 +74,7 @@ export default function WishlistPage() {
             onClick={() => void clear()}
             className="text-sm font-ui text-gray-500 hover:text-red-600 min-h-11 px-3"
           >
-            مسح الكل
+            {t("clearAll")}
           </button>
         )}
       </div>
@@ -69,10 +89,10 @@ export default function WishlistPage() {
         <div className="text-center py-16 card-boutique px-6">
           <Heart size={40} className="mx-auto text-amber-200 mb-4" aria-hidden />
           <p className="font-ui text-luxury-charcoal mb-6">
-            قائمة المفضلة فارغة — اضغط على ♥ عند أي منتج
+            {t("wishlistEmpty")}
           </p>
           <Link href="/" className="btn-primary inline-flex min-h-12">
-            تصفح المنتجات
+            {t("browse")}
           </Link>
         </div>
       ) : (
@@ -97,7 +117,7 @@ export default function WishlistPage() {
               <div className="flex-1 p-4 flex flex-col gap-3">
                 <Link href={`/products/${product.id}`} className="block">
                   <h2 className="font-ui font-medium text-luxury-ink line-clamp-2">
-                    {product.name}
+                    {productTitle(lang, product)}
                   </h2>
                   <div className="mt-1">
                     <ProductPrice product={product} align="start" />

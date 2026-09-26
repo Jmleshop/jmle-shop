@@ -16,11 +16,16 @@ import OrderCostBreakdown, {
   computeCheckoutTotals,
 } from "@/components/cart/OrderCostBreakdown";
 import { Button } from "@/components/ui";
+import { productShippingGrams } from "@/lib/shipping";
+import { whatsAppOrderUrl } from "@/lib/whatsapp-order";
+import { useShopLocale } from "@/components/ShopLocale";
+import { productTitle } from "@/lib/shop-i18n";
 
 const DISCOUNT_STORAGE_KEY = "jmle_cart_discount";
 
 export default function CartPage() {
   const { items, total, loading, updateQuantity, removeItem } = useCart();
+  const { lang, t } = useShopLocale();
   const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
 
   useEffect(() => {
@@ -66,7 +71,7 @@ export default function CartPage() {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center px-4">
         <ShoppingBag size={48} className="text-gray-300 mb-4" aria-hidden />
-        <h1 className="font-display text-2xl mb-2">سلة التسوق فارغة</h1>
+        <h1 className="font-display text-2xl mb-2">{t("cartEmpty")}</h1>
         <p className="text-gray-500 text-sm mb-6 font-ui">اكتشف مجموعتنا الفاخرة</p>
         <Link href="/" className="btn-primary">
           تسوق الآن
@@ -75,11 +80,15 @@ export default function CartPage() {
     );
   }
 
-  const { total: grandTotal } = computeCheckoutTotals(total, discount);
+  const weightGrams = items.reduce(
+    (sum, item) => sum + productShippingGrams(item.product ?? {}) * item.quantity,
+    0
+  );
+  const { total: grandTotal } = computeCheckoutTotals(total, discount, weightGrams);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12 animate-fade-up">
-      <h1 className="font-display text-3xl mb-6 tracking-wide">سلة التسوق</h1>
+      <h1 className="font-display text-3xl mb-6 tracking-wide">{t("cartTitle")}</h1>
 
       <FreeShippingBar subtotal={total} />
 
@@ -104,7 +113,7 @@ export default function CartPage() {
             <div className="flex-1 flex flex-col justify-between min-w-0">
               <div>
                 <h3 className="font-ui font-medium text-luxury-ink truncate">
-                  {item.product?.name ?? "منتج"}
+                  {item.product ? productTitle(lang, item.product) : "Produkt"}
                 </h3>
                 <p className="text-gold font-ui text-sm mt-0.5">
                   {formatPrice(item.product?.price ?? 0)}
@@ -172,14 +181,29 @@ export default function CartPage() {
           onApply={setDiscount}
           onClear={() => setDiscount(null)}
         />
-        <OrderCostBreakdown subtotal={total} discount={discount} />
+        <OrderCostBreakdown subtotal={total} discount={discount} weightGrams={weightGrams} />
       </div>
 
       <Link href="/checkout" className="block">
         <Button fullWidth size="lg">
-          إتمام الشراء · {formatPrice(grandTotal)}
+          {t("checkout")} · {formatPrice(grandTotal)}
         </Button>
       </Link>
+      <a
+        href={whatsAppOrderUrl(
+          items.map((item) => ({
+            name: item.product ? productTitle(lang, item.product) : "Produkt",
+            quantity: item.quantity,
+            lineTotal: (item.product?.price ?? 0) * item.quantity,
+          })),
+          grandTotal
+        )}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-3 flex min-h-12 items-center justify-center rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-white"
+      >
+        {t("whatsapp")}
+      </a>
     </div>
   );
 }

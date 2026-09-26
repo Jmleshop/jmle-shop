@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProductsAsync } from "@/lib/catalog-server";
 import { checkoutSchema } from "@/lib/validations/checkout";
 import { parseJsonBody } from "@/lib/validations";
-import { estimateShipping } from "@/lib/shipping";
+import { estimateShippingByWeight, productShippingGrams } from "@/lib/shipping";
 import { maxBuyQuantity, roundMoney } from "@/lib/pricing";
 import { getAppUrl } from "@/lib/app-url";
 
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
       name: string;
       price: number;
       quantity: number;
+      grams: number;
     }> = [];
 
     for (const item of items) {
@@ -73,6 +74,7 @@ export async function POST(request: Request) {
         name: product.name,
         price: product.price,
         quantity: item.quantity,
+        grams: productShippingGrams(product),
       });
     }
 
@@ -109,7 +111,11 @@ export async function POST(request: Request) {
     }
 
     const afterDiscount = Math.max(0, roundMoney(subtotal - discountAmount));
-    const shipping = estimateShipping(afterDiscount);
+    const weightGrams = validatedItems.reduce(
+      (sum, item) => sum + item.grams * item.quantity,
+      0
+    );
+    const shipping = estimateShippingByWeight(afterDiscount, weightGrams);
     const discountRatio = subtotal > 0 ? afterDiscount / subtotal : 1;
 
     const supabase = await createClient();

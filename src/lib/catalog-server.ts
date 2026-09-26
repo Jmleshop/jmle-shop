@@ -26,7 +26,7 @@ const PLACEHOLDER_IMAGE = "/placeholder.svg";
 const REVALIDATE_SECONDS = 60;
 
 const PUBLIC_SELECT =
-  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
+  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
 
 type PublicRow = {
   id: string;
@@ -42,6 +42,8 @@ type PublicRow = {
   origin_country?: string | null;
   weight_value?: number | null;
   weight_unit?: string | null;
+  gross_weight_value?: number | null;
+  gross_weight_unit?: string | null;
   best_before_note?: string | null;
   vat_rate?: number | null;
   discount_percent?: number | null;
@@ -85,6 +87,8 @@ export function mapPublicProduct(row: PublicRow): Product {
     inStock: stock > 0,
     weightValue: row.weight_value ?? null,
     weightUnit: row.weight_unit || "g",
+    grossWeightValue: row.gross_weight_value ?? null,
+    grossWeightUnit: row.gross_weight_unit || "g",
     barcode: row.barcode ?? null,
     maxOrderQuantity:
       row.max_order_quantity == null || Number(row.max_order_quantity) <= 0

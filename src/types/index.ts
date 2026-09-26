@@ -43,6 +43,8 @@ export interface Product {
   inStock: boolean;
   weightValue?: number | null;
   weightUnit?: string;
+  grossWeightValue?: number | null;
+  grossWeightUnit?: string;
   barcode?: string | null;
   maxOrderQuantity: number | null;
   ingredients?: string;

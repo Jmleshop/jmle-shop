@@ -11,7 +11,7 @@ import {
   lineTotal,
   orderStatusLabel,
 } from "@/lib/orders";
-import { downloadOrderInvoice } from "@/components/profile/InvoicePdf";
+import { downloadDeliveryNote, downloadOrderInvoice } from "@/components/profile/InvoicePdf";
 import { Badge, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { toast } from "@/components/AppToaster";
@@ -51,6 +51,19 @@ export default function OrderHistory({
     } catch (err) {
       console.error(err);
       toast.error("تعذر إنشاء الفاتورة");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleDelivery = async (order: Order) => {
+    setDownloading(`${order.id}-ls`);
+    try {
+      await downloadDeliveryNote(order, profile);
+      toast.success("Lieferschein geladen");
+    } catch (err) {
+      console.error(err);
+      toast.error("Lieferschein fehlgeschlagen");
     } finally {
       setDownloading(null);
     }
@@ -171,6 +184,7 @@ export default function OrderHistory({
                   </div>
 
                   {(order.status === "paid" || order.status === "refunded") && (
+                    <>
                     <Button
                       variant="outline"
                       size="sm"
@@ -181,8 +195,18 @@ export default function OrderHistory({
                     >
                       {downloading === order.id
                         ? "جاري إنشاء الفاتورة…"
-                        : "تحميل الفاتورة PDF"}
+                        : "Rechnung PDF · 7 % / 19 %"}
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      fullWidth
+                      disabled={downloading === `${order.id}-ls`}
+                      onClick={() => void handleDelivery(order)}
+                    >
+                      Lieferschein PDF
+                    </Button>
+                    </>
                   )}
                 </div>
               )}

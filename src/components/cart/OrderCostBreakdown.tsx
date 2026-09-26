@@ -2,7 +2,8 @@
 
 import { formatEuroDe } from "@/lib/pricing";
 import {
-  estimateShipping,
+  estimateShippingByWeight,
+  formatWeight,
   qualifiesForFreeShipping,
   vatIncludedFromGross,
 } from "@/lib/shipping";
@@ -12,20 +13,23 @@ import { cn } from "@/lib/cn";
 export default function OrderCostBreakdown({
   subtotal,
   discount,
+  weightGrams = 0,
   className,
   showVatNote = true,
 }: {
   subtotal: number;
   discount: AppliedDiscount | null;
+  weightGrams?: number;
   className?: string;
   showVatNote?: boolean;
 }) {
   const discountAmount = Math.min(discount?.amount ?? 0, subtotal);
   const afterDiscount = Math.max(0, subtotal - discountAmount);
-  const shipping = estimateShipping(afterDiscount);
+  const shipping = estimateShippingByWeight(afterDiscount, weightGrams);
   const freeShip = qualifiesForFreeShipping(afterDiscount);
   const total = afterDiscount + shipping;
-  const vat = vatIncludedFromGross(total, 19);
+  const vat7 = vatIncludedFromGross(afterDiscount, 7);
+  const vat19 = vatIncludedFromGross(shipping, 19);
 
   const row = (label: string, value: string, opts?: { strong?: boolean; muted?: boolean }) => (
     <div
@@ -54,10 +58,12 @@ export default function OrderCostBreakdown({
           `−${formatEuroDe(discountAmount)}`,
           { muted: true }
         )}
+      {weightGrams > 0 &&
+        row("الوزن / Versandgewicht", formatWeight(weightGrams), { muted: true })}
       {row(
         freeShip
           ? "الشحن / Versand (مجاني)"
-          : "الشحن / Versand (geschätzt)",
+          : "الشحن / Versand (nach Gewicht)",
         freeShip ? formatEuroDe(0) : formatEuroDe(shipping)
       )}
       <div className="border-t border-amber-100 pt-3">
@@ -65,7 +71,8 @@ export default function OrderCostBreakdown({
       </div>
       {showVatNote && (
         <p className="text-[11px] text-gray-400 font-ui pt-1">
-          inkl. {formatEuroDe(vat)} MwSt. (19 % auf Endbetrag, geschätzt)
+          inkl. {formatEuroDe(vat7)} MwSt. (7 % Lebensmittel) 
+          {shipping > 0 ? ` und ${formatEuroDe(vat19)} MwSt. (19 % Versand)` : ""}
         </p>
       )}
     </div>
@@ -74,11 +81,12 @@ export default function OrderCostBreakdown({
 
 export function computeCheckoutTotals(
   subtotal: number,
-  discount: AppliedDiscount | null
+  discount: AppliedDiscount | null,
+  weightGrams = 0
 ) {
   const discountAmount = Math.min(discount?.amount ?? 0, subtotal);
   const afterDiscount = Math.max(0, subtotal - discountAmount);
-  const shipping = estimateShipping(afterDiscount);
+  const shipping = estimateShippingByWeight(afterDiscount, weightGrams);
   return {
     discountAmount,
     afterDiscount,

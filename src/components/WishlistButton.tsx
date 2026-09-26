@@ -2,6 +2,7 @@
 
 import { Heart } from "lucide-react";
 import { useWishlist } from "@/context/WishlistContext";
+import { useShopLocale } from "@/components/ShopLocale";
 import { cn } from "@/lib/cn";
 
 export default function WishlistButton({
@@ -14,6 +15,7 @@ export default function WishlistButton({
   size?: "sm" | "md" | "lg";
 }) {
   const { has, toggle } = useWishlist();
+  const { t } = useShopLocale();
   const active = has(productId);
 
   const dim =
@@ -26,6 +28,10 @@ export default function WishlistButton({
   return (
     <button
       type="button"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -38,8 +44,8 @@ export default function WishlistButton({
         className
       )}
       aria-pressed={active}
-      aria-label={active ? "إزالة من المفضلة" : "أضف إلى المفضلة"}
-      title={active ? "Aus Merkliste entfernen" : "Zur Merkliste"}
+      aria-label={active ? t("wishlistRemove") : t("wishlistAdd")}
+      title={active ? t("wishlistRemove") : t("wishlistAdd")}
     >
       <Heart
         size={size === "lg" ? 22 : 18}

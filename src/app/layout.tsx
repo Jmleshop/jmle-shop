@@ -7,6 +7,7 @@ import ConfettiBackground from "@/components/ConfettiBackground";
 import DevicePreviewToggle from "@/components/DevicePreviewToggle";
 import PageViewTracker from "@/components/PageViewTracker";
 import { CartProvider } from "@/context/CartContext";
+import { ShopLocaleProvider } from "@/components/ShopLocale";
 import { WishlistProvider } from "@/context/WishlistContext";
 import AppToaster from "@/components/AppToaster";
 import { getAppUrl } from "@/lib/app-url";
@@ -60,6 +61,7 @@ export default function RootLayout({
         <ConfettiBackground />
         <CartProvider>
           <WishlistProvider>
+            <ShopLocaleProvider>
             <AppToaster />
             <Header />
             <main className="flex-1 pb-20 md:pb-0">{children}</main>
@@ -67,6 +69,7 @@ export default function RootLayout({
             <FooterNav />
             <DevicePreviewToggle />
             <PageViewTracker />
+            </ShopLocaleProvider>
           </WishlistProvider>
         </CartProvider>
       </body>

@@ -5,25 +5,27 @@ import { useState } from "react";
 import { Search, User, ShoppingBag, Menu, X, Heart } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { useShopLocale } from "@/components/ShopLocale";
 import { formatPrice } from "@/lib/catalog";
 import HeaderSearch from "@/components/HeaderSearch";
 
 export default function Header() {
   const { total, itemCount, user } = useCart();
   const { count: wishCount } = useWishlist();
+  const { lang, setLang, t } = useShopLocale();
   const [showSearch, setShowSearch] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: "/", label: "الرئيسية" },
-    { href: "/products", label: "جميع المنتجات" },
-    { href: "/categories", label: "الفئات" },
-    { href: "/wishlist", label: "المفضلة" },
-    { href: "/cart", label: "السلة" },
-    { href: "/search", label: "البحث" },
+    { href: "/", label: t("home") },
+    { href: "/products", label: t("products") },
+    { href: "/categories", label: t("categories") },
+    { href: "/wishlist", label: t("wishlist") },
+    { href: "/cart", label: t("cart") },
+    { href: "/search", label: t("search") },
     {
       href: user ? "/profile" : "/auth/login",
-      label: user ? "الملف الشخصي" : "تسجيل الدخول",
+      label: user ? t("account") : t("login"),
     },
   ];
 
@@ -36,7 +38,7 @@ export default function Header() {
               type="button"
               onClick={() => setMenuOpen(true)}
               className="lg:hidden p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
-              aria-label="القائمة"
+              aria-label={t("menu")}
             >
               <Menu size={24} />
             </button>
@@ -81,6 +83,14 @@ export default function Header() {
               aria-expanded={showSearch}
             >
               <Search size={22} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLang(lang === "ar" ? "de" : "ar")}
+              className="px-2 min-h-11 text-xs font-ui font-semibold text-luxury-charcoal hover:text-gold"
+              aria-label={t("langSwitch")}
+            >
+              {t("langSwitch")}
             </button>
             <Link
               href="/wishlist"
