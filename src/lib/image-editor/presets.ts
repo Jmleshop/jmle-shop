@@ -46,6 +46,40 @@ export const PRESETS: Record<PresetId, Adjustments> = {
     saturation: 8,
     sharpness: 8,
   },
+  frisch: {
+    ...DEFAULT_ADJUSTMENTS,
+    brightness: 8,
+    contrast: 10,
+    temperature: -22,
+    vibrance: 16,
+    foodBoost: 28,
+    saturation: 8,
+    sharpness: 14,
+    labelSharpness: 18,
+  },
+  backwaren: {
+    ...DEFAULT_ADJUSTMENTS,
+    brightness: 6,
+    contrast: 8,
+    temperature: 26,
+    highlights: 10,
+    vibrance: 14,
+    foodBoost: 34,
+    saturation: 10,
+    sharpness: 8,
+  },
+  konserven: {
+    ...DEFAULT_ADJUSTMENTS,
+    contrast: 24,
+    highlights: -8,
+    shadows: -6,
+    blacks: -10,
+    vibrance: 10,
+    saturation: 8,
+    sharpness: 20,
+    labelSharpness: 36,
+    deflare: 28,
+  },
 };
 
 export const PRESET_ORDER: PresetId[] = [
@@ -54,6 +88,9 @@ export const PRESET_ORDER: PresetId[] = [
   "dramatisch",
   "strahlendKalt",
   "strahlendWarm",
+  "frisch",
+  "backwaren",
+  "konserven",
 ];
 
 export function adjustmentsEqual(a: Adjustments, b: Adjustments): boolean {

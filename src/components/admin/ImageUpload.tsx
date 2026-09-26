@@ -7,6 +7,7 @@ import { Upload, X, Star, Crop, Pencil } from "lucide-react";
 import { uploadProductImage } from "@/lib/compress-image";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { copyFor } from "@/lib/image-editor/copy";
+import type { RenderSettings } from "@/lib/image-editor/types";
 
 const ImageEditorModal = dynamic(() => import("@/components/admin/ImageEditorModal"), {
   ssr: false,
@@ -56,6 +57,7 @@ export default function ImageUpload({
   }
   const batchRef = useRef<File[] | null>(null);
   const batchIndexRef = useRef(0);
+  const bulkRef = useRef<RenderSettings | null>(null);
 
   const publish = (next: string[]) => {
     urlsRef.current = next;
@@ -226,8 +228,14 @@ export default function ImageUpload({
           key={session.key}
           source={session.source}
           step={session.step}
+          seed={session.replaceUrl ? null : bulkRef.current}
+          autoExport={Boolean(bulkRef.current) && !session.replaceUrl && batchIndexRef.current > 0}
+          onRemember={(settings) => {
+            bulkRef.current = settings;
+          }}
           onComplete={(file) => void onEditorDone(file)}
           onCancel={() => {
+            bulkRef.current = null;
             setSession(null);
             batchRef.current = null;
           }}

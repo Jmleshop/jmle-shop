@@ -134,6 +134,27 @@ export function squarePlacement(
   return { dx, dy, dw, dh };
 }
 
+/** Bounding-Box nach einer beliebigen Drehung (90°-Schritte plus Wasserwaage). */
+export function straightenedOutputSize(
+  srcW: number,
+  srcH: number,
+  degrees: number,
+  maxEdge: number
+): { width: number; height: number; srcDrawW: number; srcDrawH: number } {
+  const scale = maxEdge / Math.max(1, srcW, srcH);
+  const srcDrawW = srcW * scale;
+  const srcDrawH = srcH * scale;
+  const rad = (degrees * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  return {
+    width: Math.max(1, Math.round(srcDrawW * cos + srcDrawH * sin)),
+    height: Math.max(1, Math.round(srcDrawW * sin + srcDrawH * cos)),
+    srcDrawW,
+    srcDrawH,
+  };
+}
+
 export function transformedOutputSize(
   srcW: number,
   srcH: number,

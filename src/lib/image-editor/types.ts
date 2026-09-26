@@ -11,6 +11,18 @@ export type Adjustments = {
   saturation: number;
   sharpness: number;
   noiseReduction: number;
+  /** Gezieltes Nachschärfen von Kanten (Etikettentext). */
+  labelSharpness: number;
+  /** Hebt Rot, Gelb und Grün an. */
+  foodBoost: number;
+  /** Dämpft ausgebrannte Reflexionen. */
+  deflare: number;
+  /** Weicher Glanzpunkt. */
+  specular: number;
+  /** Spiegelt die Hälften ineinander (Gläser, Flaschen). */
+  symmetry: number;
+  /** Alpha-Schwelle des Freistellers, 0 = aus. */
+  alphaThreshold: number;
 };
 
 export const DEFAULT_ADJUSTMENTS: Adjustments = {
@@ -26,9 +38,21 @@ export const DEFAULT_ADJUSTMENTS: Adjustments = {
   saturation: 0,
   sharpness: 0,
   noiseReduction: 0,
+  labelSharpness: 0,
+  foodBoost: 0,
+  deflare: 0,
+  specular: 0,
+  symmetry: 0,
+  alphaThreshold: 0,
 };
 
-export type BackgroundMode = "white" | "transparent";
+export type BackgroundMode = "white" | "transparent" | "color";
+
+export type ShadowMode = "none" | "drop" | "contact" | "both";
+
+export type StudioBackground = "none" | "neutral" | "marble" | "wood";
+
+export type HealSpot = { x: number; y: number; r: number };
 
 export type QuarterTurn = 0 | 90 | 180 | 270;
 
@@ -47,6 +71,13 @@ export type RenderSettings = {
   flipV: boolean;
   crop: NormRect;
   background: BackgroundMode;
+  straighten?: number;
+  shadow?: ShadowMode;
+  backgroundColor?: string;
+  watermark?: boolean;
+  studio?: StudioBackground;
+  margin?: boolean;
+  heal?: HealSpot[];
 };
 
 export const EXPORT_SIZE = 1400;
@@ -56,4 +87,7 @@ export type PresetId =
   | "strahlend"
   | "dramatisch"
   | "strahlendKalt"
-  | "strahlendWarm";
+  | "strahlendWarm"
+  | "frisch"
+  | "backwaren"
+  | "konserven";

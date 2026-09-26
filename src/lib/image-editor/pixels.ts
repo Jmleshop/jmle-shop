@@ -1,5 +1,12 @@
 import { isNeutralAdjustments } from "./presets";
-import type { Adjustments } from "./types";
+import {
+  applyAlphaThreshold,
+  applyLabelSharpen,
+  applySpecular,
+  applySymmetry,
+  healSpots,
+} from "./studio";
+import type { Adjustments, HealSpot } from "./types";
 
 function clampByte(value: number): number {
   if (value < 0) return 0;
@@ -127,7 +134,9 @@ function applyColor(data: Uint8ClampedArray, adjustments: Adjustments) {
   const temperature = adjustments.temperature / 100;
   const vibrance = adjustments.vibrance / 100;
   const saturation = adjustments.saturation / 100;
-  const needHsl = hueShift !== 0 || vibrance !== 0 || saturation !== 0;
+  const foodBoost = adjustments.foodBoost / 100;
+  const deflare = adjustments.deflare / 100;
+  const needHsl = hueShift !== 0 || vibrance !== 0 || saturation !== 0 || foodBoost !== 0;
 
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] === 0) continue;
@@ -158,6 +167,13 @@ function applyColor(data: Uint8ClampedArray, adjustments: Adjustments) {
     g = clampUnit(g + tone);
     b = clampUnit(b + tone);
 
+    if (deflare > 0 && lum > 0.8) {
+      const pull = deflare * (lum - 0.75) * 0.9;
+      r = clampUnit(r - pull);
+      g = clampUnit(g - pull * 0.85);
+      b = clampUnit(b - pull * 0.7);
+    }
+
     if (needHsl) {
       let [h, s, l] = rgbToHsl(r, g, b);
       h += hueShift;
@@ -166,6 +182,11 @@ function applyColor(data: Uint8ClampedArray, adjustments: Adjustments) {
       if (vibrance !== 0) s = clampUnit(s + vibrance * (1 - s) * 0.9);
       if (saturation !== 0) {
         s = clampUnit(s + saturation * (saturation > 0 ? 1 - s : s));
+      }
+      if (foodBoost > 0) {
+        const deg = h * 360;
+        const foodHue = deg <= 70 || deg >= 330 || (deg >= 80 && deg <= 160);
+        if (foodHue) s = clampUnit(s + foodBoost * (1 - s) * 0.85);
       }
       [r, g, b] = hslToRgb(h, s, l);
     }
@@ -214,7 +235,9 @@ export function applyAdjustments(
     adjustments.hue === 0 &&
     adjustments.temperature === 0 &&
     adjustments.vibrance === 0 &&
-    adjustments.saturation === 0;
+    adjustments.saturation === 0 &&
+    adjustments.foodBoost === 0 &&
+    adjustments.deflare === 0;
 
   if (!colorNeutral) applyColor(data, adjustments);
 
@@ -228,6 +251,28 @@ export function applyAdjustments(
     const blurred = boxBlurRgb(data, width, height, 1);
     blendRgb(data, blurred, adjustments.sharpness / 100, "sharpen");
   }
+
+  if (adjustments.labelSharpness > 0) {
+    applyLabelSharpen(data, width, height, adjustments.labelSharpness / 100);
+  }
+  if (adjustments.symmetry > 0) {
+    applySymmetry(data, width, height, adjustments.symmetry / 100);
+  }
+  if (adjustments.specular > 0) {
+    applySpecular(data, width, height, adjustments.specular / 100);
+  }
+  if (adjustments.alphaThreshold > 0) {
+    applyAlphaThreshold(data, adjustments.alphaThreshold / 100);
+  }
+}
+
+export function applyHealSpots(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  spots: HealSpot[]
+): void {
+  if (spots.length) healSpots(data, width, height, spots);
 }
 
 export function hasAnyAdjustment(adjustments: Adjustments): boolean {

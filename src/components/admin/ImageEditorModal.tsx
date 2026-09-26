@@ -17,6 +17,7 @@ import { useAdminI18n } from "@/components/admin/AdminI18n";
 import CropOverlay from "@/components/admin/image-editor/CropOverlay";
 import { Button } from "@/components/ui";
 import { suggestEnhance } from "@/lib/image-editor/auto-enhance";
+import { consistencyVerdict, meanLuminance, smartBounds, suggestTemperature } from "@/lib/image-editor/studio";
 import { PRESET_LABELS, copyFor, type EditorCopy } from "@/lib/image-editor/copy";
 import {
   fitCrop,
@@ -43,12 +44,16 @@ import {
   type Adjustments,
   type BackgroundMode,
   type CropAspectId,
+  type HealSpot,
   type NormRect,
   type PresetId,
   type QuarterTurn,
+  type RenderSettings,
+  type ShadowMode,
+  type StudioBackground,
 } from "@/lib/image-editor/types";
 
-type TabId = "ai" | "adjust" | "crop";
+type TabId = "ai" | "adjust" | "crop" | "studio";
 type Busy = "bg" | "save" | null;
 
 const CHECKER: CSSProperties = {
@@ -105,11 +110,17 @@ export default function ImageEditorModal({
   step,
   onComplete,
   onCancel,
+  seed,
+  autoExport = false,
+  onRemember,
 }: {
   source: File | string;
   step?: { current: number; total: number };
   onComplete: (file: File) => void;
   onCancel: () => void;
+  seed?: RenderSettings | null;
+  autoExport?: boolean;
+  onRemember?: (settings: RenderSettings) => void;
 }) {
   const { lang } = useAdminI18n();
   const copy = copyFor(lang);
@@ -129,9 +140,26 @@ export default function ImageEditorModal({
   const [crop, setCrop] = useState<NormRect>(FULL_FRAME);
   const [aspectId, setAspectId] = useState<CropAspectId>("original");
   const [background, setBackground] = useState<BackgroundMode>("white");
+  const [zoom, setZoom] = useState(1);
+  const [straighten, setStraighten] = useState(0);
+  const [shadow, setShadow] = useState<ShadowMode>("none");
+  const [backgroundColor, setBackgroundColor] = useState("#f8f9fa");
+  const [watermark, setWatermark] = useState(false);
+  const [studio, setStudio] = useState<StudioBackground>("none");
+  const [margin, setMargin] = useState(true);
+  const [heal, setHeal] = useState<HealSpot[]>([]);
+  const [healOn, setHealOn] = useState(false);
+  const [comparing, setComparing] = useState(false);
+  const [bulkApply, setBulkApply] = useState(false);
+  const [consistency, setConsistency] = useState("");
   const [filterTick, setFilterTick] = useState(0);
 
   const bitmapRef = useRef<ImageBitmap | null>(null);
+  const undoRef = useRef<() => void>(() => {});
+  const redoRef = useRef<() => void>(() => {});
+  const histRef = useRef<RenderSettings[]>([]);
+  const histIndex = useRef(-1);
+  const applyingHist = useRef(false);
   const originalBlobRef = useRef<Blob | null>(null);
   const filteredRef = useRef<HTMLCanvasElement | null>(null);
   const squareRef = useRef<HTMLCanvasElement>(null);
@@ -173,6 +201,17 @@ export default function ImageEditorModal({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onCancel();
+      const meta = event.metaKey || event.ctrlKey;
+      if (!meta) return;
+      const key = event.key.toLowerCase();
+      if (key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redoRef.current();
+        else undoRef.current();
+      } else if (key === "y") {
+        event.preventDefault();
+        redoRef.current();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -203,6 +242,21 @@ export default function ImageEditorModal({
           return;
         }
         replaceBitmap(next);
+        if (seed) {
+          if (seed.adjustments) setAdjustments(seed.adjustments);
+          setRotation(seed.rotation);
+          setFlipH(seed.flipH);
+          setFlipV(seed.flipV);
+          setCrop(seed.crop);
+          setBackground(seed.background);
+          setStraighten(seed.straighten ?? 0);
+          setShadow(seed.shadow ?? "none");
+          setBackgroundColor(seed.backgroundColor ?? "#f8f9fa");
+          setWatermark(Boolean(seed.watermark));
+          setStudio(seed.studio ?? "none");
+          setMargin(seed.margin !== false);
+          setHeal(seed.heal ?? []);
+        }
         setPhase("ready");
       } catch {
         if (!cancelled) {
@@ -215,18 +269,44 @@ export default function ImageEditorModal({
     return () => {
       cancelled = true;
     };
-  }, [source, copy.loadError]);
+  }, [source, copy.loadError, seed]);
+
+  const activeAdjustments = comparing ? DEFAULT_ADJUSTMENTS : adjustments;
+  const squareSettings = {
+    crop,
+    background: comparing ? ("white" as const) : background,
+    shadow: comparing ? ("none" as const) : shadow,
+    backgroundColor,
+    watermark: comparing ? false : watermark,
+    studio: comparing ? ("none" as const) : studio,
+    margin,
+  };
 
   useEffect(() => {
     if (!bitmap) return;
     const filtered = renderFilteredCanvas(
       bitmap,
-      { adjustments, rotation, flipH, flipV },
+      {
+        adjustments: activeAdjustments,
+        rotation,
+        flipH,
+        flipV,
+        straighten: comparing ? 0 : straighten,
+        heal: comparing ? [] : heal,
+        crop,
+        background,
+      },
       PREVIEW_EDGE
     );
     filteredRef.current = filtered;
+    const ctx = filtered.getContext("2d", { willReadFrequently: true });
+    if (ctx && !comparing) {
+      const sample = ctx.getImageData(0, 0, filtered.width, filtered.height);
+      const score = consistencyVerdict(meanLuminance(sample.data), straighten);
+      setConsistency(lang === "ar" ? score.labelAr : score.labelDe);
+    }
     setFilterTick((tick) => tick + 1);
-  }, [bitmap, adjustments, rotation, flipH, flipV]);
+  }, [bitmap, activeAdjustments, rotation, flipH, flipV, straighten, heal, comparing, lang]);
 
   useEffect(() => {
     const filtered = filteredRef.current;
@@ -234,10 +314,12 @@ export default function ImageEditorModal({
     const cropView = cropViewRef.current;
     const mini = miniRef.current;
     if (!filtered || !square || !cropView || !mini) return;
-    blitCanvas(square, renderSquareCanvas(filtered, { crop, background }, 720));
+    blitCanvas(square, renderSquareCanvas(filtered, squareSettings, 720));
     blitCanvas(cropView, filtered);
-    blitCanvas(mini, renderSquareCanvas(filtered, { crop, background }, 144));
-  }, [filterTick, crop, background]);
+    blitCanvas(mini, renderSquareCanvas(filtered, squareSettings, 144));
+    // squareSettings is rebuilt each render; the listed fields are the real inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterTick, crop, background, shadow, backgroundColor, watermark, studio, margin, comparing]);
 
   const imageAspect = bitmap ? orientedAspect(bitmap.width, bitmap.height, rotation) : 1;
   const lockedPixel = pixelAspectFor(aspectId, imageAspect);
@@ -311,25 +393,135 @@ export default function ImageEditorModal({
     }
   };
 
+  const applySettings = (settings: RenderSettings) => {
+    applyingHist.current = true;
+    setAdjustments(settings.adjustments);
+    setRotation(settings.rotation);
+    setFlipH(settings.flipH);
+    setFlipV(settings.flipV);
+    setCrop(settings.crop);
+    setBackground(settings.background);
+    setStraighten(settings.straighten ?? 0);
+    setShadow(settings.shadow ?? "none");
+    setBackgroundColor(settings.backgroundColor ?? "#f8f9fa");
+    setWatermark(Boolean(settings.watermark));
+    setStudio(settings.studio ?? "none");
+    setMargin(settings.margin !== false);
+    setHeal(settings.heal ?? []);
+  };
+
+  const currentSettings = (): RenderSettings => ({
+    adjustments,
+    rotation,
+    flipH,
+    flipV,
+    crop,
+    background,
+    straighten,
+    shadow,
+    backgroundColor,
+    watermark,
+    studio,
+    margin,
+    heal,
+  });
+
+  useEffect(() => {
+    if (phase !== "ready") return;
+    if (applyingHist.current) {
+      applyingHist.current = false;
+      return;
+    }
+    const snap = currentSettings();
+    const prev = histRef.current[histIndex.current];
+    if (prev && JSON.stringify(prev) === JSON.stringify(snap)) return;
+    histRef.current = histRef.current.slice(0, histIndex.current + 1);
+    histRef.current.push(snap);
+    if (histRef.current.length > 40) histRef.current.shift();
+    histIndex.current = histRef.current.length - 1;
+  });
+
+  undoRef.current = () => {
+    if (histIndex.current <= 0) return;
+    histIndex.current -= 1;
+    applySettings(histRef.current[histIndex.current]);
+  };
+  redoRef.current = () => {
+    if (histIndex.current >= histRef.current.length - 1) return;
+    histIndex.current += 1;
+    applySettings(histRef.current[histIndex.current]);
+  };
+
   const onSave = async () => {
     if (!bitmap || busy) return;
     setBusy("save");
     setError("");
     try {
-      const file = await exportProductImage(bitmap, {
-        adjustments,
-        rotation,
-        flipH,
-        flipV,
-        crop,
-        background,
-      });
+      const settings = currentSettings();
+      if (bulkApply) onRemember?.(settings);
+      const file = await exportProductImage(bitmap, settings);
+      try {
+        sessionStorage.setItem("jmle-editor-peer-luma", consistency);
+      } catch {
+        /* private mode */
+      }
       onComplete(file);
     } catch (cause) {
       console.error(cause);
       setError(cause instanceof Error ? cause.message : copy.bgError);
       setBusy(null);
     }
+  };
+
+  const autoOnce = useRef(false);
+  useEffect(() => {
+    if (phase !== "ready" || !autoExport || autoOnce.current || busy) return;
+    autoOnce.current = true;
+    void onSave();
+  }, [phase, autoExport, busy]);
+
+  const onWhiteBalance = () => {
+    if (!bitmap) return;
+    const neutral = renderFilteredCanvas(
+      bitmap,
+      { adjustments: DEFAULT_ADJUSTMENTS, rotation, flipH, flipV, crop, background },
+      480
+    );
+    const ctx = neutral.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    const pixels = ctx.getImageData(0, 0, neutral.width, neutral.height);
+    setAdjustments((current) => ({
+      ...current,
+      temperature: suggestTemperature(pixels.data),
+    }));
+  };
+
+  const onSmartCrop = () => {
+    const filtered = filteredRef.current;
+    if (!filtered) return;
+    const ctx = filtered.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    const pixels = ctx.getImageData(0, 0, filtered.width, filtered.height);
+    const rect = smartBounds(pixels.data, filtered.width, filtered.height);
+    if (!rect) return;
+    setAspectId("free");
+    setCrop(rect);
+  };
+
+  const resetOriginal = () => {
+    setAdjustments(DEFAULT_ADJUSTMENTS);
+    setRotation(0);
+    setFlipH(false);
+    setFlipV(false);
+    setCrop(FULL_FRAME);
+    setAspectId("original");
+    setStraighten(0);
+    setShadow("none");
+    setWatermark(false);
+    setStudio("none");
+    setHeal([]);
+    setBackground("white");
+    void onRestoreBackground();
   };
 
   const activePreset = PRESET_ORDER.find((id) =>
@@ -349,7 +541,7 @@ export default function ImageEditorModal({
       aria-label={copy.title}
       dir={lang === "ar" ? "rtl" : "ltr"}
     >
-      <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-2xl">
+      <div className="flex h-[100dvh] max-h-[85vh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-w-5xl sm:rounded-2xl">
         <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">{title}</h2>
@@ -381,9 +573,25 @@ export default function ImageEditorModal({
             )}
             <canvas
               ref={squareRef}
+              onClick={(event) => {
+                if (!healOn || !squareRef.current) return;
+                const bounds = squareRef.current.getBoundingClientRect();
+                const px = ((event.clientX - bounds.left) / bounds.width) * squareRef.current.width;
+                const py = ((event.clientY - bounds.top) / bounds.height) * squareRef.current.height;
+                const inner = margin ? squareRef.current.width * 0.8 : squareRef.current.width;
+                const origin = (squareRef.current.width - inner) / 2;
+                const nx = (px - origin) / inner;
+                const ny = (py - origin) / inner;
+                if (nx < 0 || ny < 0 || nx > 1 || ny > 1) return;
+                setHeal((spots) => [
+                  ...spots,
+                  { x: crop.x + nx * crop.w, y: crop.y + ny * crop.h, r: 0.03 },
+                ]);
+              }}
+              style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
               className={
                 phase === "ready" && tab !== "crop"
-                  ? "aspect-square h-auto w-full max-w-[min(100%,640px)]"
+                  ? "aspect-square h-auto w-full max-w-[min(100%,640px)] cursor-crosshair"
                   : "hidden"
               }
             />
@@ -420,6 +628,7 @@ export default function ImageEditorModal({
                   ["ai", copy.tabAi],
                   ["adjust", copy.tabAdjust],
                   ["crop", copy.tabCrop],
+                  ["studio", copy.tabStudio],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -481,6 +690,25 @@ export default function ImageEditorModal({
                   >
                     {copy.autoEnhance}
                   </Button>
+                  <Button type="button" size="sm" variant="ghost" fullWidth disabled={phase !== "ready"} onClick={onWhiteBalance}>
+                    {copy.whiteBalance}
+                  </Button>
+                  <SliderField
+                    label={copy.threshold}
+                    min={0}
+                    max={100}
+                    value={adjustments.alphaThreshold}
+                    disabled={phase !== "ready"}
+                    onChange={(value) => setSlider("alphaThreshold", value)}
+                  />
+                  <SliderField
+                    label={copy.symmetry}
+                    min={0}
+                    max={100}
+                    value={adjustments.symmetry}
+                    disabled={phase !== "ready"}
+                    onChange={(value) => setSlider("symmetry", value)}
+                  />
                   <BackgroundToggle
                     copy={copy}
                     value={background}
@@ -595,6 +823,87 @@ export default function ImageEditorModal({
                     disabled={phase !== "ready"}
                     onChange={setBackground}
                   />
+                  <Button type="button" size="sm" variant="ghost" fullWidth disabled={phase !== "ready"} onClick={onSmartCrop}>
+                    {copy.smartCrop}
+                  </Button>
+                  <SliderField
+                    label={copy.straighten}
+                    min={-45}
+                    max={45}
+                    value={straighten}
+                    disabled={phase !== "ready"}
+                    onChange={setStraighten}
+                  />
+                </div>
+              )}
+
+              {tab === "studio" && (
+                <div className="space-y-3">
+                  <p className={`text-xs ${consistency.includes("passen") || consistency.includes("مناسب") ? "text-emerald-700" : "text-amber-700"}`}>
+                    {consistency || "…"}
+                  </p>
+                  <SliderField label={copy.zoom} min={1} max={3} value={zoom} disabled={phase !== "ready"} onChange={setZoom} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        ["none", "—"],
+                        ["neutral", copy.studioNeutral],
+                        ["marble", copy.studioMarble],
+                        ["wood", copy.studioWood],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-pressed={studio === id}
+                        onClick={() => setStudio(id)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] ${studio === id ? "border-gold bg-gold text-white" : "border-gray-200"}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex items-center justify-between gap-2 text-xs">
+                    {copy.brandColor}
+                    <input type="color" value={backgroundColor} onChange={(event) => { setBackgroundColor(event.target.value); setBackground("color"); setStudio("none"); }} />
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        ["none", "—"],
+                        ["drop", copy.shadowDrop],
+                        ["contact", copy.shadowContact],
+                        ["both", "Beide"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button key={id} type="button" aria-pressed={shadow === id} onClick={() => setShadow(id)} className={`rounded-full border px-2.5 py-1 text-[11px] ${shadow === id ? "border-gold bg-gold text-white" : "border-gray-200"}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <SliderField label={copy.specular} min={0} max={100} value={adjustments.specular} disabled={phase !== "ready"} onChange={(value) => setSlider("specular", value)} />
+                  <SliderField label={copy.deflare} min={0} max={100} value={adjustments.deflare} disabled={phase !== "ready"} onChange={(value) => setSlider("deflare", value)} />
+                  <SliderField label={copy.labelSharp} min={0} max={100} value={adjustments.labelSharpness} disabled={phase !== "ready"} onChange={(value) => setSlider("labelSharpness", value)} />
+                  <SliderField label={copy.foodBoost} min={0} max={100} value={adjustments.foodBoost} disabled={phase !== "ready"} onChange={(value) => setSlider("foodBoost", value)} />
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={watermark} onChange={(event) => setWatermark(event.target.checked)} />
+                    {copy.watermark}
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={margin} onChange={(event) => setMargin(event.target.checked)} />
+                    {copy.margin}
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={healOn} onChange={(event) => setHealOn(event.target.checked)} />
+                    {copy.heal}
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={bulkApply} onChange={(event) => setBulkApply(event.target.checked)} />
+                    {copy.bulkApply}
+                  </label>
+                  <Button type="button" size="sm" variant="ghost" fullWidth onClick={resetOriginal}>
+                    {copy.resetOriginal}
+                  </Button>
                 </div>
               )}
             </div>
@@ -609,6 +918,24 @@ export default function ImageEditorModal({
             aria-hidden
           />
           <div className="flex flex-1 flex-wrap gap-1">
+            <IconAction label={copy.undo} disabled={phase !== "ready" || busy !== null} onClick={() => undoRef.current()}>
+              <Undo2 size={16} />
+            </IconAction>
+            <IconAction label={copy.redo} disabled={phase !== "ready" || busy !== null} onClick={() => redoRef.current()}>
+              <RotateCw size={16} className="scale-x-[-1]" />
+            </IconAction>
+            <button
+              type="button"
+              title={copy.compare}
+              aria-label={copy.compare}
+              disabled={phase !== "ready"}
+              onPointerDown={() => setComparing(true)}
+              onPointerUp={() => setComparing(false)}
+              onPointerLeave={() => setComparing(false)}
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 px-2 text-[10px] font-semibold text-gray-700"
+            >
+              {comparing ? "Nachher" : "Vorher"}
+            </button>
             <IconAction
               label={copy.flipH}
               disabled={phase !== "ready" || busy !== null}

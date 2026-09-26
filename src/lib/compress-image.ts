@@ -13,11 +13,11 @@ export async function compressImageFile(
   const png = mime === "image/png";
   try {
     const compressed = await imageCompression(file, {
-      maxSizeMB: png ? 1.4 : 0.65,
+      maxSizeMB: 0.19,
       maxWidthOrHeight: maxWidth,
       useWebWorker: true,
       fileType: mime,
-      initialQuality: png ? 0.92 : 0.85,
+      initialQuality: png ? 0.86 : 0.8,
     });
     const name = file.name.replace(/\.\w+$/, `.${ext}`);
     return new File([compressed], name, { type: mime });

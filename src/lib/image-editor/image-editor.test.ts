@@ -11,6 +11,7 @@ import {
   transformedOutputSize,
 } from "./geometry";
 import { applyAdjustments } from "./pixels";
+import { applySymmetry, smartBounds, suggestTemperature } from "./studio";
 import { PRESETS, isNeutralAdjustments } from "./presets";
 import { DEFAULT_ADJUSTMENTS } from "./types";
 
@@ -148,5 +149,37 @@ describe("auto enhance", () => {
     assert.ok(next.contrast > 0);
     assert.ok(next.vibrance > 0);
     assert.ok(next.sharpness > 0);
+  });
+});
+
+describe("studio tools", () => {
+  it("mirrors a pixel when symmetry is full", () => {
+    const data = solid(4, 1, [0, 0, 0, 255]);
+    data[0] = 255;
+    applySymmetry(data, 4, 1, 1);
+    assert.equal(data[0], 128);
+    assert.equal(data[(4 - 1) * 4], 128);
+  });
+
+  it("cools a yellow cast", () => {
+    const data = solid(2, 2, [220, 180, 80, 255]);
+    assert.ok(suggestTemperature(data) < 0);
+  });
+
+  it("finds the opaque product instead of the frame", () => {
+    const data = solid(10, 10, [0, 0, 0, 0]);
+    for (let y = 3; y <= 6; y++) {
+      for (let x = 4; x <= 7; x++) {
+        const i = (y * 10 + x) * 4;
+        data[i] = 200;
+        data[i + 1] = 40;
+        data[i + 2] = 20;
+        data[i + 3] = 255;
+      }
+    }
+    const rect = smartBounds(data, 10, 10);
+    assert.ok(rect);
+    assert.ok(rect.x < 0.5);
+    assert.ok(rect.w < 1);
   });
 });
