@@ -21,12 +21,12 @@ function OfferCard({ product }: { product: Product }) {
       aria-label={product.name}
     >
       <div className="card-boutique overflow-hidden transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
-        <div className="relative aspect-square overflow-hidden bg-jmle-warm">
+        <div className="relative aspect-square overflow-hidden bg-white flex items-center justify-center">
           <Image
             src={product.image}
             alt={product.name}
             fill
-            className="object-cover transition-transform duration-500 ease-boutique group-hover:scale-105"
+            className="object-contain p-3 transition-transform duration-500 ease-boutique group-hover:scale-105"
             sizes="(max-width: 640px) 70vw, (max-width: 1024px) 31vw, 23vw"
           />
           <div className="absolute top-2 start-2">

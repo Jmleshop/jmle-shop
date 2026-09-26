@@ -64,12 +64,12 @@ export default function ProductCard({ product }: ProductCardProps) {
       }`}
     >
       <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40">
-        <div className="relative aspect-square overflow-hidden bg-jmle-warm">
+        <div className="relative aspect-square overflow-hidden bg-white flex items-center justify-center">
           <Image
             src={product.image}
             alt={product.name}
             fill
-            className="object-cover transition-transform duration-500 ease-boutique group-hover:scale-105"
+            className="object-contain p-3 transition-transform duration-500 ease-boutique group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           />
           <div className="absolute inset-x-0 top-0 p-2 flex gap-1.5 justify-between items-start">

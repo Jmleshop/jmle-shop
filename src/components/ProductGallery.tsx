@@ -43,7 +43,7 @@ export default function ProductGallery({
   return (
     <div
       className={cn(
-        "relative aspect-square bg-jmle-warm overflow-hidden rounded-2xl border border-amber-200/40 shadow-boutique select-none touch-pan-y",
+        "relative aspect-square bg-white overflow-hidden rounded-2xl border border-amber-200/40 shadow-boutique select-none touch-pan-y",
         dimmed && "opacity-60"
       )}
       onTouchStart={(e) => {
@@ -76,12 +76,12 @@ export default function ProductGallery({
         style={{ transform: `translateX(-${index * 100}%)` }}
       >
         {slides.map((src, i) => (
-          <div key={`${src}-${i}`} className="relative min-w-full h-full">
+          <div key={`${src}-${i}`} className="relative min-w-full h-full flex items-center justify-center">
             <Image
               src={src}
               alt={i === index ? alt : ""}
               fill
-              className="object-cover"
+              className="object-contain p-4"
               sizes="(max-width: 768px) 100vw, 50vw"
               draggable={false}
             />
