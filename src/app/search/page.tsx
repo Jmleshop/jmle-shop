@@ -4,6 +4,7 @@ import {
   searchProductsAsync,
 } from "@/lib/catalog-server";
 import { ProductGrid } from "@/components/ProductCard";
+import { ShopHeading } from "@/components/ShopText";
 
 export const dynamic = "force-dynamic";
 
@@ -35,18 +36,25 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-      <h1 className="font-display text-3xl mb-2 tracking-wide">
-        {query ? `نتائج البحث: «${q}»` : "البحث"}
-      </h1>
-      <p className="text-gray-500 text-sm mb-8 font-ui">
-        {results.length} {results.length === 1 ? "منتج" : "منتجات"}
-      </p>
+      {query ? (
+        <ShopHeading
+          k="searchResults"
+          vars={{ query }}
+          className="font-display text-3xl mb-2 tracking-wide"
+        />
+      ) : (
+        <ShopHeading k="search" className="font-display text-3xl mb-2 tracking-wide" />
+      )}
+      <ShopHeading
+        as="p"
+        k="productCount"
+        vars={{ count: results.length }}
+        className="text-gray-500 text-sm mb-8 font-ui"
+      />
       {results.length > 0 ? (
         <ProductGrid products={results} />
       ) : (
-        <p className="text-center text-gray-400 py-12 font-ui">
-          لم يتم العثور على منتجات
-        </p>
+        <ShopHeading as="p" k="searchEmpty" className="text-center text-gray-400 py-12 font-ui" />
       )}
     </div>
   );

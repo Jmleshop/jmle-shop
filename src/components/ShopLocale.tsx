@@ -16,7 +16,7 @@ const STORAGE_KEY = "jmle-shop-lang";
 const Ctx = createContext<{
   lang: ShopLang;
   setLang: (lang: ShopLang) => void;
-  t: (key: ShopMsgKey) => string;
+  t: (key: ShopMsgKey, vars?: Record<string, string | number>) => string;
 } | null>(null);
 
 export function ShopLocaleProvider({ children }: { children: ReactNode }) {
@@ -43,7 +43,8 @@ export function ShopLocaleProvider({ children }: { children: ReactNode }) {
     () => ({
       lang,
       setLang,
-      t: (key: ShopMsgKey) => shopText(lang, key),
+      t: (key: ShopMsgKey, vars?: Record<string, string | number>) =>
+        shopText(lang, key, vars),
     }),
     [lang]
   );

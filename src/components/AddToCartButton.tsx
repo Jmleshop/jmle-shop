@@ -5,6 +5,7 @@ import { ShoppingBag, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { maxBuyQuantity } from "@/lib/pricing";
 import { Button } from "@/components/ui";
+import { useShopLocale } from "@/components/ShopLocale";
 
 export default function AddToCartButton({
   productId,
@@ -16,6 +17,7 @@ export default function AddToCartButton({
   maxOrderQuantity: number | null;
 }) {
   const { addItem } = useCart();
+  const { t } = useShopLocale();
   const [added, setAdded] = useState(false);
   const max = maxBuyQuantity(stock, maxOrderQuantity);
   const options = useMemo(
@@ -32,7 +34,7 @@ export default function AddToCartButton({
   if (stock <= 0 || max < 1) {
     return (
       <p className="text-center md:text-start font-ui font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-xl py-3.5 px-4 min-h-12">
-        نفذ من المخزون · Ausverkauft
+        {t("outOfStock")}
       </p>
     );
   }
@@ -46,12 +48,12 @@ export default function AddToCartButton({
   return (
     <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
       <label className="text-sm text-gray-600 font-ui flex items-center gap-2 min-h-12">
-        الكمية
+        {t("qtyLabel")}
         <select
           value={Math.min(qty, max)}
           onChange={(e) => setQty(Number(e.target.value))}
           className="input-field py-2 w-24 min-h-12"
-          aria-label="الكمية"
+          aria-label={t("qtyLabel")}
         >
           {options.map((n) => (
             <option key={n} value={n}>
@@ -73,7 +75,7 @@ export default function AddToCartButton({
           added ? <Check size={18} aria-hidden /> : <ShoppingBag size={18} aria-hidden />
         }
       >
-        {added ? "تمت الإضافة" : "أضف للسلة"}
+        {added ? t("added") : t("addToCart")}
       </Button>
     </div>
   );

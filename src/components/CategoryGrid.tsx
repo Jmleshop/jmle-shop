@@ -1,12 +1,19 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import type { Category } from "@/types";
+import { useShopLocale } from "@/components/ShopLocale";
+import { categoryTitle, type ShopMsgKey } from "@/lib/shop-i18n";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 interface CategoryTileProps {
   category: Category;
 }
 
 export function CategoryTile({ category }: CategoryTileProps) {
+  const { lang } = useShopLocale();
+  const title = categoryTitle(lang, category);
   return (
     <Link
       href={`/categories/${category.id}`}
@@ -19,16 +26,17 @@ export function CategoryTile({ category }: CategoryTileProps) {
         />
         <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-gold-sm transition-transform duration-300 ease-boutique group-hover:scale-105 group-hover:-translate-y-1">
           <Image
-            src={category.image}
-            alt={category.name}
+            src={originalImageSrc(category.image)}
+            alt={title}
             fill
+            quality={SHOP_IMAGE_QUALITY}
             className="object-cover"
             sizes="128px"
           />
         </div>
       </div>
       <span className="font-ui text-xs sm:text-sm font-medium text-luxury-charcoal group-hover:text-gold transition-colors text-center leading-snug">
-        {category.name}
+        {title}
       </span>
     </Link>
   );
@@ -37,13 +45,16 @@ export function CategoryTile({ category }: CategoryTileProps) {
 interface CategoryGridProps {
   categories: Category[];
   title?: string;
+  titleKey?: Extract<ShopMsgKey, "shopByCategory" | "subcategories">;
 }
 
-export default function CategoryGrid({ categories, title }: CategoryGridProps) {
+export default function CategoryGrid({ categories, title, titleKey }: CategoryGridProps) {
+  const { t } = useShopLocale();
+  const heading = titleKey ? t(titleKey) : (title ?? t("shopByCategory"));
   return (
     <section className="py-12 md:py-16 px-4 md:px-8">
       <div className="text-center mb-10">
-        <h2 className="section-title">{title ?? "تسوق على حسب الفئة"}</h2>
+        <h2 className="section-title">{heading}</h2>
         <div className="gold-divider" aria-hidden />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 md:gap-6 max-w-5xl mx-auto">

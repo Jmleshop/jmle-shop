@@ -80,7 +80,11 @@ export type RenderSettings = {
   heal?: HealSpot[];
 };
 
-export const EXPORT_SIZE = 1400;
+/** Square export cap. Sources smaller than this are not upscaled. */
+export const EXPORT_SIZE = 2000;
+
+/** Shorter edge below this triggers the low-resolution warning in the editor. */
+export const MIN_SOURCE_EDGE = 800;
 
 export type PresetId =
   | "original"

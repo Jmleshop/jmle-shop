@@ -41,6 +41,7 @@ import {
 import {
   DEFAULT_ADJUSTMENTS,
   FULL_FRAME,
+  MIN_SOURCE_EDGE,
   type Adjustments,
   type BackgroundMode,
   type CropAspectId,
@@ -153,6 +154,7 @@ export default function ImageEditorModal({
   const [bulkApply, setBulkApply] = useState(false);
   const [consistency, setConsistency] = useState("");
   const [filterTick, setFilterTick] = useState(0);
+  const [lowRes, setLowRes] = useState<"pending" | "ask" | "ok">("pending");
 
   const bitmapRef = useRef<ImageBitmap | null>(null);
   const undoRef = useRef<() => void>(() => {});
@@ -230,6 +232,8 @@ export default function ImageEditorModal({
     setAspectId("original");
     setBackground("white");
     setTab("adjust");
+    setLowRes("pending");
+    setMargin(true);
 
     void (async () => {
       try {
@@ -256,7 +260,32 @@ export default function ImageEditorModal({
           setStudio(seed.studio ?? "none");
           setMargin(seed.margin !== false);
           setHeal(seed.heal ?? []);
+        } else {
+          setAspectId("square");
+          setMargin(true);
+          setBackground("white");
+          try {
+            const preview = renderFilteredCanvas(
+              next,
+              {
+                adjustments: DEFAULT_ADJUSTMENTS,
+                rotation: 0,
+                flipH: false,
+                flipV: false,
+              },
+              Math.min(1600, Math.max(next.width, next.height))
+            );
+            const ctx = preview.getContext("2d", { willReadFrequently: true });
+            if (ctx) {
+              const pixels = ctx.getImageData(0, 0, preview.width, preview.height);
+              const bounds = smartBounds(pixels.data, preview.width, preview.height, 0);
+              if (bounds) setCrop(bounds);
+            }
+          } catch {
+            /* full frame stays */
+          }
         }
+        setLowRes(Math.min(next.width, next.height) < MIN_SOURCE_EDGE ? "ask" : "ok");
         setPhase("ready");
       } catch {
         if (!cancelled) {
@@ -475,10 +504,10 @@ export default function ImageEditorModal({
 
   const autoOnce = useRef(false);
   useEffect(() => {
-    if (phase !== "ready" || !autoExport || autoOnce.current || busy) return;
+    if (phase !== "ready" || lowRes !== "ok" || !autoExport || autoOnce.current || busy) return;
     autoOnce.current = true;
     void onSave();
-  }, [phase, autoExport, busy]);
+  }, [phase, autoExport, busy, lowRes]);
 
   const onWhiteBalance = () => {
     if (!bitmap) return;
@@ -541,7 +570,7 @@ export default function ImageEditorModal({
       aria-label={copy.title}
       dir={lang === "ar" ? "rtl" : "ltr"}
     >
-      <div className="flex h-[100dvh] max-h-[85vh] w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-w-5xl sm:rounded-2xl">
+      <div className="relative flex h-[100dvh] max-h-[92vh] w-full max-w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-w-5xl sm:rounded-2xl">
         <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">{title}</h2>
@@ -560,9 +589,9 @@ export default function ImageEditorModal({
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid min-h-0 min-w-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_340px]">
           <div
-            className="relative flex min-h-[240px] items-center justify-center p-4"
+            className="relative flex min-h-0 min-w-0 max-h-[70vh] items-center justify-center overflow-hidden p-4"
             style={CHECKER}
           >
             {phase === "loading" && (
@@ -591,7 +620,7 @@ export default function ImageEditorModal({
               style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
               className={
                 phase === "ready" && tab !== "crop"
-                  ? "aspect-square h-auto w-full max-w-[min(100%,640px)] cursor-crosshair"
+                  ? "aspect-square h-auto max-h-[70vh] w-full max-w-full object-contain cursor-crosshair"
                   : "hidden"
               }
             />
@@ -604,7 +633,7 @@ export default function ImageEditorModal({
             >
               <canvas
                 ref={cropViewRef}
-                className="block h-auto max-h-[52vh] w-auto max-w-full"
+                className="block h-auto max-h-[70vh] w-auto max-w-full object-contain"
               />
               <CropOverlay crop={crop} normRatio={normRatio} onChange={setCrop} />
             </div>
@@ -964,7 +993,7 @@ export default function ImageEditorModal({
           <Button
             type="button"
             size="sm"
-            disabled={phase !== "ready" || busy !== null}
+            disabled={phase !== "ready" || busy !== null || lowRes === "ask"}
             leadingIcon={
               busy === "save" ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />
             }
@@ -973,6 +1002,22 @@ export default function ImageEditorModal({
             {busy === "save" ? copy.applying : copy.apply}
           </Button>
         </footer>
+        {lowRes === "ask" && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center overflow-hidden bg-black/50 p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+              <p className="text-sm font-semibold text-gray-900">{copy.lowResTitle}</p>
+              <p className="mt-2 text-xs leading-relaxed text-gray-600">{copy.lowResBody}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button type="button" size="sm" onClick={() => setLowRes("ok")}>
+                  {copy.lowResContinue}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+                  {copy.lowResCancel}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

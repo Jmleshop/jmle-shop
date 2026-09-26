@@ -125,6 +125,11 @@
   }
 }
 
+.jmle-marquee,
+.jmle-marquee-track {
+  direction: ltr;
+}
+
 .jmle-marquee-track {
   display: flex;
   width: max-content;

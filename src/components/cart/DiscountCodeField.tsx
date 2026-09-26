@@ -5,6 +5,7 @@ import { Tag, X, Loader2, Check } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { Button, Input } from "@/components/ui";
 import { toast } from "@/components/AppToaster";
+import { useShopLocale } from "@/components/ShopLocale";
 
 export type AppliedDiscount = {
   code: string;
@@ -24,6 +25,7 @@ export default function DiscountCodeField({
   onApply: (discount: AppliedDiscount) => void;
   onClear: () => void;
 }) {
+  const { t } = useShopLocale();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,7 +34,7 @@ export default function DiscountCodeField({
     setError("");
     const trimmed = code.trim();
     if (!trimmed) {
-      setError("الرجاء إدخال رمز الخصم");
+      setError(t("discountEmpty"));
       return;
     }
     setLoading(true);
@@ -44,7 +46,7 @@ export default function DiscountCodeField({
       });
       const data = await res.json();
       if (!res.ok || !data.valid) {
-        const msg = data.error || "رمز الخصم غير صالح";
+        const msg = data.error || t("discountInvalid");
         setError(msg);
         toast.error(msg);
         return;
@@ -56,10 +58,10 @@ export default function DiscountCodeField({
         amount: data.discountAmount,
       });
       setCode("");
-      toast.success(`تم تطبيق الخصم: −${formatEuroDe(data.discountAmount)}`);
+      toast.success(t("discountApplied", { amount: formatEuroDe(data.discountAmount) }));
     } catch {
-      setError("تعذر التحقق من الرمز");
-      toast.error("تعذر التحقق من الرمز");
+      setError(t("discountFail"));
+      toast.error(t("discountFail"));
     } finally {
       setLoading(false);
     }
@@ -84,7 +86,7 @@ export default function DiscountCodeField({
           type="button"
           onClick={onClear}
           className="p-2 min-h-10 min-w-10 rounded-lg text-emerald-800 hover:bg-emerald-100"
-          aria-label="إزالة رمز الخصم"
+          aria-label={t("discountRemove")}
         >
           <X size={16} />
         </button>
@@ -96,7 +98,7 @@ export default function DiscountCodeField({
     <div className="space-y-2">
       <label className="text-sm font-ui text-luxury-charcoal flex items-center gap-1.5">
         <Tag size={14} className="text-gold" aria-hidden />
-        رمز الخصم / Gutscheincode
+        {t("discountLabel")}
       </label>
       <div className="flex flex-col sm:flex-row gap-2">
         <Input
@@ -128,7 +130,7 @@ export default function DiscountCodeField({
             ) : undefined
           }
         >
-          تطبيق
+          {t("discountApply")}
         </Button>
       </div>
       {error && (

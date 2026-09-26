@@ -9,8 +9,10 @@ import {
 } from "@/lib/shipping";
 import { formatEuroDe } from "@/lib/pricing";
 import { cn } from "@/lib/cn";
+import { useShopLocale } from "@/components/ShopLocale";
 
 export default function FreeShippingBar({ subtotal }: { subtotal: number }) {
+  const { t } = useShopLocale();
   if (subtotal <= 0) return null;
 
   const free = qualifiesForFreeShipping(subtotal);
@@ -42,20 +44,16 @@ export default function FreeShippingBar({ subtotal }: { subtotal: number }) {
           {free ? (
             <>
               <p className="font-ui font-semibold text-emerald-800 text-sm">
-                🎉 لديك شحن مجاني!
-              </p>
-              <p className="text-xs text-emerald-700/90 mt-0.5 font-ui">
-                Du hast Anspruch auf kostenlosen Versand!
+                {t("freeShipYes")}
               </p>
             </>
           ) : (
             <>
               <p className="font-ui font-medium text-luxury-ink text-sm">
-                باقي {formatEuroDe(remaining)} للشحن المجاني
+                {t("freeShipRemaining", { amount: formatEuroDe(remaining) })}
               </p>
               <p className="text-xs text-gray-500 mt-0.5 font-ui">
-                Noch {formatEuroDe(remaining)} bis zum kostenlosen Versand (ab{" "}
-                {formatEuroDe(FREE_SHIPPING_THRESHOLD_EUR)})
+                {t("freeShipHint", { amount: formatEuroDe(FREE_SHIPPING_THRESHOLD_EUR) })}
               </p>
             </>
           )}
@@ -68,7 +66,7 @@ export default function FreeShippingBar({ subtotal }: { subtotal: number }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={progress}
-        aria-label="Fortschritt Gratisversand"
+        aria-label={t("shippingProgress")}
       >
         <div
           className={cn(

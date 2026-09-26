@@ -16,6 +16,7 @@ import { useRowSelection } from "@/lib/use-row-selection";
 import { parseCsv, productAltText, productsToCsv } from "@/lib/admin-catalog-io";
 import BarcodeScanModal from "@/components/admin/BarcodeScanModal";
 import { downloadPriceLabels } from "@/components/admin/PriceLabelPdf";
+import { compareAlpha } from "@/lib/locale-sort";
 import type { FoodCategory, FoodProduct } from "@/types";
 
 type SortKey = "newest" | "oldest" | "priceAsc" | "priceDesc" | "az" | "za";
@@ -53,7 +54,7 @@ const emptyForm = {
 };
 
 export default function AdminProductsPage() {
-  const { t } = useAdminI18n();
+  const { lang, t } = useAdminI18n();
   const [products, setProducts] = useState<FoodProduct[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
   const [showArchived, setShowArchived] = useState(false);
@@ -262,19 +263,20 @@ export default function AdminProductsPage() {
         .toLowerCase();
       return hay.includes(needle);
     });
-    const nameOf = (p: FoodProduct) => (p.name_de || p.name_ar || "").toLocaleLowerCase("de");
+    const nameOf = (p: FoodProduct) =>
+      (lang === "ar" ? p.name_ar || p.name_de : p.name_de || p.name_ar || "").trim();
     rows.sort((a, b) => {
       if (sortKey === "oldest") {
         return String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""));
       }
       if (sortKey === "priceAsc") return Number(a.price) - Number(b.price);
       if (sortKey === "priceDesc") return Number(b.price) - Number(a.price);
-      if (sortKey === "az") return nameOf(a).localeCompare(nameOf(b), "de");
-      if (sortKey === "za") return nameOf(b).localeCompare(nameOf(a), "de");
+      if (sortKey === "az") return compareAlpha(nameOf(a), nameOf(b), lang, "az");
+      if (sortKey === "za") return compareAlpha(nameOf(a), nameOf(b), lang, "za");
       return String(b.created_at ?? "").localeCompare(String(a.created_at ?? ""));
     });
     return rows;
-  }, [products, showArchived, listTab, query, categoryFilter, stockFilter, sortKey]);
+  }, [products, showArchived, listTab, query, categoryFilter, stockFilter, sortKey, lang]);
   const displayedIds = displayed.map((p) => p.id);
   const lowStock = products.filter(
     (p) => !p.deleted_at && Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity) < 5
@@ -366,8 +368,8 @@ export default function AdminProductsPage() {
           <option value="oldest">Älteste</option>
           <option value="priceAsc">Preis aufsteigend</option>
           <option value="priceDesc">Preis absteigend</option>
-          <option value="az">A–Z</option>
-          <option value="za">Z–A</option>
+          <option value="az">{lang === "ar" ? "أ–ي" : "A–Z"}</option>
+          <option value="za">{lang === "ar" ? "ي–أ" : "Z–A"}</option>
         </select>
         <select className="input-field" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="">Alle Kategorien</option>
@@ -412,7 +414,7 @@ export default function AdminProductsPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto p-5 sm:p-6">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[92vh] overflow-x-hidden overflow-y-auto p-5 sm:p-6">
             <div className="flex justify-between mb-4">
               <h2 className="text-lg font-semibold">
                 {editingId ? t("edit") : t("newProduct")}

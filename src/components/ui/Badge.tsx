@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/cn";
+import { useShopLocale } from "@/components/ShopLocale";
 import type { HTMLAttributes, ReactNode } from "react";
 
 type BadgeTone =
@@ -89,16 +92,17 @@ export function SealBadge({
 }: {
   type: "halal" | "organic";
 }) {
+  const { t } = useShopLocale();
   if (type === "halal") {
     return (
-      <Badge tone="halal" title="حلال / Halal">
-        حلال
+      <Badge tone="halal" title={t("halal")}>
+        {t("halal")}
       </Badge>
     );
   }
   return (
-    <Badge tone="organic" title="عضوي / Bio">
-      عضوي
+    <Badge tone="organic" title={t("organic")}>
+      {t("organic")}
     </Badge>
   );
 }

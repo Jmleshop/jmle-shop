@@ -20,6 +20,7 @@ export const checkoutSchema = z.object({
     .array(checkoutItemSchema)
     .min(1, "Warenkorb ist leer")
     .max(50, "Zu viele Positionen"),
+  lang: z.enum(["ar", "de"]).optional(),
   discountCode: z
     .unknown()
     .optional()

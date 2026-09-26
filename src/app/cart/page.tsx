@@ -20,6 +20,7 @@ import { productShippingGrams } from "@/lib/shipping";
 import { whatsAppOrderUrl } from "@/lib/whatsapp-order";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 const DISCOUNT_STORAGE_KEY = "jmle_cart_discount";
 
@@ -101,11 +102,12 @@ export default function CartPage() {
             <div className="relative w-24 h-24 sm:h-28 flex-shrink-0 bg-jmle-warm rounded-xl overflow-hidden">
               {item.product && (
                 <Image
-                  src={item.product.image}
-                  alt={item.product.name}
+                  src={originalImageSrc(item.product.image)}
+                  alt={productTitle(lang, item.product)}
                   fill
-                  className="object-cover"
-                  sizes="96px"
+                  quality={SHOP_IMAGE_QUALITY}
+                  className="object-contain p-[10%]"
+                  sizes="112px"
                 />
               )}
             </div>
@@ -130,7 +132,7 @@ export default function CartPage() {
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                     disabled={item.quantity <= 1}
                     className="p-2.5 min-h-11 min-w-11 hover:bg-jmle-warm disabled:opacity-30"
-                    aria-label="تقليل الكمية"
+                    aria-label={t("qtyDecrease")}
                   >
                     <Minus size={14} />
                   </button>
@@ -148,7 +150,7 @@ export default function CartPage() {
                       )
                     }
                     className="p-2.5 min-h-11 min-w-11 hover:bg-jmle-warm disabled:opacity-30"
-                    aria-label="زيادة الكمية"
+                    aria-label={t("qtyIncrease")}
                   >
                     <Plus size={14} />
                   </button>
@@ -158,7 +160,7 @@ export default function CartPage() {
                   type="button"
                   onClick={() => removeItem(item.id)}
                   className="text-gray-400 hover:text-red-500 transition-colors p-2.5 min-h-11 min-w-11"
-                  aria-label="حذف"
+                  aria-label={t("removeItem")}
                 >
                   <Trash2 size={18} />
                 </button>

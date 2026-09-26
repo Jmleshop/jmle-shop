@@ -1,4 +1,3 @@
-import { compressImageFile } from "@/lib/compress-image";
 import {
   cropPixels,
   squarePlacement,
@@ -220,8 +219,10 @@ export async function exportProductImage(
   bitmap: ImageBitmap,
   settings: RenderSettings
 ): Promise<File> {
-  const filtered = renderFilteredCanvas(bitmap, settings, EXPORT_SIZE);
-  const square = renderSquareCanvas(filtered, settings, EXPORT_SIZE);
+  const longest = Math.max(bitmap.width, bitmap.height, 1);
+  const size = Math.min(EXPORT_SIZE, longest);
+  const filtered = renderFilteredCanvas(bitmap, settings, size);
+  const square = renderSquareCanvas(filtered, settings, size);
   const transparent =
     settings.background === "transparent" && (settings.studio ?? "none") === "none";
   const mime = transparent ? "image/png" : "image/webp";
@@ -230,6 +231,5 @@ export async function exportProductImage(
   });
   if (!blob) throw new Error("Export fehlgeschlagen");
   const ext = transparent ? "png" : "webp";
-  const file = new File([blob], `product.${ext}`, { type: mime });
-  return compressImageFile(file, EXPORT_SIZE);
+  return new File([blob], `product.${ext}`, { type: mime });
 }

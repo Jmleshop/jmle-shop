@@ -51,28 +51,23 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [site, slides, categories, featured, offers, regular] =
-    await Promise.all([
-      getSiteConfigAsync(),
-      getSlidesAsync(),
-      getCategoriesAsync(),
-      getFeaturedProductsAsync(),
-      getOffersAsync(),
-      getRegularProductsAsync(),
-    ]);
+  const [slides, categories, featured, offers, regular] = await Promise.all([
+    getSlidesAsync(),
+    getCategoriesAsync(),
+    getFeaturedProductsAsync(),
+    getOffersAsync(),
+    getRegularProductsAsync(),
+  ]);
 
   return (
     <>
       <HeroSlider slides={slides} />
       {/* Obere Reihe: nur Rabatt-/Angebotsprodukte */}
-      <OffersCarousel products={offers} title="عروض خاصة" />
+      <OffersCarousel products={offers} titleKey="homeOffers" />
       {/* Untere Reihe: reguläre / neueste Produkte (Gegenrichtung) */}
-      <OffersCarousel products={regular} title="أحدث المنتجات" reverse />
-      <CategoryGrid
-        categories={categories}
-        title={site.categoriesSectionTitle}
-      />
-      <ProductGrid products={featured} title="عروض ومنتجات" />
+      <OffersCarousel products={regular} titleKey="homeLatest" reverse />
+      <CategoryGrid categories={categories} titleKey="shopByCategory" />
+      <ProductGrid products={featured} titleKey="homeFeatured" />
     </>
   );
 }

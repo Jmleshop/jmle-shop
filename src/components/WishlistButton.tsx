@@ -28,8 +28,7 @@ export default function WishlistButton({
   return (
     <button
       type="button"
-      onPointerDown={(e) => {
-        e.preventDefault();
+      onMouseDown={(e) => {
         e.stopPropagation();
       }}
       onClick={(e) => {

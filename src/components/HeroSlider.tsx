@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { Slide } from "@/types";
 import { cn } from "@/lib/cn";
+import { SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 interface HeroSliderProps {
   slides: Slide[];
@@ -37,6 +38,7 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
             src={slide.image}
             alt={slide.title}
             fill
+            quality={SHOP_IMAGE_QUALITY}
             priority={index === 0}
             className="object-cover scale-105"
             sizes="100vw"

@@ -1,4 +1,7 @@
+"use client";
+
 import type { Product } from "@/types";
+import { useShopLocale } from "@/components/ShopLocale";
 import { formatEuroDe, formatBasePriceLabel } from "@/lib/pricing";
 import { DiscountBadge, Badge } from "@/components/ui";
 import { cn } from "@/lib/cn";
@@ -16,6 +19,7 @@ export function ProductPrice({
   align?: "center" | "start";
   showUnitPrice?: boolean;
 }) {
+  const { t } = useShopLocale();
   const discounted = product.discountPercent > 0;
   const alignCls =
     align === "center" ? "items-center text-center" : "items-start text-start";
@@ -54,7 +58,7 @@ export function ProductPrice({
         </span>
       </div>
       <span className="text-[10px] text-gray-400 font-ui">
-        inkl. {product.vatRate}% MwSt.
+        {t("vatIncluded", { rate: product.vatRate })}
       </span>
       {unitLabel && (
         <span
@@ -94,23 +98,24 @@ export function BasePriceHint({
 }
 
 export function StockBadge({ stock }: { stock: number }) {
+  const { t } = useShopLocale();
   if (stock <= 0) {
     return (
       <Badge tone="neutral" className="bg-gray-800 text-white border-gray-900/20">
-        نفذ
+        {t("outShort")}
       </Badge>
     );
   }
   if (stock <= 5) {
     return (
-      <Badge tone="gold" title={`Nur noch ${stock}`}>
-        متبقي {stock}
+      <Badge tone="gold" title={t("lowStock", { count: stock })}>
+        {t("lowStock", { count: stock })}
       </Badge>
     );
   }
   return (
-    <Badge tone="success" title="Auf Lager">
-      متوفر
+    <Badge tone="success" title={t("inStock")}>
+      {t("inStock")}
     </Badge>
   );
 }

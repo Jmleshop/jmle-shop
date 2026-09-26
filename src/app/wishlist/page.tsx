@@ -7,6 +7,7 @@ import { Heart, ShoppingBag, Trash2 } from "lucide-react";
 import { useWishlist } from "@/context/WishlistContext";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import { useCart } from "@/context/CartContext";
 import type { Product } from "@/types";
 import { ProductPrice } from "@/components/ProductPrice";
@@ -107,10 +108,11 @@ export default function WishlistPage() {
                 className="relative aspect-square sm:w-36 sm:aspect-square lg:w-full shrink-0 bg-jmle-warm"
               >
                 <Image
-                  src={product.image}
-                  alt={product.name}
+                  src={originalImageSrc(product.image)}
+                  alt={productTitle(lang, product)}
                   fill
-                  className="object-cover"
+                  quality={SHOP_IMAGE_QUALITY}
+                  className="object-contain p-[10%]"
                   sizes="(max-width: 640px) 100vw, 200px"
                 />
               </Link>

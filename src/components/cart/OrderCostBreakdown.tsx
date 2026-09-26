@@ -9,6 +9,7 @@ import {
 } from "@/lib/shipping";
 import type { AppliedDiscount } from "./DiscountCodeField";
 import { cn } from "@/lib/cn";
+import { useShopLocale } from "@/components/ShopLocale";
 
 export default function OrderCostBreakdown({
   subtotal,
@@ -23,6 +24,7 @@ export default function OrderCostBreakdown({
   className?: string;
   showVatNote?: boolean;
 }) {
+  const { t } = useShopLocale();
   const discountAmount = Math.min(discount?.amount ?? 0, subtotal);
   const afterDiscount = Math.max(0, subtotal - discountAmount);
   const shipping = estimateShippingByWeight(afterDiscount, weightGrams);
@@ -51,28 +53,28 @@ export default function OrderCostBreakdown({
         className
       )}
     >
-      {row("المجموع الفرعي / Zwischensumme", formatEuroDe(subtotal))}
+      {row(t("subtotal"), formatEuroDe(subtotal))}
       {discountAmount > 0 &&
         row(
-          `الخصم / Rabatt (${discount?.code})`,
+          t("discountRow", { code: discount?.code ?? "" }),
           `−${formatEuroDe(discountAmount)}`,
           { muted: true }
         )}
       {weightGrams > 0 &&
-        row("الوزن / Versandgewicht", formatWeight(weightGrams), { muted: true })}
+        row(t("shippingWeight"), formatWeight(weightGrams), { muted: true })}
       {row(
-        freeShip
-          ? "الشحن / Versand (مجاني)"
-          : "الشحن / Versand (nach Gewicht)",
+        freeShip ? t("shippingFree") : t("shippingPaid"),
         freeShip ? formatEuroDe(0) : formatEuroDe(shipping)
       )}
       <div className="border-t border-amber-100 pt-3">
-        {row("الإجمالي / Gesamt", formatEuroDe(total), { strong: true })}
+        {row(t("total"), formatEuroDe(total), { strong: true })}
       </div>
       {showVatNote && (
         <p className="text-[11px] text-gray-400 font-ui pt-1">
-          inkl. {formatEuroDe(vat7)} MwSt. (7 % Lebensmittel) 
-          {shipping > 0 ? ` und ${formatEuroDe(vat19)} MwSt. (19 % Versand)` : ""}
+          {t("vatNote", {
+            food: formatEuroDe(vat7),
+            shipping: shipping > 0 ? t("vatShipping", { amount: formatEuroDe(vat19) }) : "",
+          })}
         </p>
       )}
     </div>

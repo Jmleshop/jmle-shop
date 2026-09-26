@@ -15,11 +15,14 @@ import OrderCostBreakdown, {
 } from "@/components/cart/OrderCostBreakdown";
 import { Button } from "@/components/ui";
 import { toast } from "@/components/AppToaster";
+import { useShopLocale } from "@/components/ShopLocale";
+import { productTitle } from "@/lib/shop-i18n";
 
 const DISCOUNT_STORAGE_KEY = "jmle_cart_discount";
 
 export default function CheckoutPage() {
   const { items, total, loading } = useCart();
+  const { lang, t } = useShopLocale();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
   const [discount, setDiscount] = useState<AppliedDiscount | null>(null);
@@ -68,23 +71,24 @@ export default function CheckoutPage() {
             quantity: item.quantity,
           })),
           discountCode: discount?.code,
+          lang,
         }),
       });
 
       const data = await response.json();
 
       if (data.url) {
-        toast.success("جاري التحويل إلى الدفع الآمن…");
+        toast.success(t("stripeRedirect"));
         window.location.href = data.url;
       } else {
-        const msg = data.error || "حدث خطأ أثناء الدفع";
+        const msg = data.error || t("stripeError");
         setError(msg);
         toast.error(msg);
         setProcessing(false);
       }
     } catch {
-      setError("تعذر الاتصال بخدمة الدفع");
-      toast.error("تعذر الاتصال بخدمة الدفع");
+      setError(t("stripeConnectError"));
+      toast.error(t("stripeConnectError"));
       setProcessing(false);
     }
   };
@@ -92,7 +96,7 @@ export default function CheckoutPage() {
   if (loading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
-        <p className="text-gray-400 font-ui">جاري التحميل...</p>
+        <p className="text-gray-400 font-ui">{t("loading")}</p>
       </div>
     );
   }
@@ -100,9 +104,9 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center px-4">
-        <h1 className="font-display text-2xl mb-4">لا توجد منتجات للدفع</h1>
+        <h1 className="font-display text-2xl mb-4">{t("noCheckoutItems")}</h1>
         <Link href="/" className="btn-primary">
-          العودة للتسوق
+          {t("backToShop")}
         </Link>
       </div>
     );
@@ -116,13 +120,13 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 md:py-12 animate-fade-up">
-      <h1 className="font-display text-3xl mb-6 tracking-wide">إتمام الشراء</h1>
+      <h1 className="font-display text-3xl mb-6 tracking-wide">{t("checkoutTitle")}</h1>
 
       <FreeShippingBar subtotal={total} />
 
       <div className="bg-white rounded-2xl border border-amber-200/50 p-5 shadow-sm mb-4 space-y-3">
         <h2 className="text-sm font-ui font-medium text-gold mb-1">
-          ملخص الطلب
+          {t("orderSummary")}
         </h2>
         {items.map((item) => (
           <div
@@ -131,12 +135,12 @@ export default function CheckoutPage() {
           >
             <div className="min-w-0">
               <span className="text-gray-700 block truncate">
-                {item.product?.name} × {item.quantity}
+                {item.product ? productTitle(lang, item.product) : "—"} × {item.quantity}
               </span>
               {item.product && <BasePriceHint product={item.product} />}
             </div>
             <span className="shrink-0 tabular-nums">
-              {formatPrice((item.product?.price ?? 0) * item.quantity)}
+              {formatPrice((item.product?.price ?? 0) * item.quantity, lang === "de" ? "de-DE" : "ar-DE")}
             </span>
           </div>
         ))}
@@ -153,7 +157,7 @@ export default function CheckoutPage() {
       </div>
 
       <p className="text-xs text-gray-400 mb-4 text-center font-ui">
-        الدفع الآمن عبر Stripe · Preise inkl. MwSt.
+        {t("checkoutSecure")}
       </p>
 
       {error && (
@@ -168,16 +172,14 @@ export default function CheckoutPage() {
         onClick={() => void handleCheckout()}
         disabled={processing}
       >
-        {processing
-          ? "جاري التحويل..."
-          : `ادفع الآن · ${formatPrice(grandTotal)}`}
+        {processing ? t("paying") : t("payNow", { total: formatPrice(grandTotal, lang === "de" ? "de-DE" : "ar-DE") })}
       </Button>
 
       <Link
         href="/cart"
         className="block text-center text-sm text-gold mt-4 font-ui hover:underline"
       >
-        العودة إلى السلة
+        {t("backToCart")}
       </Link>
     </div>
   );

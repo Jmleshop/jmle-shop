@@ -20,6 +20,7 @@ import {
   isSaleCategoryName,
   productIsOnSale,
 } from "@/lib/category-special";
+import { originalImageSrc } from "@/lib/sharp-image";
 import type { Category, Product, SiteConfig, Slide } from "@/types";
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
@@ -68,8 +69,10 @@ export function mapPublicProduct(row: PublicRow): Product {
   const discount = Number(row.discount_percent ?? 0);
   const stock = Number(row.stock_quantity ?? 0);
   const gallery = Array.isArray(row.images) ? row.images.filter(Boolean) : [];
-  const image = row.image || gallery[0] || PLACEHOLDER_IMAGE;
-  const uniqueImages = Array.from(new Set([image, ...gallery].filter(Boolean)));
+  const image = originalImageSrc(row.image || gallery[0] || PLACEHOLDER_IMAGE);
+  const uniqueImages = Array.from(
+    new Set([image, ...gallery.map((item) => originalImageSrc(item))].filter(Boolean))
+  );
 
   return {
     id: String(row.id),
@@ -108,7 +111,7 @@ function mapCategory(row: CategoryRow): Category {
     id: row.id,
     name: row.name_ar || row.name_de || "",
     nameEn: row.name_de || "",
-    image: row.image || PLACEHOLDER_IMAGE,
+    image: originalImageSrc(row.image || PLACEHOLDER_IMAGE),
     parentId: row.parent_id ?? null,
     sortOrder: row.sort_order ?? 0,
   };

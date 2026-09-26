@@ -213,7 +213,8 @@ export function consistencyVerdict(
 export function smartBounds(
   data: Uint8ClampedArray,
   width: number,
-  height: number
+  height: number,
+  padRatio = 0.06
 ): NormRect | null {
   let minX = width;
   let minY = height;
@@ -233,8 +234,8 @@ export function smartBounds(
     }
   }
   if (maxX < minX || maxY < minY) return null;
-  const padX = Math.round((maxX - minX) * 0.06);
-  const padY = Math.round((maxY - minY) * 0.06);
+  const padX = Math.round((maxX - minX) * padRatio);
+  const padY = Math.round((maxY - minY) * padRatio);
   const x0 = Math.max(0, minX - padX);
   const y0 = Math.max(0, minY - padY);
   const x1 = Math.min(width - 1, maxX + padX);

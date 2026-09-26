@@ -23,6 +23,8 @@ export async function POST(request: Request) {
     }
 
     const { items, discountCode } = parsed.data;
+    const lang = parsed.data.lang === "de" ? "de" : "ar";
+    const say = (de: string, ar: string) => (lang === "de" ? de : ar);
 
     const products = await getProductsAsync();
     const productMap = new Map(products.map((p) => [p.id, p]));
@@ -39,21 +41,32 @@ export async function POST(request: Request) {
       const product = productMap.get(item.productId);
       if (!product) {
         return NextResponse.json(
-          { error: `Produkt nicht gefunden: ${item.productId}` },
+          {
+            error: say(
+              `Produkt nicht gefunden: ${item.productId}`,
+              `المنتج غير موجود: ${item.productId}`
+            ),
+          },
           { status: 400 }
         );
       }
 
+      const label = lang === "de" ? product.nameDe || product.name : product.name;
       if (!product.inStock) {
         return NextResponse.json(
-          { error: `Nicht auf Lager: ${product.name}` },
+          { error: say(`Nicht auf Lager: ${label}`, `غير متوفر: ${label}`) },
           { status: 400 }
         );
       }
 
       if (product.stock !== undefined && product.stock < item.quantity) {
         return NextResponse.json(
-          { error: `Nicht genug Bestand für ${product.name}` },
+          {
+            error: say(
+              `Nicht genug Bestand für ${label}`,
+              `الكمية غير كافية لـ ${label}`
+            ),
+          },
           { status: 400 }
         );
       }
@@ -64,14 +77,19 @@ export async function POST(request: Request) {
       );
       if (item.quantity > maxQty) {
         return NextResponse.json(
-          { error: `Maximale Bestellmenge für ${product.name}: ${maxQty}` },
+          {
+            error: say(
+              `Maximale Bestellmenge für ${label}: ${maxQty}`,
+              `الحد الأقصى للطلب من ${label}: ${maxQty}`
+            ),
+          },
           { status: 400 }
         );
       }
 
       validatedItems.push({
         productId: product.id,
-        name: product.name,
+        name: lang === "de" ? product.nameDe || product.name : product.name,
         price: product.price,
         quantity: item.quantity,
         grams: productShippingGrams(product),
@@ -142,7 +160,7 @@ export async function POST(request: Request) {
       lineItems.push({
         price_data: {
           currency: "eur",
-          product_data: { name: "Versand / الشحن" },
+          product_data: { name: lang === "ar" ? "الشحن" : "Versand" },
           unit_amount: formatAmountForStripe(shipping),
         },
         quantity: 1,
@@ -155,7 +173,8 @@ export async function POST(request: Request) {
       mode: "payment",
       success_url: `${appUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/cart`,
-      locale: "de",
+      // Stripe accepts "ar" at runtime; the installed type union does not list it yet.
+      locale: (lang === "ar" ? "ar" : "de") as "de",
       shipping_address_collection: {
         allowed_countries: ["DE", "AT", "CH"],
       },
@@ -172,6 +191,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error("Stripe checkout error:", error);
-    return NextResponse.json({ error: "Checkout failed" }, { status: 500 });
+    const failed = "Checkout failed";
+    return NextResponse.json({ error: failed }, { status: 500 });
   }
 }

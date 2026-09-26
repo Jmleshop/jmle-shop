@@ -7,6 +7,9 @@ import { useRouter } from "next/navigation";
 import { Search, Loader2 } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { cn } from "@/lib/cn";
+import { useShopLocale } from "@/components/ShopLocale";
+import { productTitle } from "@/lib/shop-i18n";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 type Suggestion = {
   id: string;
@@ -29,6 +32,7 @@ export default function HeaderSearch({
   /** Immer sichtbar (Tablet/Desktop-Leiste) — kein Auto-Focus */
   persistent?: boolean;
 }) {
+  const { lang, t } = useShopLocale();
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,7 +115,7 @@ export default function HeaderSearch({
         role="search"
       >
         <label htmlFor={inputId} className="sr-only">
-          بحث عن منتج
+          {t("searchLabel")}
         </label>
         <div className="relative">
           <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-gold/80">
@@ -127,7 +131,7 @@ export default function HeaderSearch({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="ابحث عن منتج..."
+            placeholder={t("searchPlaceholder")}
             autoComplete="off"
             aria-autocomplete="list"
             aria-controls={listId}
@@ -153,16 +157,17 @@ export default function HeaderSearch({
                 >
                   <span className="relative w-11 h-11 shrink-0 rounded-lg overflow-hidden bg-jmle-warm">
                     <Image
-                      src={item.image}
+                      src={originalImageSrc(item.image)}
                       alt=""
                       fill
-                      className="object-cover"
+                      quality={SHOP_IMAGE_QUALITY}
+                      className="object-contain"
                       sizes="44px"
                     />
                   </span>
                   <span className="min-w-0 flex-1 text-start">
                     <span className="block text-sm font-ui text-luxury-ink truncate">
-                      {item.name}
+                      {productTitle(lang, item)}
                     </span>
                     {item.nameDe && (
                       <span

@@ -8,6 +8,7 @@ import {
 import { getAppUrl } from "@/lib/site-defaults";
 import { ProductGrid } from "@/components/ProductCard";
 import CategoryGrid from "@/components/CategoryGrid";
+import { CategoryHeading } from "@/components/ShopText";
 
 export const dynamic = "force-dynamic";
 
@@ -73,12 +74,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   return (
     <div>
       <div className="bg-gradient-to-r from-gold to-jmle-orange-dark text-white py-10 px-4 text-center">
-        <h1 className="font-display text-2xl md:text-3xl tracking-wide">
-          {category.name}
-        </h1>
+        <CategoryHeading
+          category={category}
+          className="font-display text-2xl md:text-3xl tracking-wide"
+        />
       </div>
       {category.children && category.children.length > 0 && (
-        <CategoryGrid categories={category.children} title="الفئات الفرعية" />
+        <CategoryGrid categories={category.children} titleKey="subcategories" />
       )}
       <ProductGrid products={products} />
     </div>

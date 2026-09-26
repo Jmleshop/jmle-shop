@@ -122,7 +122,7 @@ export default function ImageCropModal({
           </button>
         </div>
 
-        <div className="relative h-72 bg-gray-900">
+        <div className="relative h-72 max-h-[70vh] w-full max-w-full overflow-hidden bg-gray-900">
           <Cropper
             image={src}
             crop={crop}

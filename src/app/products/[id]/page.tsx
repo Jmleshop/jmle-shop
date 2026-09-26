@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
@@ -7,21 +6,13 @@ import {
   getSiteConfigAsync,
 } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
-import { ProductPrice, StockBadge } from "@/components/ProductPrice";
-import AddToCartButton from "@/components/AddToCartButton";
+import { StockBadge } from "@/components/ProductPrice";
 import ProductGallery from "@/components/ProductGallery";
+import ProductInfo from "@/components/ProductInfo";
+import WishlistButton from "@/components/WishlistButton";
+import { DiscountBadge } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
-import ProductDetailExtras from "@/components/ProductDetailExtras";
-import WishlistButton from "@/components/WishlistButton";
-import { formatUnitPriceLabel } from "@/lib/pricing";
-import {
-  Accordion,
-  DiscountBadge,
-  OriginBadge,
-  SealBadge,
-  type AccordionItemData,
-} from "@/components/ui";
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;
@@ -77,14 +68,6 @@ export async function generateMetadata({
   };
 }
 
-function detectSeals(hay: string): Array<"halal" | "organic"> {
-  const t = hay.toLowerCase();
-  const out: Array<"halal" | "organic"> = [];
-  if (/حلال|halal/.test(t)) out.push("halal");
-  if (/عضوي|organic|\bbio\b/.test(t)) out.push("organic");
-  return out;
-}
-
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
   const product = await getProductByIdAsync(id);
@@ -97,56 +80,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
     ? await getCategoryByIdAsync(product.categoryId)
     : undefined;
   const out = product.stock <= 0;
-  const unitPriceLabel = formatUnitPriceLabel(
-    product.price,
-    product.weightValue,
-    product.weightUnit
-  );
-  const seals = detectSeals(
-    `${product.name} ${product.nameDe ?? ""} ${product.description} ${product.ingredients ?? ""}`
-  );
-
-  const accordionItems: AccordionItemData[] = [];
-  if (product.description) {
-    accordionItems.push({
-      id: "desc",
-      title: "الوصف / Beschreibung",
-      content: product.description,
-      defaultOpen: true,
-    });
-  }
-  if (product.ingredients) {
-    accordionItems.push({
-      id: "ingredients",
-      title: "المكونات / Zutaten",
-      content: product.ingredients,
-    });
-  }
-  if (product.allergens) {
-    accordionItems.push({
-      id: "allergens",
-      title: "مسببات الحساسية / Allergene (LMIV)",
-      content: product.allergens,
-      defaultOpen: !product.description,
-    });
-  }
-  if (product.weightValue != null || unitPriceLabel || product.bestBeforeNote) {
-    const lines: string[] = [];
-    if (product.weightValue != null) {
-      lines.push(`صافي الوزن / Nettofüllmenge: ${product.weightValue} ${product.weightUnit}`);
-    }
-    if (unitPriceLabel) {
-      lines.push(`Grundpreis: ${unitPriceLabel}`);
-    }
-    if (product.bestBeforeNote) {
-      lines.push(`Mindesthaltbarkeit: ${product.bestBeforeNote}`);
-    }
-    accordionItems.push({
-      id: "legal",
-      title: "التعبئة والسعر الأساسي / Füllmenge & Grundpreis",
-      content: lines.join("\n"),
-    });
-  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 animate-fade-up">
@@ -166,55 +99,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           />
         </div>
 
-        <div className={`flex flex-col justify-center ${out ? "opacity-60" : ""}`}>
-          {category && (
-            <Link
-              href={`/categories/${category.id}`}
-              className="text-sm font-ui text-gold hover:text-gold-dark hover:underline mb-2 w-fit"
-            >
-              {category.name}
-            </Link>
-          )}
-
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            <OriginBadge country={product.originCountry} />
-            {seals.map((s) => (
-              <SealBadge key={s} type={s} />
-            ))}
-          </div>
-
-          <h1 className="font-display text-3xl md:text-4xl text-luxury-ink mb-1 leading-snug">
-            {product.name}
-            {product.weightValue != null && (
-              <span className="font-ui text-base font-normal text-gray-500 ms-2">
-                {product.weightValue} {product.weightUnit}
-              </span>
-            )}
-          </h1>
-          {product.nameDe && product.nameDe !== product.name && (
-            <p className="text-sm text-gray-500 mb-4 font-ui" dir="ltr">
-              {product.nameDe}
-            </p>
-          )}
-
-          <div className="mb-2 rounded-2xl border border-amber-200/50 bg-white/70 p-4">
-            <ProductPrice product={product} align="start" showUnitPrice />
-          </div>
-
-          <div className="my-6">
-            <AddToCartButton
-              productId={product.id}
-              stock={product.stock}
-              maxOrderQuantity={product.maxOrderQuantity}
-            />
-          </div>
-
-          {accordionItems.length > 0 && (
-            <Accordion items={accordionItems} allowMultiple />
-          )}
-
-          <ProductDetailExtras barcode={product.barcode} />
-        </div>
+        <ProductInfo product={product} category={category} />
       </div>
     </div>
   );

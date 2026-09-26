@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 export default function ProductGallery({
   images,
@@ -79,10 +80,11 @@ export default function ProductGallery({
         {slides.map((src, i) => (
           <div key={`${src}-${i}`} className="relative min-w-full h-full flex items-center justify-center">
             <Image
-              src={src}
+              src={originalImageSrc(src)}
               alt={i === index ? alt : ""}
               fill
-              className="object-contain p-4"
+              quality={SHOP_IMAGE_QUALITY}
+              className="max-h-full max-w-full object-contain p-[10%]"
               sizes="(max-width: 768px) 100vw, 50vw"
               draggable={false}
             />

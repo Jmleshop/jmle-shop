@@ -46,14 +46,14 @@ export default function Header() {
               type="button"
               onClick={() => setShowSearch((v) => !v)}
               className="md:hidden p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
-              aria-label="بحث"
+              aria-label={t("searchLabel")}
               aria-expanded={showSearch}
             >
               <Search size={22} />
             </button>
             <nav
               className="hidden lg:flex items-center gap-1"
-              aria-label="التنقل الرئيسي"
+              aria-label={t("mainNav")}
             >
               {navLinks.slice(0, 4).map((link) => (
                 <Link
@@ -79,7 +79,7 @@ export default function Header() {
               type="button"
               onClick={() => setShowSearch((v) => !v)}
               className="hidden md:inline-flex lg:hidden p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
-              aria-label="بحث"
+              aria-label={t("searchLabel")}
               aria-expanded={showSearch}
             >
               <Search size={22} />
@@ -95,7 +95,7 @@ export default function Header() {
             <Link
               href="/wishlist"
               className="relative p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-red-500 transition-colors rounded-xl"
-              aria-label={`المفضلة، ${wishCount} منتج`}
+              aria-label={t("wishlistCount", { count: wishCount })}
             >
               <Heart size={22} aria-hidden />
               {wishCount > 0 && (
@@ -107,14 +107,14 @@ export default function Header() {
             <Link
               href={user ? "/profile" : "/auth/login"}
               className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
-              aria-label="الملف الشخصي"
+              aria-label={t("account")}
             >
               <User size={22} />
             </Link>
             <Link
               href="/cart"
               className="relative flex items-center gap-1.5 p-2 min-h-11 text-luxury-charcoal hover:text-gold transition-colors rounded-xl"
-              aria-label={`سلة التسوق، ${itemCount} منتج`}
+              aria-label={t("cartCount", { count: itemCount })}
             >
               <ShoppingBag size={22} aria-hidden />
               {itemCount > 0 && (
@@ -123,7 +123,7 @@ export default function Header() {
                 </span>
               )}
               <span className="text-xs sm:text-sm font-ui font-semibold whitespace-nowrap hidden sm:inline">
-                {formatPrice(total)}
+                {formatPrice(total, lang === "de" ? "de-DE" : "ar-DE")}
               </span>
             </Link>
           </div>
@@ -145,7 +145,7 @@ export default function Header() {
           className="fixed inset-0 z-[60] lg:hidden"
           role="dialog"
           aria-modal="true"
-          aria-label="القائمة"
+          aria-label={t("menu")}
         >
           <div
             className="absolute inset-0 bg-jmle-mahogany/40 backdrop-blur-sm"
@@ -160,7 +160,7 @@ export default function Header() {
                 type="button"
                 onClick={() => setMenuOpen(false)}
                 className="p-2 min-h-11 min-w-11 hover:text-gold transition-colors rounded-xl"
-                aria-label="إغلاق"
+                aria-label={t("close")}
               >
                 <X size={22} />
               </button>

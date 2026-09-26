@@ -11,6 +11,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "@/components/AppToaster";
+import { shopText, type ShopLang } from "@/lib/shop-i18n";
 
 const STORAGE_KEY = "jmle_wishlist";
 
@@ -43,6 +44,11 @@ function writeGuest(ids: string[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...new Set(ids)]));
 }
 
+function shopLang(): ShopLang {
+  if (typeof window === "undefined") return "ar";
+  return localStorage.getItem("jmle-shop-lang") === "de" ? "de" : "ar";
+}
+
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const [ids, setIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,9 +65,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           .order("created_at", { ascending: false });
 
         if (!error && data) {
-          setIds(data.map((r) => String(r.product_id)));
+          const next = data.map((r) => String(r.product_id));
+          setIds(next);
+          writeGuest(next);
         } else {
-          // Tabelle evtl. noch nicht migriert → Guest-Fallback
           setIds(readGuest());
         }
       } else {
@@ -83,7 +90,6 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         onConflict: "user_id,product_id",
         ignoreDuplicates: true,
       });
-      localStorage.removeItem(STORAGE_KEY);
     },
     [supabase]
   );
@@ -140,7 +146,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         : [productId, ...ids.filter((id) => id !== productId)];
       setIds(next);
       writeGuest(next);
-      toast(exists ? "تمت الإزالة من المفضلة" : "أضيف إلى المفضلة ❤️");
+      const lang = shopLang();
+      toast(exists ? shopText(lang, "wishlistRemovedToast") : shopText(lang, "wishlistAddedToast"));
       if (!user) return;
       if (exists) {
         const { error } = await supabase
@@ -151,7 +158,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           setIds(ids);
           writeGuest(ids);
-          toast.error("تعذر الحفظ في المفضلة");
+          toast.error(shopText(shopLang(), "wishlistError"));
         }
       } else {
         const { error } = await supabase.from("wishlist_items").insert({
@@ -161,7 +168,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           setIds(ids);
           writeGuest(ids);
-          toast.error("تعذر الحفظ في المفضلة");
+          toast.error(shopText(shopLang(), "wishlistError"));
         }
       }
     },
@@ -179,7 +186,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           .eq("product_id", productId);
       }
       const next = ids.filter((id) => id !== productId);
-      if (!user) writeGuest(next);
+      writeGuest(next);
       setIds(next);
     },
     [ids, user, supabase]
@@ -188,9 +195,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const clear = useCallback(async () => {
     if (user) {
       await supabase.from("wishlist_items").delete().eq("user_id", user.id);
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
     }
+    localStorage.removeItem(STORAGE_KEY);
     setIds([]);
   }, [user, supabase]);
 

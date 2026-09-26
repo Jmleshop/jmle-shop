@@ -10,6 +10,7 @@ import { ProductPrice, StockBadge } from "@/components/ProductPrice";
 import WishlistButton from "@/components/WishlistButton";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import { maxBuyQuantity } from "@/lib/pricing";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import {
@@ -67,7 +68,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         out ? "opacity-60" : ""
       }`}
     >
-      <div className="absolute top-2 end-2 z-20">
+      <div className="absolute top-2 end-2 z-30">
         <WishlistButton productId={product.id} size="sm" />
       </div>
       <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40">
@@ -76,11 +77,12 @@ export default function ProductCard({ product }: ProductCardProps) {
           style={{ backgroundColor: "#ffffff" }}
         >
           <Image
-            src={product.image}
+            src={originalImageSrc(product.image)}
             alt={product.nameDe ? `${title} – ${product.name}` : title}
             fill
-            className="object-contain p-3 transition-transform duration-500 ease-boutique group-hover:scale-105"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            quality={SHOP_IMAGE_QUALITY}
+            className="object-contain p-[10%] transition-transform duration-500 ease-boutique group-hover:scale-105"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
           />
           <div className="absolute inset-x-0 top-0 p-2 flex gap-1.5 justify-between items-start pointer-events-none">
             <div className="flex flex-wrap gap-1.5">
@@ -93,7 +95,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                   key={b.key}
                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-ui shadow-gold-sm border border-white/70 ${b.className}`}
                 >
-                  {b.labelAr}
+                  {lang === "de" ? b.labelDe : b.labelAr}
                 </span>
               ))}
               {customNote && (
@@ -136,7 +138,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 type="button"
                 onClick={changeQty(-1)}
                 disabled={qty <= 1}
-                aria-label="تقليل الكمية"
+                aria-label={t("qtyDecrease")}
                 className="w-8 min-h-11 flex items-center justify-center text-luxury-charcoal hover:text-gold disabled:opacity-40"
               >
                 <Minus size={14} />
@@ -151,7 +153,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 type="button"
                 onClick={changeQty(1)}
                 disabled={qty >= (max || 1)}
-                aria-label="زيادة الكمية"
+                aria-label={t("qtyIncrease")}
                 className="w-8 min-h-11 flex items-center justify-center text-luxury-charcoal hover:text-gold disabled:opacity-40"
               >
                 <Plus size={14} />
@@ -165,7 +167,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 added ? <Check size={16} aria-hidden /> : <ShoppingBag size={16} aria-hidden />
               }
               onClick={handleAddToCart}
-              aria-label={`أضف ${product.name} للسلة`}
+              aria-label={`${t("addToCart")} ${title}`}
             >
               {added ? t("added") : t("addToCart")}
             </Button>
@@ -179,16 +181,19 @@ export default function ProductCard({ product }: ProductCardProps) {
 interface ProductGridProps {
   products: Product[];
   title?: string;
+  titleKey?: "homeFeatured" | "allProducts";
 }
 
-export function ProductGrid({ products, title }: ProductGridProps) {
+export function ProductGrid({ products, title, titleKey }: ProductGridProps) {
+  const { t } = useShopLocale();
   if (products.length === 0) return null;
+  const heading = titleKey ? t(titleKey) : title;
 
   return (
     <section className="py-10 md:py-14 px-4 md:px-8">
-      {title && (
+      {heading && (
         <div className="text-center mb-8">
-          <h2 className="section-title">{title}</h2>
+          <h2 className="section-title">{heading}</h2>
           <div className="gold-divider" aria-hidden />
         </div>
       )}

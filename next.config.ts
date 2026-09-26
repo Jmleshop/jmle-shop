@@ -14,10 +14,11 @@ const nextConfig: NextConfig = {
   // ONNX/WASM des Freistellers bleibt aus dem Server-Bundle; der Editor lädt es nur im Browser.
   serverExternalPackages: ["@imgly/background-removal", "onnxruntime-web", "onnxruntime-node"],
   images: {
-    formats: ["image/avif", "image/webp"],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60 * 60 * 24,
+    formats: ["image/webp"],
+    qualities: [75, 90],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [128, 256, 384, 512],
+    minimumCacheTTL: 60 * 60 * 24 * 7,
     remotePatterns: [
       {
         protocol: "https",
