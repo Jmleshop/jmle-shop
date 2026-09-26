@@ -11,6 +11,8 @@ function supabaseHostname(): string {
 }
 
 const nextConfig: NextConfig = {
+  // ONNX/WASM des Freistellers bleibt aus dem Server-Bundle; der Editor lädt es nur im Browser.
+  serverExternalPackages: ["@imgly/background-removal", "onnxruntime-web", "onnxruntime-node"],
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
@@ -28,6 +30,18 @@ const nextConfig: NextConfig = {
         pathname: "/storage/v1/object/public/**",
       },
     ],
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+        module: false,
+      };
+    }
+    return config;
   },
 };
 

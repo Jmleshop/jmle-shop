@@ -415,7 +415,7 @@ export default function AdminProductsPage() {
               </div>
               <ImageUpload
                 multiple
-                enableCrop
+                enableEditor
                 folder="products"
                 value={form.images}
                 onChange={(v) =>
