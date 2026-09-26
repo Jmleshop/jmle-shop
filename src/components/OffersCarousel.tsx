@@ -21,7 +21,10 @@ function OfferCard({ product }: { product: Product }) {
       aria-label={product.name}
     >
       <div className="card-boutique overflow-hidden transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
-        <div className="relative aspect-square overflow-hidden bg-white flex items-center justify-center">
+        <div
+          className="relative aspect-square overflow-hidden !bg-white flex items-center justify-center"
+          style={{ backgroundColor: "#ffffff" }}
+        >
           <Image
             src={product.image}
             alt={product.name}

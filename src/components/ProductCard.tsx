@@ -64,7 +64,10 @@ export default function ProductCard({ product }: ProductCardProps) {
       }`}
     >
       <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40">
-        <div className="relative aspect-square overflow-hidden bg-white flex items-center justify-center">
+        <div
+          className="relative aspect-square overflow-hidden !bg-white flex items-center justify-center"
+          style={{ backgroundColor: "#ffffff" }}
+        >
           <Image
             src={product.image}
             alt={product.name}

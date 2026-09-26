@@ -43,9 +43,10 @@ export default function ProductGallery({
   return (
     <div
       className={cn(
-        "relative aspect-square bg-white overflow-hidden rounded-2xl border border-amber-200/40 shadow-boutique select-none touch-pan-y",
+        "relative aspect-square !bg-white overflow-hidden rounded-2xl border border-amber-200/40 shadow-boutique select-none touch-pan-y",
         dimmed && "opacity-60"
       )}
+      style={{ backgroundColor: "#ffffff" }}
       onTouchStart={(e) => {
         touchX.current = e.touches[0].clientX;
       }}
