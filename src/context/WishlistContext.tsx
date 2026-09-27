@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -53,22 +54,26 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const [ids, setIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const revision = useRef(0);
 
   const loadForUser = useCallback(
     async (u: User | null) => {
       if (u) {
+        const started = revision.current;
         const { data, error } = await supabase
           .from("wishlist_items")
           .select("product_id")
           .eq("user_id", u.id)
           .order("created_at", { ascending: false });
+        if (revision.current !== started) return;
 
         if (!error && data) {
-          const next = data.map((r) => String(r.product_id));
+          const next = [...new Set([...data.map((r) => String(r.product_id)), ...readGuest()])];
           setIds(next);
           writeGuest(next);
-        } else {
+        } else if (error) {
+          console.error("wishlist load", error.message);
           setIds(readGuest());
         }
       } else {
@@ -140,6 +145,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
   const toggle = useCallback(
     async (productId: string) => {
+      revision.current += 1;
       const exists = ids.includes(productId);
       const next = exists
         ? ids.filter((id) => id !== productId)
@@ -156,8 +162,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           .eq("user_id", user.id)
           .eq("product_id", productId);
         if (error) {
-          setIds(ids);
-          writeGuest(ids);
+          console.error("wishlist delete", error.message);
           toast.error(shopText(shopLang(), "wishlistError"));
         }
       } else {
@@ -166,8 +171,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           product_id: productId,
         });
         if (error) {
-          setIds(ids);
-          writeGuest(ids);
+          console.error("wishlist insert", error.message);
           toast.error(shopText(shopLang(), "wishlistError"));
         }
       }
@@ -177,6 +181,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
   const remove = useCallback(
     async (productId: string) => {
+      revision.current += 1;
       if (!ids.includes(productId)) return;
       if (user) {
         await supabase
