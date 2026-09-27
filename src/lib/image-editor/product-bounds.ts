@@ -6,6 +6,9 @@ import { squarePlacement } from "./geometry";
  */
 export const PRODUCT_FILL = 0.88;
 
+/** Matches Sharp trim threshold 12 against white. */
+export const TRIM_THRESHOLD = 12;
+
 /** Near-white and transparent pixels are empty studio background, not the product. */
 export function isBackdropPixel(r: number, g: number, b: number, a: number): boolean {
   if (a < 24) return true;
@@ -15,6 +18,49 @@ export function isBackdropPixel(r: number, g: number, b: number, a: number): boo
 }
 
 export type PixelBox = { x: number; y: number; w: number; h: number };
+
+function pixelIsWhite(data: ArrayLike<number>, index: number, channels: number): boolean {
+  const alpha = channels >= 4 ? data[index + 3] : 255;
+  if (alpha < 24) return true;
+  return (
+    Math.abs(data[index] - 255) <= TRIM_THRESHOLD &&
+    Math.abs(data[index + 1] - 255) <= TRIM_THRESHOLD &&
+    Math.abs(data[index + 2] - 255) <= TRIM_THRESHOLD
+  );
+}
+
+/** Edge trim, same idea as Sharp `.trim({ background: white, threshold: 12 })`. */
+export function trimWhiteEdges(
+  data: ArrayLike<number>,
+  width: number,
+  height: number,
+  channels = 4
+): PixelBox | null {
+  const rowEmpty = (y: number) => {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      if (!pixelIsWhite(data, (row + x) * channels, channels)) return false;
+    }
+    return true;
+  };
+  const colEmpty = (x: number, top: number, bottom: number) => {
+    for (let y = top; y <= bottom; y++) {
+      if (!pixelIsWhite(data, (y * width + x) * channels, channels)) return false;
+    }
+    return true;
+  };
+
+  let top = 0;
+  while (top < height && rowEmpty(top)) top += 1;
+  if (top >= height) return null;
+  let bottom = height - 1;
+  while (bottom > top && rowEmpty(bottom)) bottom -= 1;
+  let left = 0;
+  while (left < width && colEmpty(left, top, bottom)) left += 1;
+  let right = width - 1;
+  while (right > left && colEmpty(right, top, bottom)) right -= 1;
+  return { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
+}
 
 export function productPixelBounds(
   data: ArrayLike<number>,

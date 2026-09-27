@@ -544,7 +544,18 @@ export default function ImageEditorModal({
     try {
       const settings = currentSettings();
       if (bulkApply) onRemember?.(settings);
-      const file = await exportProductImage(bitmap, settings);
+      let file = await exportProductImage(bitmap, settings);
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        const framed = await fetch("/api/admin/frame-product-image", { method: "POST", body });
+        if (framed.ok && framed.headers.get("X-Frame-Changed") === "1") {
+          const blob = await framed.blob();
+          file = new File([blob], "product.webp", { type: "image/webp" });
+        }
+      } catch {
+        /* keep the editor file when the trim service is unreachable */
+      }
       try {
         sessionStorage.setItem("jmle-editor-peer-luma", consistency);
       } catch {
@@ -705,7 +716,12 @@ export default function ImageEditorModal({
             </div>
             {busy === "bg" && progress && (
               <div className="absolute inset-x-6 bottom-4 rounded-xl bg-white/95 p-3 shadow">
-                <p className="text-xs font-medium text-gray-700">{progress.label}</p>
+                <p className="text-xs font-medium text-gray-700">
+                  {progress.label} · {Math.round(progress.ratio * 100)} %
+                </p>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Das Freistell-Modell läuft lokal auf dem Prozessor, ein Bild nach dem anderen.
+                </p>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200">
                   <div
                     className="h-full bg-gold transition-all"

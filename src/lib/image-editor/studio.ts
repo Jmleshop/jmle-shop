@@ -1,4 +1,4 @@
-import { productPixelBounds } from "./product-bounds";
+import { trimWhiteEdges } from "./product-bounds";
 import type { HealSpot, NormRect } from "./types";
 
 function clampByte(value: number): number {
@@ -217,7 +217,7 @@ export function smartBounds(
   height: number,
   padRatio = 0
 ): NormRect | null {
-  const box = productPixelBounds(data, width, height, 4);
+  const box = trimWhiteEdges(data, width, height, 4);
   if (!box) return null;
   const padX = Math.round(box.w * padRatio);
   const padY = Math.round(box.h * padRatio);
