@@ -111,6 +111,7 @@ export default function WishlistPage() {
                   src={originalImageSrc(product.image)}
                   alt={productTitle(lang, product)}
                   fill
+                  unoptimized
                   quality={SHOP_IMAGE_QUALITY}
                   className="object-contain p-[10%]"
                   sizes="(max-width: 640px) 100vw, 200px"

@@ -252,6 +252,11 @@ export function applyAdjustments(
     blendRgb(data, blurred, adjustments.sharpness / 100, "sharpen");
   }
 
+  if (adjustments.clarity > 0) {
+    const blurred = boxBlurRgb(data, width, height, 4);
+    blendRgb(data, blurred, (adjustments.clarity / 100) * 0.55, "sharpen");
+  }
+
   if (adjustments.labelSharpness > 0) {
     applyLabelSharpen(data, width, height, adjustments.labelSharpness / 100);
   }

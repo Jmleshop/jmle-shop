@@ -4,8 +4,8 @@ import imageCompression from "browser-image-compression";
 const MAX_EDGE = 2000;
 /** Size cap high enough that quality is not traded for kilobytes. */
 const MAX_MB = 8;
-const WEBP_QUALITY = 0.9;
-const PNG_QUALITY = 0.92;
+const WEBP_QUALITY = 0.95;
+const PNG_QUALITY = 0.95;
 
 function outputFormat(file: File): { mime: "image/png" | "image/webp"; ext: "png" | "webp" } {
   if (file.type === "image/png") return { mime: "image/png", ext: "png" };

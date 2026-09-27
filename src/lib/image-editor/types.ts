@@ -10,6 +10,8 @@ export type Adjustments = {
   vibrance: number;
   saturation: number;
   sharpness: number;
+  /** Lokaler Kontrast (weitere Unsharp-Maske) für Verpackung und Text. */
+  clarity: number;
   noiseReduction: number;
   /** Gezieltes Nachschärfen von Kanten (Etikettentext). */
   labelSharpness: number;
@@ -37,6 +39,7 @@ export const DEFAULT_ADJUSTMENTS: Adjustments = {
   vibrance: 0,
   saturation: 0,
   sharpness: 0,
+  clarity: 0,
   noiseReduction: 0,
   labelSharpness: 0,
   foodBoost: 0,
@@ -78,9 +81,27 @@ export type RenderSettings = {
   studio?: StudioBackground;
   margin?: boolean;
   heal?: HealSpot[];
+  /** WebP/PNG encoder quality, 70–100. Default is high quality. */
+  exportQuality?: number;
+  /** 0 keeps the source edge (capped at 2000). 1500 and 2000 force that square. */
+  upscale?: UpscaleTarget;
 };
 
-/** Square export cap. Sources smaller than this are not upscaled. */
+export const DEFAULT_EXPORT_QUALITY = 95;
+export const MIN_EXPORT_QUALITY = 70;
+export type UpscaleTarget = 0 | 1500 | 2000;
+
+export function clampExportQuality(value: number | undefined): number {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : DEFAULT_EXPORT_QUALITY;
+  return Math.min(100, Math.max(MIN_EXPORT_QUALITY, Math.round(numeric)));
+}
+
+export function resolveExportEdge(sourceLongest: number, upscale: UpscaleTarget | undefined): number {
+  if (upscale === 1500 || upscale === 2000) return upscale;
+  return Math.min(EXPORT_SIZE, Math.max(1, sourceLongest));
+}
+
+/** Square export cap. The Ultra-HD option may still scale up to this size. */
 export const EXPORT_SIZE = 2000;
 
 /** Shorter edge below this triggers the low-resolution warning in the editor. */

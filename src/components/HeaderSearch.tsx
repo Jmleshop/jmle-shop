@@ -160,6 +160,7 @@ export default function HeaderSearch({
                       src={originalImageSrc(item.image)}
                       alt=""
                       fill
+                      unoptimized
                       quality={SHOP_IMAGE_QUALITY}
                       className="object-contain"
                       sizes="44px"

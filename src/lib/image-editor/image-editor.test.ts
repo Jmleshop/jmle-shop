@@ -13,7 +13,8 @@ import {
 import { applyAdjustments } from "./pixels";
 import { applySymmetry, smartBounds, suggestTemperature } from "./studio";
 import { PRESETS, isNeutralAdjustments } from "./presets";
-import { DEFAULT_ADJUSTMENTS } from "./types";
+import { estimateExportBytes } from "./export-size";
+import { DEFAULT_ADJUSTMENTS, clampExportQuality, resolveExportEdge } from "./types";
 
 function solid(width: number, height: number, rgba: [number, number, number, number]) {
   const data = new Uint8ClampedArray(width * height * 4);
@@ -138,6 +139,41 @@ describe("image editor pixels", () => {
     applyAdjustments(edge, 6, 1, { ...DEFAULT_ADJUSTMENTS, sharpness: 100 });
     assert.ok(edge[2 * 4] <= darkNeighbor);
     assert.ok(edge[3 * 4] >= brightNeighbor);
+  });
+
+  it("raises local contrast with clarity without shifting a flat field", () => {
+    const flat = solid(8, 1, [120, 120, 120, 255]);
+    const before = flat[0];
+    applyAdjustments(flat, 8, 1, { ...DEFAULT_ADJUSTMENTS, clarity: 100 });
+    assert.ok(Math.abs(flat[0] - before) <= 1);
+
+    const edge = solid(12, 1, [40, 40, 40, 255]);
+    for (let x = 6; x < 12; x++) {
+      edge[x * 4] = 210;
+      edge[x * 4 + 1] = 210;
+      edge[x * 4 + 2] = 210;
+    }
+    const dark = edge[4 * 4];
+    const bright = edge[7 * 4];
+    applyAdjustments(edge, 12, 1, { ...DEFAULT_ADJUSTMENTS, clarity: 100 });
+    assert.ok(edge[4 * 4] <= dark);
+    assert.ok(edge[7 * 4] >= bright);
+  });
+});
+
+describe("export size", () => {
+  it("defaults to 95 and keeps the chosen Ultra-HD edge", () => {
+    assert.equal(clampExportQuality(undefined), 95);
+    assert.equal(clampExportQuality(40), 70);
+    assert.equal(clampExportQuality(120), 100);
+    assert.equal(resolveExportEdge(800, 0), 800);
+    assert.equal(resolveExportEdge(800, 2000), 2000);
+    assert.equal(resolveExportEdge(4000, 1500), 1500);
+  });
+
+  it("scales a preview blob up to the export edge", () => {
+    assert.equal(estimateExportBytes(1000, 100, 200, 1), 4000);
+    assert.equal(estimateExportBytes(1000, 720, 2000, 0.72), Math.round(1000 * (2000 / 720) ** 2 * 0.72));
   });
 });
 

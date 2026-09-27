@@ -17,6 +17,7 @@ import { useAdminI18n } from "@/components/admin/AdminI18n";
 import CropOverlay from "@/components/admin/image-editor/CropOverlay";
 import { Button } from "@/components/ui";
 import { suggestEnhance } from "@/lib/image-editor/auto-enhance";
+import { estimateExportBytes } from "@/lib/image-editor/export-size";
 import { consistencyVerdict, meanLuminance, smartBounds, suggestTemperature } from "@/lib/image-editor/studio";
 import { PRESET_LABELS, copyFor, type EditorCopy } from "@/lib/image-editor/copy";
 import {
@@ -40,8 +41,11 @@ import {
 } from "@/lib/image-editor/render";
 import {
   DEFAULT_ADJUSTMENTS,
+  DEFAULT_EXPORT_QUALITY,
   FULL_FRAME,
   MIN_SOURCE_EDGE,
+  clampExportQuality,
+  resolveExportEdge,
   type Adjustments,
   type BackgroundMode,
   type CropAspectId,
@@ -52,6 +56,7 @@ import {
   type RenderSettings,
   type ShadowMode,
   type StudioBackground,
+  type UpscaleTarget,
 } from "@/lib/image-editor/types";
 
 type TabId = "ai" | "adjust" | "crop" | "studio";
@@ -73,6 +78,7 @@ function SliderField({
   min,
   max,
   disabled,
+  suffix,
   onChange,
 }: {
   label: string;
@@ -80,13 +86,17 @@ function SliderField({
   min: number;
   max: number;
   disabled?: boolean;
+  suffix?: string;
   onChange: (value: number) => void;
 }) {
   return (
     <label className="block text-xs text-gray-600">
       <span className="flex items-center justify-between gap-2">
         <span>{label}</span>
-        <span className="tabular-nums text-gray-400">{value}</span>
+        <span className="tabular-nums text-gray-400">
+          {value}
+          {suffix}
+        </span>
       </span>
       <input
         type="range"
@@ -100,6 +110,12 @@ function SliderField({
       />
     </label>
   );
+}
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "—";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function rotateQuarter(current: QuarterTurn): QuarterTurn {
@@ -155,6 +171,9 @@ export default function ImageEditorModal({
   const [consistency, setConsistency] = useState("");
   const [filterTick, setFilterTick] = useState(0);
   const [lowRes, setLowRes] = useState<"pending" | "ask" | "ok">("pending");
+  const [exportQuality, setExportQuality] = useState(DEFAULT_EXPORT_QUALITY);
+  const [upscale, setUpscale] = useState<UpscaleTarget>(0);
+  const [sizeBytes, setSizeBytes] = useState<number | null>(null);
 
   const bitmapRef = useRef<ImageBitmap | null>(null);
   const undoRef = useRef<() => void>(() => {});
@@ -234,6 +253,9 @@ export default function ImageEditorModal({
     setTab("adjust");
     setLowRes("pending");
     setMargin(true);
+    setExportQuality(DEFAULT_EXPORT_QUALITY);
+    setUpscale(0);
+    setSizeBytes(null);
 
     void (async () => {
       try {
@@ -247,7 +269,11 @@ export default function ImageEditorModal({
         }
         replaceBitmap(next);
         if (seed) {
-          if (seed.adjustments) setAdjustments(seed.adjustments);
+          if (seed.adjustments) {
+            setAdjustments({ ...DEFAULT_ADJUSTMENTS, ...seed.adjustments });
+          }
+          setExportQuality(clampExportQuality(seed.exportQuality));
+          setUpscale(seed.upscale === 1500 || seed.upscale === 2000 ? seed.upscale : 0);
           setRotation(seed.rotation);
           setFlipH(seed.flipH);
           setFlipV(seed.flipV);
@@ -350,6 +376,31 @@ export default function ImageEditorModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterTick, crop, background, shadow, backgroundColor, watermark, studio, margin, comparing]);
 
+  useEffect(() => {
+    if (phase !== "ready" || !bitmap) return;
+    const canvas = squareRef.current;
+    if (!canvas || canvas.width < 2) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      const png = background === "transparent";
+      canvas.toBlob(
+        (blob) => {
+          if (cancelled || !blob) return;
+          const edge = resolveExportEdge(Math.max(bitmap.width, bitmap.height), upscale);
+          setSizeBytes(
+            estimateExportBytes(blob.size, canvas.width, edge, png ? 0.95 : 0.72)
+          );
+        },
+        png ? "image/png" : "image/webp",
+        exportQuality / 100
+      );
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [phase, bitmap, exportQuality, upscale, background, filterTick]);
+
   const imageAspect = bitmap ? orientedAspect(bitmap.width, bitmap.height, rotation) : 1;
   const lockedPixel = pixelAspectFor(aspectId, imageAspect);
   const normRatio = normRatioFor(lockedPixel, imageAspect);
@@ -424,7 +475,9 @@ export default function ImageEditorModal({
 
   const applySettings = (settings: RenderSettings) => {
     applyingHist.current = true;
-    setAdjustments(settings.adjustments);
+    setAdjustments({ ...DEFAULT_ADJUSTMENTS, ...settings.adjustments });
+    setExportQuality(clampExportQuality(settings.exportQuality));
+    setUpscale(settings.upscale === 1500 || settings.upscale === 2000 ? settings.upscale : 0);
     setRotation(settings.rotation);
     setFlipH(settings.flipH);
     setFlipV(settings.flipV);
@@ -453,6 +506,8 @@ export default function ImageEditorModal({
     studio,
     margin,
     heal,
+    exportQuality,
+    upscale,
   });
 
   useEffect(() => {
@@ -550,6 +605,8 @@ export default function ImageEditorModal({
     setStudio("none");
     setHeal([]);
     setBackground("white");
+    setExportQuality(DEFAULT_EXPORT_QUALITY);
+    setUpscale(0);
     void onRestoreBackground();
   };
 
@@ -561,6 +618,10 @@ export default function ImageEditorModal({
     step && step.total > 1
       ? `${copy.title} · ${copy.step} ${step.current}/${step.total}`
       : copy.title;
+
+  const exportEdge = bitmap
+    ? resolveExportEdge(Math.max(bitmap.width, bitmap.height), upscale)
+    : upscale || 2000;
 
   const modal = (
     <div
@@ -575,7 +636,9 @@ export default function ImageEditorModal({
           <div>
             <h2 className="text-sm font-semibold">{title}</h2>
             <p className="text-[11px] text-gray-500">
-              {copy.outputHint} · {background === "transparent" ? "PNG" : "WebP"}
+              {copy.outputHint} · {exportEdge}×{exportEdge} · {exportQuality}% ·{" "}
+              {sizeBytes ? formatBytes(sizeBytes) : "…"} ·{" "}
+              {background === "transparent" ? "PNG" : "WebP"}
             </p>
           </div>
           <button
@@ -801,11 +864,56 @@ export default function ImageEditorModal({
                     disabled={phase !== "ready"}
                     fields={[
                       ["sharpness", copy.sharpness, 0, 100],
+                      ["clarity", copy.clarity, 0, 100],
                       ["noiseReduction", copy.noiseReduction, 0, 100],
                     ]}
                     adjustments={adjustments}
                     onChange={setSlider}
                   />
+                  <fieldset className="space-y-2">
+                    <legend className="mb-1 text-xs font-medium text-gray-700">
+                      {copy.exportQuality}
+                    </legend>
+                    <SliderField
+                      label={copy.exportQuality}
+                      min={70}
+                      max={100}
+                      suffix="%"
+                      value={exportQuality}
+                      disabled={phase !== "ready"}
+                      onChange={setExportQuality}
+                    />
+                    <p className="text-[11px] text-gray-500">{copy.exportQualityHint}</p>
+                    <p className="text-[11px] text-gray-700">
+                      {copy.fileSize}: {sizeBytes ? formatBytes(sizeBytes) : "…"} · {exportEdge}×
+                      {exportEdge} · {exportQuality}%
+                    </p>
+                    <p className="text-xs font-medium text-gray-700">{copy.upscaleLabel}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(
+                        [
+                          [0, copy.upscaleOff],
+                          [1500, copy.upscale1500],
+                          [2000, copy.upscale2000],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          aria-pressed={upscale === id}
+                          disabled={phase !== "ready"}
+                          onClick={() => setUpscale(id)}
+                          className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                            upscale === id
+                              ? "border-gold bg-gold text-white"
+                              : "border-gray-200 bg-white text-gray-700"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
                   <Button
                     type="button"
                     size="sm"

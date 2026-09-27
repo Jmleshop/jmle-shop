@@ -159,7 +159,7 @@ export default function ImageUpload({
               index === 0 ? "ring-gold" : "ring-transparent"
             }`}
           >
-            <Image src={url} alt="" fill className="object-contain" sizes="96px" />
+            <Image src={url} alt="" fill unoptimized className="object-contain" sizes="96px" />
             {editorEnabled && (
               <button
                 type="button"

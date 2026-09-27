@@ -5,7 +5,12 @@ import {
   transformedOutputSize,
 } from "./geometry";
 import { applyAdjustments, applyHealSpots, hasAnyAdjustment } from "./pixels";
-import { EXPORT_SIZE, type RenderSettings, type StudioBackground } from "./types";
+import {
+  clampExportQuality,
+  resolveExportEdge,
+  type RenderSettings,
+  type StudioBackground,
+} from "./types";
 
 export async function loadSourceBlob(source: File | string): Promise<Blob> {
   if (typeof source !== "string") return source;
@@ -215,19 +220,44 @@ export function blitCanvas(target: HTMLCanvasElement, source: HTMLCanvasElement)
   ctx.drawImage(source, 0, 0);
 }
 
+function drawSquare(source: HTMLCanvasElement, edge: number): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = edge;
+  canvas.height = edge;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return source;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(source, 0, 0, edge, edge);
+  return canvas;
+}
+
+/** Step the square up so a small source still lands on the chosen Ultra-HD edge. */
+function stepUpscale(source: HTMLCanvasElement, target: number): HTMLCanvasElement {
+  let current = source;
+  while (Math.max(current.width, current.height) * 2 < target) {
+    current = drawSquare(current, Math.max(current.width, current.height) * 2);
+  }
+  if (current.width === target && current.height === target) return current;
+  return drawSquare(current, target);
+}
+
 export async function exportProductImage(
   bitmap: ImageBitmap,
   settings: RenderSettings
 ): Promise<File> {
   const longest = Math.max(bitmap.width, bitmap.height, 1);
-  const size = Math.min(EXPORT_SIZE, longest);
-  const filtered = renderFilteredCanvas(bitmap, settings, size);
-  const square = renderSquareCanvas(filtered, settings, size);
+  const target = resolveExportEdge(longest, settings.upscale);
+  const native = Math.min(target, longest);
+  const filtered = renderFilteredCanvas(bitmap, settings, native);
+  let square = renderSquareCanvas(filtered, settings, native);
+  if (square.width < target || square.height < target) square = stepUpscale(square, target);
+  const quality = clampExportQuality(settings.exportQuality) / 100;
   const transparent =
     settings.background === "transparent" && (settings.studio ?? "none") === "none";
   const mime = transparent ? "image/png" : "image/webp";
   const blob = await new Promise<Blob | null>((resolve) => {
-    square.toBlob(resolve, mime, transparent ? 0.92 : 0.9);
+    square.toBlob(resolve, mime, quality);
   });
   if (!blob) throw new Error("Export fehlgeschlagen");
   const ext = transparent ? "png" : "webp";
