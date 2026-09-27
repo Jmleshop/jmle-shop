@@ -13,7 +13,9 @@ import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { isSaleCategoryId } from "@/lib/category-special";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import { useRowSelection } from "@/lib/use-row-selection";
-import { parseCsv, productAltText, productsToCsv } from "@/lib/admin-catalog-io";
+import { productAltText, productsToCsv, type CsvChange, type CsvIssue } from "@/lib/admin-catalog-io";
+import { originalImageSrc } from "@/lib/sharp-image";
+import type { NumberPlan } from "@/lib/product-numbers";
 import BarcodeScanModal from "@/components/admin/BarcodeScanModal";
 import { downloadPriceLabels } from "@/components/admin/PriceLabelPdf";
 import { compareAlpha } from "@/lib/locale-sort";
@@ -30,7 +32,7 @@ const emptyForm = {
   name_de: "",
   description: "",
   price: "",
-  vat_rate: "19",
+  vat_rate: "7",
   vat_custom: false,
   discount_percent: "0",
   discount_custom: false,
@@ -72,6 +74,16 @@ export default function AdminProductsPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [reframing, setReframing] = useState(false);
+  const [framePreview, setFramePreview] = useState<
+    { id: string; name: string; beforeUrl: string; afterUrl: string; beforeSize: string; afterSize: string }[] | null
+  >(null);
+  const [frameProgress, setFrameProgress] = useState<string>("");
+  const [editMode, setEditMode] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<{ changes: CsvChange[]; issues: CsvIssue[] } | null>(null);
+  const [csvText, setCsvText] = useState("");
+  const [csvBusy, setCsvBusy] = useState(false);
+  const [numberPlan, setNumberPlan] = useState<NumberPlan[] | null>(null);
+  const [numberBusy, setNumberBusy] = useState(false);
   const sel = useRowSelection();
 
   const load = () => {
@@ -176,27 +188,57 @@ export default function AdminProductsPage() {
 
   const reframeImages = async () => {
     if (reframing) return;
-    if (
-      !confirm(
-        "Alle Produktbilder werden automatisch auf die Verpackung zugeschnitten. Fortfahren?"
-      )
-    ) {
-      return;
-    }
     setReframing(true);
+    setFrameProgress("Vorschau wird erzeugt…");
     try {
-      const res = await fetch("/api/admin/reprocess-all-images", { method: "POST" });
+      const res = await fetch("/api/admin/reprocess-all-images");
       const body = await res.json();
       if (!res.ok) {
-        toast.error(body.error || "Zuschneiden fehlgeschlagen");
+        toast.error(body.error || "Vorschau fehlgeschlagen");
         return;
       }
-      toast.success(`${body.reframed} Bilder neu zugeschnitten`);
+      setFramePreview(body.previews ?? []);
+    } catch {
+      toast.error("Vorschau fehlgeschlagen");
+    } finally {
+      setReframing(false);
+      setFrameProgress("");
+    }
+  };
+
+  const applyFrame = async () => {
+    if (reframing) return;
+    setReframing(true);
+    let offset = 0;
+    let reframed = 0;
+    try {
+      for (let guard = 0; guard < 5000; guard += 1) {
+        setFrameProgress(`${offset} Bilder geprüft…`);
+        const res = await fetch("/api/admin/reprocess-all-images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apply: true, offset }),
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          toast.error(body.error || "Zuschneiden fehlgeschlagen");
+          return;
+        }
+        reframed += Number(body.reframed) || 0;
+        const total = Number(body.total) || 0;
+        setFrameProgress(`${body.nextOffset ?? offset} / ${total}`);
+        if (body.done) break;
+        offset = Number(body.nextOffset) || offset;
+        if ((body.examined ?? 0) === 0) break;
+      }
+      toast.success(`${reframed} Bilder neu zugeschnitten`);
+      setFramePreview(null);
       load();
     } catch {
       toast.error("Zuschneiden fehlgeschlagen");
     } finally {
       setReframing(false);
+      setFrameProgress("");
     }
   };
 
@@ -321,23 +363,74 @@ export default function AdminProductsPage() {
   };
 
   const importCsv = async (file: File) => {
-    const rows = parseCsv(await file.text());
-    let ok = 0;
-    for (const row of rows) {
-      const payload = {
-        ...row,
-        category_id: row.category_id || categoryFilter || categories[0]?.id || "",
-        vat_rate: row.vat_rate || "7",
-      };
-      const res = await fetch("/api/admin/products", {
+    const csv = await file.text();
+    setCsvText(csv);
+    const res = await fetch("/api/admin/products/csv", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ csv }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      toast.error(body.error || "CSV fehlgeschlagen");
+      return;
+    }
+    setCsvPreview({ changes: body.changes ?? [], issues: body.issues ?? [] });
+  };
+
+  const applyCsv = async () => {
+    if (!csvText || csvBusy) return;
+    setCsvBusy(true);
+    try {
+      const res = await fetch("/api/admin/products/csv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ csv: csvText, apply: true }),
       });
-      if (res.ok) ok += 1;
+      const body = await res.json();
+      if (!res.ok) {
+        toast.error(body.error || "CSV fehlgeschlagen");
+        return;
+      }
+      toast.success(`${body.applied ?? 0} Produkte aktualisiert`);
+      setCsvPreview(null);
+      setCsvText("");
+      load();
+    } finally {
+      setCsvBusy(false);
     }
-    toast.success(`${ok} von ${rows.length} importiert`);
-    load();
+  };
+
+  const previewNumbers = async () => {
+    const res = await fetch("/api/admin/products/numbers");
+    const body = await res.json();
+    if (!res.ok) {
+      toast.error(body.error || "Nummern fehlgeschlagen");
+      return;
+    }
+    setNumberPlan(body.plan ?? []);
+  };
+
+  const applyNumbers = async () => {
+    if (numberBusy) return;
+    setNumberBusy(true);
+    try {
+      const res = await fetch("/api/admin/products/numbers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apply: true }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        toast.error(body.error || "Nummern fehlgeschlagen");
+        return;
+      }
+      toast.success(`${body.updated ?? 0} Nummern gesetzt`);
+      setNumberPlan(null);
+      load();
+    } finally {
+      setNumberBusy(false);
+    }
   };
 
   return (
@@ -375,6 +468,16 @@ export default function AdminProductsPage() {
           >
             {t("trash")} →
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (editMode) sel.clear();
+              setEditMode((on) => !on);
+            }}
+            className={`rounded-xl px-4 py-2.5 text-sm font-medium min-h-11 ${editMode ? "bg-gray-900 text-white" : "border border-gray-300"}`}
+          >
+            {editMode ? "Fertig" : "Bearbeiten"}
+          </button>
           <button onClick={openCreate} className="btn-primary flex items-center gap-2 py-2.5 px-5">
             <Plus size={18} />
             {t("newProduct")}
@@ -412,6 +515,7 @@ export default function AdminProductsPage() {
         </select>
       </div>
       <div className="mb-4 flex flex-wrap gap-2">
+        <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => void previewNumbers()}>Nummern prüfen</button>
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={exportCsv}>CSV exportieren</button>
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => csvInputRef.current?.click()}>CSV importieren</button>
         <input
@@ -435,7 +539,7 @@ export default function AdminProductsPage() {
           disabled={reframing}
           onClick={() => void reframeImages()}
         >
-          {reframing ? "Schneide Bilder zu…" : "Bilder zuschneiden"}
+          {reframing ? frameProgress || "Vorschau…" : "Bilder zuschneiden"}
         </button>
       </div>
       {lowStock.length > 0 && (
@@ -799,49 +903,68 @@ export default function AdminProductsPage() {
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <p className="px-4 py-2 text-[11px] text-gray-400 border-b bg-gray-50/80">
-            Tipp: Zeile nach rechts wischen → Papierkorb (Soft Delete). Bearbeiten-Buttons bleiben nutzbar.
+            {editMode
+              ? "Auswahl, Stift und Papierkorb sind sichtbar. „Fertig“ blendet sie wieder aus."
+              : "„Bearbeiten“ oben rechts zeigt Auswahl, Stift und Papierkorb."}
           </p>
-          <div className="hidden sm:grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto] gap-2 px-4 py-3 text-xs font-medium text-gray-500 bg-gray-50/95 sticky top-0 z-10 border-b">
+          <div className={`hidden sm:grid ${editMode ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)]"} gap-2 px-4 py-3 text-xs font-medium text-gray-500 bg-gray-50/95 sticky top-0 z-10 border-b`}>
             <span className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={sel.allSelected(displayedIds)}
-                onChange={() => sel.toggleAll(displayedIds)}
-                aria-label="Alle auswählen"
-                className="w-4 h-4 accent-gold"
-              />
-              {t("nameDe")}
+              {editMode && (
+                <input
+                  type="checkbox"
+                  checked={sel.allSelected(displayedIds)}
+                  onChange={() => sel.toggleAll(displayedIds)}
+                  aria-label="Alle auswählen"
+                  className="w-4 h-4 accent-gold"
+                />
+              )}
+              {t("nameAr")}
             </span>
             <span>{t("productNumber")}</span>
             <span>{t("price")}</span>
             <span>{t("stock")}</span>
-            <span className="text-right">Aktionen</span>
+            {editMode && <span className="text-right">Aktionen</span>}
           </div>
           <div className="max-h-[70vh] overflow-y-auto divide-y">
             {displayed.map((p, idx) => (
                 <SwipeToDeleteRow
                   key={p.id}
-                  disabled={!!p.deleted_at}
+                  disabled={!editMode || !!p.deleted_at}
                   label={t("archive")}
                   onSwipeDelete={() => swipeToTrash(p)}
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto] gap-1 sm:gap-2 items-center px-4 py-3 sm:py-2.5 text-sm min-h-[52px]">
+                  <div className={`grid grid-cols-1 ${editMode ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto]" : "sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)]"} gap-1 sm:gap-2 items-center px-4 py-3 sm:py-2.5 text-sm min-h-[52px]`}>
                     <div className="font-medium min-w-0 flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={sel.isSelected(p.id)}
-                        onChange={() => {}}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          sel.onSelect(displayedIds, idx, e.shiftKey);
-                        }}
-                        aria-label={`${p.name_de || p.name_ar} auswählen`}
-                        className="shrink-0 w-4 h-4 accent-gold"
-                      />
+                      {editMode && (
+                        <input
+                          type="checkbox"
+                          checked={sel.isSelected(p.id)}
+                          onChange={() => {}}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sel.onSelect(displayedIds, idx, e.shiftKey);
+                          }}
+                          aria-label={`${p.name_ar || p.name_de} auswählen`}
+                          className="shrink-0 w-4 h-4 accent-gold"
+                        />
+                      )}
+                      {p.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={originalImageSrc(p.image)}
+                          alt=""
+                          className="h-12 w-12 shrink-0 rounded-lg border border-gray-100 bg-white object-contain"
+                        />
+                      ) : (
+                        <span className="h-12 w-12 shrink-0 rounded-lg bg-gray-100" />
+                      )}
                       <div className="min-w-0">
-                      <span className="truncate block">
-                        {p.name_de || p.name_ar}
+                      <span className="truncate block" dir="rtl">
+                        {p.name_ar || p.name_de}
                       </span>
+                      {p.name_de && (
+                        <span className="truncate block text-xs text-gray-400">{p.name_de}</span>
+                      )}
                       {p.status === "draft" && (
                         <span className="text-[11px] uppercase tracking-wide text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
                           {t("drafts")}
@@ -862,31 +985,146 @@ export default function AdminProductsPage() {
                       {p.stock_quantity}
                       {Number(p.stock_quantity) < 5 ? " · niedrig" : ""}
                     </div>
-                    <div className="flex justify-end gap-0.5">
-                      <button
-                        type="button"
-                        className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center"
-                        onClick={() => openEdit(p)}
-                        aria-label="Bearbeiten"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center"
-                        onClick={() => setArchived(p.id, !p.deleted_at)}
-                        aria-label={p.deleted_at ? t("restore") : t("archive")}
-                      >
-                        {p.deleted_at ? (
-                          <ArchiveRestore size={16} />
-                        ) : (
-                          <Archive size={16} />
-                        )}
-                      </button>
-                    </div>
+                    {editMode && (
+                      <div className="flex justify-end gap-0.5">
+                        <button
+                          type="button"
+                          className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center"
+                          onClick={() => openEdit(p)}
+                          aria-label="Bearbeiten"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center"
+                          onClick={() => setArchived(p.id, !p.deleted_at)}
+                          aria-label={p.deleted_at ? t("restore") : t("archive")}
+                        >
+                          {p.deleted_at ? (
+                            <ArchiveRestore size={16} />
+                          ) : (
+                            <Archive size={16} />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </SwipeToDeleteRow>
               ))}
+          </div>
+        </div>
+      )}
+      {framePreview && (
+        <div className="fixed inset-0 z-[220] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto p-5">
+            <h2 className="text-lg font-semibold mb-1">Vorschau Zuschnitt</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Nichts ist gespeichert. Die Packung wird auf 88 % der Quadratkante gesetzt. Erst „Übernehmen“ schreibt die Bilder.
+            </p>
+            {framePreview.length === 0 ? (
+              <p className="text-sm text-gray-600 mb-4">Diese Bilder sind bereits eng zugeschnitten.</p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 mb-4">
+                {framePreview.map((item) => (
+                  <figure key={item.id} className="rounded-xl border border-gray-100 p-3">
+                    <figcaption className="text-sm font-medium mb-2 truncate">{item.name}</figcaption>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-[11px] text-gray-400 mb-1">Vorher {item.beforeSize}</p>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.beforeUrl} alt="" className="aspect-square w-full object-contain bg-white border" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-gray-400 mb-1">Nachher {item.afterSize}</p>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.afterUrl} alt="" className="aspect-square w-full object-contain bg-white border" />
+                      </div>
+                    </div>
+                  </figure>
+                ))}
+              </div>
+            )}
+            {frameProgress && <p className="text-sm text-gray-600 mb-3">{frameProgress}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="rounded-xl border px-4 py-2 text-sm min-h-11" onClick={() => setFramePreview(null)} disabled={reframing}>
+                Schließen
+              </button>
+              <button type="button" className="rounded-xl bg-gold px-4 py-2 text-sm text-white min-h-11 disabled:opacity-50" onClick={() => void applyFrame()} disabled={reframing || framePreview.length === 0}>
+                Übernehmen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {csvPreview && (
+        <div className="fixed inset-0 z-[220] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-5">
+            <h2 className="text-lg font-semibold mb-1">CSV-Änderungen</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Zeilen ohne ID oder mit ungültigem Preis werden übersprungen. Speichern schreibt nur die gelisteten Felder.
+            </p>
+            {csvPreview.issues.length > 0 && (
+              <ul className="mb-4 text-sm text-red-700 bg-red-50 rounded-xl p-3 space-y-1">
+                {csvPreview.issues.map((issue) => (
+                  <li key={`${issue.row}-${issue.message}`}>Zeile {issue.row}: {issue.message}</li>
+                ))}
+              </ul>
+            )}
+            {csvPreview.changes.length === 0 ? (
+              <p className="text-sm text-gray-600 mb-4">Keine Feldänderungen.</p>
+            ) : (
+              <ul className="mb-4 divide-y text-sm max-h-80 overflow-y-auto border rounded-xl">
+                {csvPreview.changes.map((change) => (
+                  <li key={`${change.id}-${change.field}`} className="px-3 py-2">
+                    <span className="font-medium" dir="rtl">{change.name}</span>
+                    <span className="text-gray-500"> · {change.field}: {change.from || "—"} → {change.to}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex justify-end gap-2">
+              <button type="button" className="rounded-xl border px-4 py-2 text-sm min-h-11" disabled={csvBusy} onClick={() => setCsvPreview(null)}>
+                Schließen
+              </button>
+              <button type="button" className="rounded-xl bg-gold px-4 py-2 text-sm text-white min-h-11 disabled:opacity-50" disabled={csvBusy || csvPreview.changes.length === 0} onClick={() => void applyCsv()}>
+                Übernehmen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {numberPlan && (
+        <div className="fixed inset-0 z-[220] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-5">
+            <h2 className="text-lg font-semibold mb-1">Produktnummern</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Vorschlag nach Erstelldatum, das älteste Produkt bekommt 1. Nichts ist gespeichert, bis du übernimmst.
+            </p>
+            <ul className="mb-4 divide-y text-sm max-h-80 overflow-y-auto border rounded-xl">
+              {numberPlan.filter((row) => row.from !== row.to).slice(0, 80).map((row) => (
+                <li key={row.id} className="px-3 py-2">
+                  <span className="font-medium" dir="rtl">{row.name}</span>
+                  <span className="text-gray-500"> · {row.from || "—"} → {row.to}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-gray-400 mb-4">
+              {numberPlan.filter((row) => row.from !== row.to).length} Nummern würden sich ändern.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="rounded-xl border px-4 py-2 text-sm min-h-11" disabled={numberBusy} onClick={() => setNumberPlan(null)}>
+                Schließen
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-gold px-4 py-2 text-sm text-white min-h-11 disabled:opacity-50"
+                disabled={numberBusy || numberPlan.every((row) => row.from === row.to)}
+                onClick={() => void applyNumbers()}
+              >
+                Übernehmen
+              </button>
+            </div>
           </div>
         </div>
       )}
