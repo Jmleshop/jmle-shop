@@ -240,10 +240,9 @@ export function shopText(
 const ARABIC = /[\u0600-\u06FF]/;
 
 export function productTitle(
-  lang: ShopLang,
+  _lang: ShopLang,
   product: { name: string; nameDe?: string | null }
 ): string {
-  if (lang === "de") return product.nameDe?.trim() || product.name;
   return product.name?.trim() || product.nameDe?.trim() || "";
 }
 
