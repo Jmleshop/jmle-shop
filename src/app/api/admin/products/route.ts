@@ -5,6 +5,7 @@ import {
   PRODUCT_SELECT_BASE,
   parseProductBody,
 } from "@/lib/admin-payloads";
+import { nextProductNumber } from "@/lib/product-numbers";
 import type { FoodProduct } from "@/types";
 
 export async function GET(request: Request) {
@@ -66,7 +67,13 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const payload = parsed.data;
+  const payload = { ...parsed.data };
+  if (!payload.product_number) {
+    const existing = await auth.supabase.from("products").select("product_number");
+    payload.product_number = nextProductNumber(
+      (existing.data ?? []).map((row) => row.product_number as string | null)
+    );
+  }
 
   let { data, error } = await auth.supabase
     .from("products")
