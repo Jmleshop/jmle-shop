@@ -73,7 +73,7 @@ export const productCreateSchema = z
     }
 
     let vat_rate = asNullableNumber(raw.vat_rate);
-    if (vat_rate == null) vat_rate = 19;
+    if (vat_rate == null) vat_rate = 7;
     vat_rate = Math.min(100, Math.max(0, vat_rate));
 
     let discount_percent = asNullableNumber(raw.discount_percent) ?? 0;
