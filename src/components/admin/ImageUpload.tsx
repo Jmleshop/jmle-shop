@@ -111,7 +111,7 @@ export default function ImageUpload({
     setUploading(true);
     setError("");
     try {
-      const url = await uploadOne(file);
+      const url = await uploadProductImage(file, folder, { alreadyEncoded: true });
       const base = urlsRef.current;
       const next = current?.replaceUrl
         ? base.map((item) => (item === current.replaceUrl ? url : item))

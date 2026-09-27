@@ -165,8 +165,8 @@ describe("image editor pixels", () => {
 describe("export size", () => {
   it("defaults to 95 and keeps the chosen Ultra-HD edge", () => {
     assert.equal(clampExportQuality(undefined), 95);
-    assert.equal(clampExportQuality(40), 70);
-    assert.equal(clampExportQuality(120), 100);
+    assert.equal(clampExportQuality(40), 92);
+    assert.equal(clampExportQuality(120), 95);
     assert.equal(resolveExportEdge(800, 0), 800);
     assert.equal(resolveExportEdge(800, 2000), 2000);
     assert.equal(resolveExportEdge(4000, 1500), 1500);

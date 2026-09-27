@@ -62,27 +62,41 @@ export async function compressImageFile(
   }
 }
 
-/** Cropped pixel area → high-quality WebP. A second crush is skipped when the canvas is already in range. */
+function fitCanvas(canvas: HTMLCanvasElement, maxEdge: number): HTMLCanvasElement {
+  const edge = Math.max(canvas.width, canvas.height);
+  if (edge <= maxEdge) return canvas;
+  const scale = maxEdge / edge;
+  const next = document.createElement("canvas");
+  next.width = Math.max(1, Math.round(canvas.width * scale));
+  next.height = Math.max(1, Math.round(canvas.height * scale));
+  const ctx = next.getContext("2d");
+  if (!ctx) return canvas;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(canvas, 0, 0, next.width, next.height);
+  return next;
+}
+
+/** One WebP encode. Larger canvases are scaled down before that single encode. */
 export async function canvasToCompressedFile(
   canvas: HTMLCanvasElement,
   filename = "crop.webp"
 ): Promise<File> {
+  const fitted = fitCanvas(canvas, MAX_EDGE);
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, "image/webp", WEBP_QUALITY)
+    fitted.toBlob(resolve, "image/webp", WEBP_QUALITY)
   );
   if (!blob) throw new Error("Crop fehlgeschlagen");
-  const file = new File([blob], filename, { type: "image/webp" });
-  const edge = Math.max(canvas.width, canvas.height);
-  if (edge <= MAX_EDGE && blob.size <= MAX_MB * 1024 * 1024) return file;
-  return compressImageFile(file, MAX_EDGE);
+  return new File([blob], filename, { type: "image/webp" });
 }
 
 export async function uploadProductImage(
   file: File,
-  folder = "products"
+  folder = "products",
+  options?: { alreadyEncoded?: boolean }
 ): Promise<string> {
   const { createClient } = await import("@/lib/supabase/client");
-  const compressed = await compressImageFile(file);
+  const compressed = options?.alreadyEncoded ? file : await compressImageFile(file);
   const supabase = createClient();
   const ext = compressed.type === "image/png" ? "png" : "webp";
   const path = `${folder}/${crypto.randomUUID()}.${ext}`;

@@ -81,19 +81,20 @@ export type RenderSettings = {
   studio?: StudioBackground;
   margin?: boolean;
   heal?: HealSpot[];
-  /** WebP/PNG encoder quality, 70–100. Default is high quality. */
+  /** WebP/PNG encoder quality, 92–95. Default is high quality. */
   exportQuality?: number;
   /** 0 keeps the source edge (capped at 2000). 1500 and 2000 force that square. */
   upscale?: UpscaleTarget;
 };
 
 export const DEFAULT_EXPORT_QUALITY = 95;
-export const MIN_EXPORT_QUALITY = 70;
+export const MIN_EXPORT_QUALITY = 92;
+export const MAX_EXPORT_QUALITY = 95;
 export type UpscaleTarget = 0 | 1500 | 2000;
 
 export function clampExportQuality(value: number | undefined): number {
   const numeric = typeof value === "number" && Number.isFinite(value) ? value : DEFAULT_EXPORT_QUALITY;
-  return Math.min(100, Math.max(MIN_EXPORT_QUALITY, Math.round(numeric)));
+  return Math.min(MAX_EXPORT_QUALITY, Math.max(MIN_EXPORT_QUALITY, Math.round(numeric)));
 }
 
 export function resolveExportEdge(sourceLongest: number, upscale: UpscaleTarget | undefined): number {

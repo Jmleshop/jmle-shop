@@ -879,8 +879,8 @@ export default function ImageEditorModal({
                     </legend>
                     <SliderField
                       label={copy.exportQuality}
-                      min={70}
-                      max={100}
+                      min={92}
+                      max={95}
                       suffix="%"
                       value={exportQuality}
                       disabled={phase !== "ready"}
