@@ -85,7 +85,7 @@ export default function ProductGallery({
               fill
               unoptimized
               quality={SHOP_IMAGE_QUALITY}
-              className="max-h-full max-w-full object-contain p-[10%]"
+              className="max-h-full max-w-full object-contain"
               sizes="(max-width: 768px) 100vw, 50vw"
               draggable={false}
             />

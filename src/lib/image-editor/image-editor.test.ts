@@ -14,6 +14,7 @@ import { applyAdjustments } from "./pixels";
 import { applySymmetry, smartBounds, suggestTemperature } from "./studio";
 import { PRESETS, isNeutralAdjustments } from "./presets";
 import { estimateExportBytes } from "./export-size";
+import { productFrame, productPixelBounds, shouldReframe } from "./product-bounds";
 import { DEFAULT_ADJUSTMENTS, clampExportQuality, resolveExportEdge } from "./types";
 
 function solid(width: number, height: number, rgba: [number, number, number, number]) {
@@ -217,5 +218,27 @@ describe("studio tools", () => {
     assert.ok(rect);
     assert.ok(rect.x < 0.5);
     assert.ok(rect.w < 1);
+  });
+
+  it("drops a near-white studio margin and keeps the package", () => {
+    const data = solid(20, 20, [250, 250, 250, 255]);
+    for (let y = 6; y <= 13; y++) {
+      for (let x = 7; x <= 12; x++) {
+        const i = (y * 20 + x) * 4;
+        data[i] = 180;
+        data[i + 1] = 40;
+        data[i + 2] = 30;
+      }
+    }
+    const box = productPixelBounds(data, 20, 20);
+    assert.ok(box);
+    assert.equal(box.x, 7);
+    assert.equal(box.y, 6);
+    assert.equal(box.w, 6);
+    assert.equal(box.h, 8);
+    assert.equal(shouldReframe(box, 20, 20), true);
+    const framed = productFrame(box.w, box.h, 1000);
+    assert.equal(framed.dh, 880);
+    assert.ok(framed.dy >= 50 && framed.dy <= 70);
   });
 });

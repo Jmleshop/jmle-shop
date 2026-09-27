@@ -1,3 +1,4 @@
+import { productPixelBounds } from "./product-bounds";
 import type { HealSpot, NormRect } from "./types";
 
 function clampByte(value: number): number {
@@ -209,41 +210,25 @@ export function consistencyVerdict(
   };
 }
 
-/** Umschließt deckende Pixel und lässt rundherum Luft für den Smart-Crop. */
+/** Tight box around the product. White and transparent margins are not part of it. */
 export function smartBounds(
   data: Uint8ClampedArray,
   width: number,
   height: number,
-  padRatio = 0.06
+  padRatio = 0
 ): NormRect | null {
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-  const corner = data[0] + data[1] + data[2];
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      if (data[i + 3] < 24) continue;
-      const sum = data[i] + data[i + 1] + data[i + 2];
-      if (Math.abs(sum - corner) < 18 && data[i + 3] > 240) continue;
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
-    }
-  }
-  if (maxX < minX || maxY < minY) return null;
-  const padX = Math.round((maxX - minX) * padRatio);
-  const padY = Math.round((maxY - minY) * padRatio);
-  const x0 = Math.max(0, minX - padX);
-  const y0 = Math.max(0, minY - padY);
-  const x1 = Math.min(width - 1, maxX + padX);
-  const y1 = Math.min(height - 1, maxY + padY);
+  const box = productPixelBounds(data, width, height, 4);
+  if (!box) return null;
+  const padX = Math.round(box.w * padRatio);
+  const padY = Math.round(box.h * padRatio);
+  const x0 = Math.max(0, box.x - padX);
+  const y0 = Math.max(0, box.y - padY);
+  const x1 = Math.min(width, box.x + box.w + padX);
+  const y1 = Math.min(height, box.y + box.h + padY);
   return {
     x: x0 / width,
     y: y0 / height,
-    w: Math.max(0.05, (x1 - x0 + 1) / width),
-    h: Math.max(0.05, (y1 - y0 + 1) / height),
+    w: Math.max(1 / width, (x1 - x0) / width),
+    h: Math.max(1 / height, (y1 - y0) / height),
   };
 }

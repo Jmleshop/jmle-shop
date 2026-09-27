@@ -107,7 +107,7 @@ export default function CartPage() {
                   fill
                   unoptimized
                   quality={SHOP_IMAGE_QUALITY}
-                  className="object-contain p-[10%]"
+                  className="object-contain"
                   sizes="112px"
                 />
               )}

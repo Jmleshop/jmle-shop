@@ -18,6 +18,7 @@ import CropOverlay from "@/components/admin/image-editor/CropOverlay";
 import { Button } from "@/components/ui";
 import { suggestEnhance } from "@/lib/image-editor/auto-enhance";
 import { estimateExportBytes } from "@/lib/image-editor/export-size";
+import { PRODUCT_FILL } from "@/lib/image-editor/product-bounds";
 import { consistencyVerdict, meanLuminance, smartBounds, suggestTemperature } from "@/lib/image-editor/studio";
 import { PRESET_LABELS, copyFor, type EditorCopy } from "@/lib/image-editor/copy";
 import {
@@ -670,7 +671,9 @@ export default function ImageEditorModal({
                 const bounds = squareRef.current.getBoundingClientRect();
                 const px = ((event.clientX - bounds.left) / bounds.width) * squareRef.current.width;
                 const py = ((event.clientY - bounds.top) / bounds.height) * squareRef.current.height;
-                const inner = margin ? squareRef.current.width * 0.8 : squareRef.current.width;
+                const inner = margin
+                  ? squareRef.current.width * PRODUCT_FILL
+                  : squareRef.current.width;
                 const origin = (squareRef.current.width - inner) / 2;
                 const nx = (px - origin) / inner;
                 const ny = (py - origin) / inner;

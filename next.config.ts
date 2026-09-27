@@ -12,7 +12,7 @@ function supabaseHostname(): string {
 
 const nextConfig: NextConfig = {
   // ONNX/WASM des Freistellers bleibt aus dem Server-Bundle; der Editor lädt es nur im Browser.
-  serverExternalPackages: ["@imgly/background-removal", "onnxruntime-web", "onnxruntime-node"],
+  serverExternalPackages: ["@imgly/background-removal", "onnxruntime-web", "onnxruntime-node", "sharp"],
   images: {
     formats: ["image/webp"],
     qualities: [75, 90, 95],

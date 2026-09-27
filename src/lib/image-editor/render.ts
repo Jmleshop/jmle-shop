@@ -4,6 +4,7 @@ import {
   straightenedOutputSize,
   transformedOutputSize,
 } from "./geometry";
+import { productFrame } from "./product-bounds";
 import { applyAdjustments, applyHealSpots, hasAnyAdjustment } from "./pixels";
 import {
   clampExportQuality,
@@ -153,11 +154,10 @@ export function renderSquareCanvas(
     ctx.clearRect(0, 0, size, size);
   }
 
-  const inner = settings.margin === false ? size : Math.round(size * 0.8);
-  const origin = Math.round((size - inner) / 2);
-  const place = squarePlacement(crop.w, crop.h, inner);
-  place.dx += origin;
-  place.dy += origin;
+  const place =
+    settings.margin === false
+      ? squarePlacement(crop.w, crop.h, size)
+      : productFrame(crop.w, crop.h, size);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 

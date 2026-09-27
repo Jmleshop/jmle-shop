@@ -71,6 +71,7 @@ export default function AdminProductsPage() {
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [reframing, setReframing] = useState(false);
   const sel = useRowSelection();
 
   const load = () => {
@@ -171,6 +172,32 @@ export default function AdminProductsPage() {
     if (okCount > 0) toast.success(`${okCount} in den Papierkorb verschoben`);
     if (okCount < ids.length) toast.error("Einige Aktionen fehlgeschlagen");
     load();
+  };
+
+  const reframeImages = async () => {
+    if (reframing) return;
+    if (
+      !confirm(
+        "Alle Produktbilder werden automatisch auf die Verpackung zugeschnitten. Fortfahren?"
+      )
+    ) {
+      return;
+    }
+    setReframing(true);
+    try {
+      const res = await fetch("/api/admin/reprocess-all-images", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) {
+        toast.error(body.error || "Zuschneiden fehlgeschlagen");
+        return;
+      }
+      toast.success(`${body.reframed} Bilder neu zugeschnitten`);
+      load();
+    } catch {
+      toast.error("Zuschneiden fehlgeschlagen");
+    } finally {
+      setReframing(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent, status: "published" | "draft") => {
@@ -401,6 +428,14 @@ export default function AdminProductsPage() {
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => setScanning(true)}>Barcode scannen</button>
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => void downloadPriceLabels(displayed)}>
           Etiketten-PDF
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border px-3 py-2 text-sm min-h-11 disabled:opacity-50"
+          disabled={reframing}
+          onClick={() => void reframeImages()}
+        >
+          {reframing ? "Schneide Bilder zu…" : "Bilder zuschneiden"}
         </button>
       </div>
       {lowStock.length > 0 && (

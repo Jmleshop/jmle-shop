@@ -2,10 +2,7 @@
 export async function resolve(specifier, context, nextResolve) {
   if (
     (specifier.startsWith("./") || specifier.startsWith("../")) &&
-    !specifier.endsWith(".ts") &&
-    !specifier.endsWith(".tsx") &&
-    !specifier.endsWith(".js") &&
-    !specifier.endsWith(".mjs")
+    !/\.[a-zA-Z0-9]+$/.test(specifier)
   ) {
     try {
       return await nextResolve(`${specifier}.ts`, context);
