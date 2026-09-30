@@ -1,12 +1,23 @@
 import {
   MAX_EDGE_PRODUCT,
   STORAGE_WEBP_QUALITY,
+  isLogoFolder,
   maxEdgeForFolder,
 } from "@/lib/image-bounds";
 import {
   centerImageInTransparentSquare,
   shouldAutoCenterFolder,
 } from "@/lib/center-image-square";
+
+function extensionForMime(type: string, fallbackName: string): string {
+  if (type === "image/png") return "png";
+  if (type === "image/jpeg" || type === "image/jpg") return "jpg";
+  if (type === "image/webp") return "webp";
+  if (type === "image/gif") return "gif";
+  if (type === "image/svg+xml") return "svg";
+  const m = fallbackName.match(/\.([a-zA-Z0-9]+)$/);
+  return m?.[1]?.toLowerCase() || "png";
+}
 
 /**
  * Client-seitige Speicher-Optimierung:
@@ -115,6 +126,7 @@ export async function canvasToCompressedFile(
  * Upload in Supabase Storage.
  * WebP q90 + Bounds. Produkte werden transparent 1:1 zentriert (kein Freisteller).
  * Banner behalten das Original-Seitenverhältnis.
+ * Logos: Originalbytes, keine Kompression/Zentrierung/Freistellung.
  */
 export async function uploadProductImage(
   file: File,
@@ -122,6 +134,20 @@ export async function uploadProductImage(
   options?: { alreadyEncoded?: boolean; skipCenter?: boolean }
 ): Promise<string> {
   const { createClient } = await import("@/lib/supabase/client");
+  const supabase = createClient();
+
+  // Logos: volle Originalqualität, natürliches Seitenverhältnis
+  if (isLogoFolder(folder) && !options?.alreadyEncoded) {
+    const ext = extensionForMime(file.type, file.name);
+    const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+    const contentType = file.type || "image/png";
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(path, file, { contentType, upsert: false });
+    if (error) throw error;
+    return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+  }
+
   const maxEdge = maxEdgeForFolder(folder);
   let working = file;
   // Manuell freigestellte Exports nicht erneut umrahmen
@@ -137,7 +163,6 @@ export async function uploadProductImage(
     }
   }
   const compressed = await compressImageFile(working, maxEdge);
-  const supabase = createClient();
   const ext = compressed.type === "image/png" ? "png" : "webp";
   const path = `${folder}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage

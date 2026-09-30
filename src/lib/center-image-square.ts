@@ -48,8 +48,8 @@ export async function centerImageInTransparentSquare(
   }
 }
 
-/** Ordner, die 1:1-Zentrierung erhalten (keine Banner). */
+/** Ordner, die 1:1-Zentrierung erhalten (keine Banner/Logos). */
 export function shouldAutoCenterFolder(folder: string): boolean {
   const key = folder.trim().toLowerCase();
-  return !/^(banners?|slides|hero)$/.test(key);
+  return !/^(banners?|slides|hero|brand|brands|logo|logos)$/.test(key);
 }

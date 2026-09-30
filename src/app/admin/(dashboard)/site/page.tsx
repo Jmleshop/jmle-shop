@@ -194,7 +194,7 @@ export default function AdminSiteSettingsPage() {
             onChange={(url) => setLogo(typeof url === "string" ? url : url[0] ?? "")}
             folder="brand"
             multiple={false}
-            enableEditor
+            enableEditor={false}
             label={t("siteLogo")}
           />
         </div>

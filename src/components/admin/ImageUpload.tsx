@@ -132,6 +132,7 @@ export default function ImageUpload({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [pasteHint, setPasteHint] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [session, setSession] = useState<EditorSession | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const autoOpenHandledRef = useRef<string | null>(null);
@@ -314,10 +315,18 @@ export default function ImageUpload({
     lang === "de"
       ? "Strg+V / Cmd+V zum Einfügen aus der Zwischenablage"
       : "Ctrl+V / Cmd+V للصق من الحافظة";
-  const helperText =
+  const dragLabel =
     lang === "de"
-      ? "Original bleibt erhalten (WebP q90). Kein Auto-Freisteller. Klick öffnet den Editor — Freisteller nur per Button."
-      : "تبقى الصورة الأصلية (WebP q90). لا قص تلقائي. انقر لفتح المحرر — إزالة الخلفية يدوياً فقط.";
+      ? "Drag & Drop hierher"
+      : "اسحب وأفلت هنا";
+  const isLogo = /^(brand|brands|logo|logos)$/.test(folder.trim().toLowerCase());
+  const helperText = isLogo
+    ? lang === "de"
+      ? "Logo: Originalqualität ohne Kompression/Zentrierung/Freisteller. Drag & Drop oder Einfügen."
+      : "الشعار: الجودة الأصلية بدون ضغط/توسيط/قص. اسحب وأفلت أو الصق."
+    : lang === "de"
+      ? "Original bleibt erhalten (WebP q90). Kein Auto-Freisteller. Drag & Drop, Einfügen oder Klick."
+      : "تبقى الصورة الأصلية (WebP q90). لا قص تلقائي. اسحب وأفلت أو الصق أو انقر.";
   const dropLabel =
     lang === "de" ? "Bild hochladen (Original)" : "رفع صورة (الأصلية)";
 
@@ -326,13 +335,38 @@ export default function ImageUpload({
       ref={dropRef}
       tabIndex={0}
       className={`space-y-2 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40 ${
-        pasteHint ? "ring-2 ring-brand-orange/50" : ""
+        pasteHint || dragOver ? "ring-2 ring-brand-orange/50" : ""
       }`}
-      aria-label={pasteLabel}
+      aria-label={`${dragLabel}. ${pasteLabel}`}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOver(true);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!dropRef.current?.contains(e.relatedTarget as Node)) {
+          setDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOver(false);
+        if (uploading || session) return;
+        const files = e.dataTransfer?.files;
+        if (files?.length) void handleFiles(files);
+      }}
     >
       <label className="mb-1 block text-sm">{fieldLabel}</label>
       <p className="mb-2 text-[11px] text-gray-500">
-        {helperText} · {pasteLabel}
+        {helperText} · {dragLabel} · {pasteLabel}
       </p>
       <div className="flex flex-wrap gap-2">
         {urls.map((url, index) => (
@@ -412,13 +446,19 @@ export default function ImageUpload({
         ))}
       </div>
       <div className="flex flex-wrap gap-2">
-        <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-gold/40 py-3 text-sm text-gray-600 hover:bg-jmle-warm">
+        <label
+          className={`flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed py-3 text-sm transition-colors ${
+            dragOver
+              ? "border-brand-orange bg-orange-50 text-brand-orange"
+              : "border-gold/40 text-gray-600 hover:bg-jmle-warm"
+          }`}
+        >
           {uploading ? (
             <Loader2 size={16} className="animate-spin text-brand-orange" />
           ) : (
             <Upload size={16} />
           )}
-          {uploading ? t("saving") : dropLabel}
+          {uploading ? t("saving") : dragOver ? dragLabel : dropLabel}
           <input
             type="file"
             accept="image/*"

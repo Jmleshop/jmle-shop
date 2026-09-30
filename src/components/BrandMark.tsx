@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import { originalImageSrc } from "@/lib/sharp-image";
 
 type BrandMarkProps = {
   logoUrl?: string | null;
@@ -31,23 +31,25 @@ export default function BrandMark({
   return (
     <Link
       href="/"
+      prefetch
       className={cn(
-        "cursor-pointer inline-flex items-center justify-center shrink-0 transition-opacity hover:opacity-90",
+        "relative z-20 cursor-pointer inline-flex items-center justify-center shrink-0 transition-opacity hover:opacity-90 pointer-events-auto",
         className
       )}
-      aria-label={name}
+      aria-label={`${name} – Home`}
     >
       {src ? (
         <span className={cn("relative block w-auto", heightClassName)}>
           <Image
             src={src}
             alt={name}
-            width={180}
-            height={48}
+            width={360}
+            height={96}
             priority={priority}
-            quality={SHOP_IMAGE_QUALITY}
-            className={cn("h-full w-auto max-w-[10rem] object-contain object-center")}
-            sizes="(max-width: 640px) 120px, 180px"
+            unoptimized
+            quality={100}
+            className={cn("h-full w-auto max-w-[12rem] object-contain object-center")}
+            sizes="(max-width: 640px) 160px, 240px"
           />
         </span>
       ) : (

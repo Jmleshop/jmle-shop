@@ -15,4 +15,11 @@ describe("shouldAutoCenterFolder", () => {
     assert.equal(shouldAutoCenterFolder("slides"), false);
     assert.equal(shouldAutoCenterFolder("hero"), false);
   });
+
+  it("skips brand / logo folders (HD original, no center)", () => {
+    assert.equal(shouldAutoCenterFolder("brand"), false);
+    assert.equal(shouldAutoCenterFolder("brands"), false);
+    assert.equal(shouldAutoCenterFolder("logo"), false);
+    assert.equal(shouldAutoCenterFolder("logos"), false);
+  });
 });
