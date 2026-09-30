@@ -8,11 +8,15 @@ import { categoryTitle, type ShopMsgKey } from "@/lib/shop-i18n";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
+type CategoryTileVariant = "parent" | "sub";
+
 interface CategoryTileProps {
   category: Category;
+  /** parent = eckig (Oberkategorie), sub = rund (Unterkategorie) */
+  variant?: CategoryTileVariant;
 }
 
-export function CategoryTile({ category }: CategoryTileProps) {
+export function CategoryTile({ category, variant = "parent" }: CategoryTileProps) {
   const { lang } = useShopLocale();
   const title = useAutoTranslate(
     lang,
@@ -22,12 +26,16 @@ export function CategoryTile({ category }: CategoryTileProps) {
   const fallbackTitle = categoryTitle(lang, category);
   const label =
     category.id === "all" || category.id === "sale" ? fallbackTitle : title || fallbackTitle;
+  const isSub = variant === "sub";
+  const shape = isSub ? "rounded-full" : "rounded-2xl";
   return (
     <Link
       href={`/categories/${category.id}`}
-      className="group relative z-0 flex flex-col items-center gap-2.5 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 rounded-2xl"
+      className={`group relative z-0 flex flex-col items-center gap-2.5 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 ${shape}`}
     >
-      <div className="relative aspect-square w-full max-w-[11rem] overflow-hidden rounded-2xl bg-jmle-cream shadow-md ring-1 ring-orange-200/70 transition-[box-shadow,ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:shadow-xl group-hover:ring-brand-orange/40">
+      <div
+        className={`relative aspect-square w-full max-w-[11rem] overflow-hidden bg-jmle-cream shadow-md ring-1 ring-orange-200/70 transition-[box-shadow,ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:shadow-xl group-hover:ring-brand-orange/40 ${shape}`}
+      >
         <Image
           src={originalImageSrc(category.image)}
           alt={label}
@@ -48,12 +56,21 @@ interface CategoryGridProps {
   categories: Category[];
   title?: string;
   titleKey?: Extract<ShopMsgKey, "shopByCategory" | "subcategories">;
+  /** Explicit override; defaults to "sub" when titleKey is subcategories */
+  variant?: CategoryTileVariant;
 }
 
-export default function CategoryGrid({ categories, title, titleKey }: CategoryGridProps) {
+export default function CategoryGrid({
+  categories,
+  title,
+  titleKey,
+  variant,
+}: CategoryGridProps) {
   const { t } = useShopLocale();
   const heading = (title ?? "").trim() || (titleKey ? t(titleKey) : "");
   if (!categories.length) return null;
+  const tileVariant: CategoryTileVariant =
+    variant ?? (titleKey === "subcategories" ? "sub" : "parent");
 
   return (
     <section className="py-8 md:py-12 px-4 md:px-8">
@@ -65,7 +82,7 @@ export default function CategoryGrid({ categories, title, titleKey }: CategoryGr
       ) : null}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6 max-w-6xl mx-auto">
         {categories.map((category) => (
-          <CategoryTile key={category.id} category={category} />
+          <CategoryTile key={category.id} category={category} variant={tileVariant} />
         ))}
       </div>
     </section>
