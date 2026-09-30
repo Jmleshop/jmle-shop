@@ -284,7 +284,7 @@ export async function removeImageBackgroundDetailed(
   });
 
   // Großzügiges Padding — nie Produktkanten/Ecken abschneiden
-  const finalized = await trimAndCenterCutout(cutout, { padding: 0.14, maxEdge });
+  const finalized = await trimAndCenterCutout(cutout, { maxEdge });
   // Sicherheitsnetz: Final darf Transparenz nicht verlieren
   if (!(await blobHasTransparency(finalized))) {
     throw new Error("Freisteller verlor Transparenz bei der Finalisierung");

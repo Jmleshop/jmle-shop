@@ -11,15 +11,15 @@ import {
 } from "./cutout-mask-repair";
 
 /**
- * ~14 % Innenabstand → ~72 % Motivfläche.
- * Bewusst großzügig, damit Verpackungskanten/Ecken nie abgeschnitten werden.
+ * ~11 % Innenabstand → ~78 % Motivfläche.
+ * Genug Rand gegen Clipping, optisch voll auf Produktkarten (Ölflasche-Referenz).
  */
-export const CUTOUT_PADDING = 0.14;
+export const CUTOUT_PADDING = 0.11;
 export const CUTOUT_FILL = 1 - CUTOUT_PADDING * 2;
 /** Produkt-Cutouts: 1000px reicht für Retina-Karten, spart Speicher. */
 export const HD_MAX_EDGE = 1000;
-/** Großzügiger Feather-Rand um die Silhouette (Pixel). */
-export const CUTOUT_FEATHER_PX = 12;
+/** Großzügiger Feather-Rand um die Silhouette (Pixel) — feine Kanten/Spritzer behalten. */
+export const CUTOUT_FEATHER_PX = 16;
 
 export type AlphaStats = {
   width: number;
@@ -83,7 +83,8 @@ export function alphaBounds(
   data: Uint8ClampedArray,
   width: number,
   height: number,
-  alphaCut = 40,
+  /** Niedrig → feine Soft-Kanten/Spritzer bleiben im Frame. */
+  alphaCut = 28,
   expand = true
 ): PixelBox | null {
   const tight = opaqueCoreBounds(data, width, height, alphaCut);
@@ -91,7 +92,7 @@ export function alphaBounds(
   if (!expand) return tight;
   const pad = Math.max(
     CUTOUT_FEATHER_PX,
-    Math.round(Math.max(tight.w, tight.h) * 0.06)
+    Math.round(Math.max(tight.w, tight.h) * 0.08)
   );
   return expandBoxByPixels(tight, width, height, pad);
 }

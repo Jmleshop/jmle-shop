@@ -105,7 +105,7 @@ export default function WishlistPage() {
             >
               <Link
                 href={`/products/${product.id}`}
-                className="relative aspect-square sm:w-36 sm:aspect-square lg:w-full shrink-0 bg-jmle-warm"
+                className="product-image-frame sm:w-36 sm:aspect-square lg:w-full shrink-0"
               >
                 <Image
                   src={originalImageSrc(product.image)}
@@ -113,7 +113,7 @@ export default function WishlistPage() {
                   fill
                   unoptimized
                   quality={SHOP_IMAGE_QUALITY}
-                  className="object-contain"
+                  className="product-image-media"
                   sizes="(max-width: 640px) 100vw, 200px"
                 />
               </Link>

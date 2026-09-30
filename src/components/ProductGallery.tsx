@@ -44,7 +44,7 @@ export default function ProductGallery({
   return (
     <div
       className={cn(
-        "relative aspect-square bg-jmle-cream overflow-hidden rounded-2xl border border-amber-200/40 shadow-boutique select-none touch-pan-y",
+        "relative aspect-square bg-transparent overflow-hidden rounded-2xl border border-amber-200/40 shadow-boutique select-none touch-pan-y",
         dimmed && "opacity-60"
       )}
       onTouchStart={(e) => {
@@ -83,7 +83,7 @@ export default function ProductGallery({
               alt={i === index ? alt : ""}
               fill
               quality={SHOP_IMAGE_QUALITY}
-              className="max-h-full max-w-full object-contain object-center"
+              className="product-image-media max-h-full max-w-full"
               sizes="(max-width: 768px) 100vw, 50vw"
               draggable={false}
             />

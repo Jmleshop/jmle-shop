@@ -83,16 +83,13 @@ export default function ProductCard({ product }: ProductCardProps) {
         <WishlistButton productId={product.id} size="sm" />
       </div>
       <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40">
-        <div
-          ref={imgRef}
-          className="relative aspect-square overflow-hidden bg-jmle-cream flex items-center justify-center"
-        >
+        <div ref={imgRef} className="product-image-frame">
           <Image
             src={originalImageSrc(product.image)}
             alt={product.nameDe ? `${title} – ${product.name}` : title}
             fill
             quality={SHOP_IMAGE_QUALITY}
-            className="object-contain object-center transition-transform duration-500 ease-boutique group-hover:scale-105"
+            className="product-image-media transition-transform duration-500 ease-boutique"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1920px) 480px, 640px"
           />
           <div className="absolute inset-x-0 top-0 p-2 flex gap-1.5 justify-between items-start pointer-events-none">

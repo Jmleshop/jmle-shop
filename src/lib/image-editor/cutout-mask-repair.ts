@@ -217,8 +217,9 @@ export function repairCutoutMask(
       continue;
     }
 
-    // Außerhalb der Silhouette: Matte/Halo hart entfernen
-    if (matte || a < 220) {
+    // Außerhalb: nur Studio-Matte / echte Near-Transparenz killen.
+    // Farbige Soft-Kanten (Spritzer, Folie, Logos) mit mittlerem Alpha behalten.
+    if (matte || a < MASK_SOFT_KILL) {
       data[i] = 0;
       data[i + 1] = 0;
       data[i + 2] = 0;

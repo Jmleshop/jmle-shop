@@ -31,13 +31,13 @@ function OfferCard({ product }: { product: Product }) {
       </div>
       <Link href={`/products/${product.id}`} className="block" aria-label={title}>
         <div className="card-boutique overflow-hidden transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
-          <div className="relative aspect-square overflow-hidden bg-jmle-cream flex items-center justify-center">
+          <div className="product-image-frame">
             <Image
               src={originalImageSrc(product.image)}
               alt={title}
               fill
               quality={SHOP_IMAGE_QUALITY}
-              className="object-contain object-center transition-transform duration-500 ease-boutique group-hover:scale-105"
+              className="product-image-media transition-transform duration-500 ease-boutique"
               sizes="(max-width: 640px) 70vw, (max-width: 1024px) 31vw, 240px"
             />
             <div className="absolute top-2 start-2">

@@ -2,9 +2,9 @@ import { squarePlacement } from "./geometry";
 
 /**
  * Längste Motiv-Seite füllt diesen Anteil des Quadrats.
- * 14 % Padding pro Seite → fill = 0.72 (Schutz vor Kanten-Clipping).
+ * ~11 % Padding pro Seite → fill = 0.78 (harmonisch auf Produktkarten, ohne Clipping).
  */
-export const PRODUCT_FILL = 0.72;
+export const PRODUCT_FILL = 0.78;
 
 /** Trim: Alpha/Near-transparent + helles Studio-Weiß. */
 export const TRIM_THRESHOLD = 12;

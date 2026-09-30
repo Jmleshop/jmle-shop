@@ -72,6 +72,23 @@
     @apply bg-white rounded-2xl border border-orange-100/80 shadow-sm transition-all duration-300 ease-boutique;
   }
 
+  /**
+   * Produktbild-Rahmen: 1:1, voll transparent (kein Cream/Weiß-Kasten).
+   * Media skaliert optisch auf ~78 % der Fläche (bestehende 72 %-Assets + neuer Fill).
+   */
+  .product-image-frame {
+    @apply relative aspect-square overflow-hidden bg-transparent flex items-center justify-center;
+  }
+
+  .product-image-media {
+    @apply object-contain object-center origin-center;
+    transform: scale(1.08);
+  }
+
+  .group:hover .product-image-media {
+    transform: scale(1.12);
+  }
+
   .section-title {
     @apply font-display text-2xl md:text-3xl text-luxury-ink text-center;
   }
