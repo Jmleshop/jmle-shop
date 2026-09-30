@@ -24,7 +24,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  return updateSession(request);
+  const response = await updateSession(request);
+
+  // Admin: Cross-Origin Isolation für SharedArrayBuffer / WASM-Threads (Turbo-Freisteller).
+  // credentialless bleibt kompatibel mit Supabase/CDN ohne CORP-Header.
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+    response.headers.set("Cross-Origin-Embedder-Policy", "credentialless");
+  }
+
+  return response;
 }
 
 export const config = {
