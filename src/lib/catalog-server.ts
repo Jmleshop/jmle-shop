@@ -466,13 +466,13 @@ async function fetchBrandLogos(): Promise<BrandLogo[]> {
 
 const getCategoriesCached = unstable_cache(
   fetchAllCategories,
-  ["catalog-categories-v3"],
+  ["catalog-categories-v4"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "categories"] }
 );
 
 const getSiteConfigCached = unstable_cache(
   fetchSiteConfig,
-  ["catalog-site-v1"],
+  ["catalog-site-v2"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "site"] }
 );
 
