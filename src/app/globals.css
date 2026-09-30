@@ -73,8 +73,8 @@
   }
 
   /**
-   * Produktbild-Rahmen: 1:1, voll transparent (kein Cream/Weiß-Kasten).
-   * Media skaliert optisch auf ~78 % der Fläche (bestehende 72 %-Assets + neuer Fill).
+   * Produktbild-Rahmen: 1:1, transparent.
+   * object-contain + Zoom → groß/formatfüllend ohne Kanten-Clipping.
    */
   .product-image-frame {
     @apply relative aspect-square overflow-hidden bg-transparent flex items-center justify-center;
@@ -82,11 +82,11 @@
 
   .product-image-media {
     @apply object-contain object-center origin-center;
-    transform: scale(1.08);
+    transform: scale(1.22);
   }
 
   .group:hover .product-image-media {
-    transform: scale(1.12);
+    transform: scale(1.26);
   }
 
   .section-title {

@@ -198,8 +198,13 @@ export default function ImageUpload({
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (!list.length) return;
 
-    // Original bleibt zu 100 % erhalten (nur WebP q90 + Bounds).
-    // Kein Auto-Freisteller — Freisteller ausschließlich manuell im Editor.
+    // Produkte: Editor sofort öffnen (Auto-Freisteller, Fenster bleibt offen).
+    // Banner/Logos: direkt speichern, kein Freisteller.
+    if (editorEnabled && allowBackgroundRemoval) {
+      openBatch(list, 0);
+      return;
+    }
+
     setUploading(true);
     try {
       const uploaded: string[] = [];
@@ -502,7 +507,8 @@ export default function ImageUpload({
                   }
                 : null
           }
-          autoRemoveBackground={false}
+          // Auto-Freisteller starten, Editor offen lassen (kein Auto-Export)
+          autoRemoveBackground={allowBackgroundRemoval && !session.replaceUrl}
           allowBackgroundRemoval={allowBackgroundRemoval}
           autoExport={false}
           onRemember={(settings) => {

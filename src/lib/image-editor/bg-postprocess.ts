@@ -11,10 +11,10 @@ import {
 } from "./cutout-mask-repair";
 
 /**
- * ~11 % Innenabstand → ~78 % Motivfläche.
- * Genug Rand gegen Clipping, optisch voll auf Produktkarten (Ölflasche-Referenz).
+ * ~6 % Innenabstand → ~88 % Motivfläche (nah wie Referenz-Reis-Sack).
+ * Knappes Padding, ohne Kanten abzuschneiden.
  */
-export const CUTOUT_PADDING = 0.11;
+export const CUTOUT_PADDING = 0.06;
 export const CUTOUT_FILL = 1 - CUTOUT_PADDING * 2;
 /** Produkt-Cutouts: 800px reicht für Retina-Karten, spart Speicher. */
 export const HD_MAX_EDGE = 800;

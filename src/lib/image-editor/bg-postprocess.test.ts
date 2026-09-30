@@ -50,8 +50,8 @@ describe("bg-postprocess", () => {
     assert.ok(expanded!.y + expanded!.h >= 50);
   });
 
-  it("uses ~11% padding fill factor (~78% subject, anti-clip)", () => {
-    assert.ok(Math.abs(CUTOUT_PADDING - 0.11) < 1e-9);
-    assert.ok(Math.abs(CUTOUT_FILL - 0.78) < 1e-9);
+  it("uses ~6% padding fill factor (~88% subject, anti-clip)", () => {
+    assert.ok(Math.abs(CUTOUT_PADDING - 0.06) < 1e-9);
+    assert.ok(Math.abs(CUTOUT_FILL - 0.88) < 1e-9);
   });
 });
