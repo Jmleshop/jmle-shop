@@ -143,7 +143,8 @@ export function shouldReframe(box: PixelBox, width: number, height: number): boo
 export function frameSquareSize(boxW: number, boxH: number): number {
   const longest = Math.max(boxW, boxH, 1);
   const needed = Math.round(longest / PRODUCT_FILL);
-  return Math.min(2000, Math.max(1500, needed));
+  // Produkt-HD-Cap 1000 — kein erzwungenes Upscale auf 1500+
+  return Math.min(1000, Math.max(longest, needed));
 }
 
 /** Zentriert das Motiv mit PRODUCT_FILL-Innenabstand im Quadrat. */

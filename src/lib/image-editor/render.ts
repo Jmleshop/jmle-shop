@@ -7,7 +7,6 @@ import {
 import { productFrame } from "./product-bounds";
 import { applyAdjustments, applyHealSpots, hasAnyAdjustment } from "./pixels";
 import {
-  clampExportQuality,
   resolveExportEdge,
   type RenderSettings,
   type StudioBackground,
@@ -259,15 +258,11 @@ export async function exportProductImage(
   ) {
     square = stepUpscale(square, target);
   }
-  const transparent =
-    settings.background === "transparent" && (settings.studio ?? "none") === "none";
-  // Transparenter Freisteller immer als verlustfreies PNG
-  const mime = transparent ? "image/png" : "image/webp";
-  const quality = transparent ? 1 : clampExportQuality(settings.exportQuality) / 100;
+  // Immer WebP q90 — Alpha bleibt bei transparentem Hintergrund erhalten
+  const quality = 0.9;
   const blob = await new Promise<Blob | null>((resolve) => {
-    square.toBlob(resolve, mime, quality);
+    square.toBlob(resolve, "image/webp", quality);
   });
   if (!blob) throw new Error("Export fehlgeschlagen");
-  const ext = transparent ? "png" : "webp";
-  return new File([blob], `product.${ext}`, { type: mime });
+  return new File([blob], "product.webp", { type: "image/webp" });
 }

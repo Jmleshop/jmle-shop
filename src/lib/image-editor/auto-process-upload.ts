@@ -1,3 +1,4 @@
+import { MAX_EDGE_PRODUCT } from "@/lib/image-bounds";
 import {
   preloadBackgroundRemoval,
   removeImageBackgroundDetailed,
@@ -12,12 +13,15 @@ export type AutoProcessProgress = RemovalProgress & {
 
 /**
  * Zero-Click-Pipeline für neue Uploads:
- * Freisteller (WebGPU/WASM → Server) + Trim/Zentrierung (bereits in removeImageBackgroundDetailed).
+ * Freisteller (WebGPU/WASM → Server) + Trim/Zentrierung.
+ * Speicher-WebP q90 übernimmt anschließend uploadProductImage.
  */
 export async function autoProcessProductFile(
   file: File,
-  onProgress?: (progress: AutoProcessProgress) => void
+  onProgress?: (progress: AutoProcessProgress) => void,
+  options?: { maxEdge?: number }
 ): Promise<File> {
+  const maxEdge = options?.maxEdge ?? MAX_EDGE_PRODUCT;
   void preloadBackgroundRemoval();
   onProgress?.({
     phase: "process",
@@ -32,8 +36,10 @@ export async function autoProcessProductFile(
       : new File([file], file.name, { type: "image/png" });
 
   try {
-    const detailed = await removeImageBackgroundDetailed(source, (p) =>
-      onProgress?.({ ...p, fileName: file.name })
+    const detailed = await removeImageBackgroundDetailed(
+      source,
+      (p) => onProgress?.({ ...p, fileName: file.name }),
+      { maxEdge }
     );
     onProgress?.({
       phase: "finalize",
@@ -57,6 +63,7 @@ export async function autoProcessProductFile(
     const form = new FormData();
     form.append("file", source, source.name || "product.png");
     form.append("removeBackground", "1");
+    form.append("maxEdge", String(maxEdge));
     const res = await fetch("/api/admin/optimize-product-image", {
       method: "POST",
       body: form,
@@ -68,7 +75,6 @@ export async function autoProcessProductFile(
         : new Error("فشل التحسين التلقائي");
     }
     const blob = await res.blob();
-    const ext = blob.type.includes("png") ? "png" : "webp";
     onProgress?.({
       phase: "finalize",
       ratio: 1,
@@ -76,8 +82,8 @@ export async function autoProcessProductFile(
       engine: "server",
       fileName: file.name,
     });
-    return new File([blob], `product-${Date.now()}.${ext}`, {
-      type: blob.type || `image/${ext}`,
+    return new File([blob], `product-${Date.now()}.webp`, {
+      type: blob.type || "image/webp",
     });
   }
 }

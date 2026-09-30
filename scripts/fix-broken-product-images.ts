@@ -88,10 +88,9 @@ async function main() {
         removeBackground: true,
         force: true,
       });
-      const ext = optimized.contentType === "image/png" ? "png" : "webp";
-      const path = `products/${crypto.randomUUID()}.${ext}`;
+      const path = `products/${crypto.randomUUID()}.webp`;
       const uploaded = await sb.storage.from(BUCKET).upload(path, optimized.buffer, {
-        contentType: optimized.contentType,
+        contentType: "image/webp",
         upsert: false,
       });
       if (uploaded.error) throw new Error(uploaded.error.message);

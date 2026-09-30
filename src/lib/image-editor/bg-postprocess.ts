@@ -9,7 +9,8 @@ import { BOUNDS_EXPAND_RATIO, expandPixelBox } from "./product-bounds";
 /** 12 % Innenabstand → ~76 % Motivfläche (Schutz vor Kanten-Clipping). */
 export const CUTOUT_PADDING = 0.12;
 export const CUTOUT_FILL = 1 - CUTOUT_PADDING * 2;
-export const HD_MAX_EDGE = 2000;
+/** Produkt-Cutouts: 1000px reicht für Retina-Karten, spart Speicher. */
+export const HD_MAX_EDGE = 1000;
 
 export type AlphaStats = {
   width: number;

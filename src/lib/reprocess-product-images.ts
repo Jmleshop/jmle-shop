@@ -71,7 +71,7 @@ export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
   if (removedW < beforeW * 0.04 && removedH < beforeH * 0.04) return null;
 
   const longest = Math.max(tw, th, 1);
-  const size = Math.min(2000, Math.max(longest, Math.round(longest / PRODUCT_FILL)));
+  const size = Math.min(1000, Math.max(longest, Math.round(longest / PRODUCT_FILL)));
   const place = productFrame(tw, th, size);
   const resized = await sharp(trimmed.data)
     .resize(place.dw, place.dh, { fit: "fill", kernel: "lanczos3" })
@@ -93,7 +93,7 @@ export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
         top: place.dy,
       },
     ])
-    .png()
+    .webp({ quality: 90, alphaQuality: 100, effort: 6, smartSubsample: true })
     .toBuffer();
 }
 
@@ -213,10 +213,9 @@ export async function applyProductFrameChunk(
         removeBackground: true,
         force: true,
       });
-      const ext = optimized.contentType === "image/png" ? "png" : "webp";
-      const path = `products/${crypto.randomUUID()}.${ext}`;
+      const path = `products/${crypto.randomUUID()}.webp`;
       const uploaded = await supabase.storage.from(BUCKET).upload(path, optimized.buffer, {
-        contentType: optimized.contentType,
+        contentType: "image/webp",
         upsert: false,
       });
       if (uploaded.error) throw new Error(uploaded.error.message);

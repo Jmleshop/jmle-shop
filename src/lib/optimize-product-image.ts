@@ -1,25 +1,27 @@
 import sharp from "sharp";
+import { MAX_EDGE_PRODUCT, STORAGE_WEBP_QUALITY_PCT } from "./image-bounds";
 import { PRODUCT_FILL, TRIM_THRESHOLD, productFrame } from "./image-editor/product-bounds";
 
 export type OptimizeResult = {
   buffer: Buffer;
-  contentType: "image/png" | "image/webp";
+  contentType: "image/webp";
   width: number;
   height: number;
   removedBackground: boolean;
   reframed: boolean;
 };
 
-const MAX_EDGE = 2000;
-
 /**
- * Server-Pipeline: Freisteller (optional) → Trim → 1:1-Zentrierung mit 10 % Padding.
- * Liefert immer ein HD-Ergebnis (PNG bei Transparenz, sonst WebP q95).
+ * Server-Pipeline: Freisteller → Trim → 1:1-Zentrierung → WebP q90.
+ * - Transparenter Alpha-Kanal (keine festen Hintergründe)
+ * - EXIF/ICC entfernt (sharp default ohne withMetadata)
+ * - Max-Kante standardmäßig Produkt-Größe (1000)
  */
 export async function optimizeProductImageBuffer(
   input: Buffer,
-  options?: { removeBackground?: boolean; force?: boolean }
+  options?: { removeBackground?: boolean; force?: boolean; maxEdge?: number }
 ): Promise<OptimizeResult> {
+  const maxEdge = options?.maxEdge ?? MAX_EDGE_PRODUCT;
   const wantBg = options?.removeBackground !== false;
   let working = input;
   let removedBackground = false;
@@ -36,40 +38,27 @@ export async function optimizeProductImageBuffer(
     }
   }
 
-  const framed = await frameSquareCentered(working, { force: options?.force || removedBackground });
+  const framed = await frameSquareCentered(working, {
+    force: options?.force || removedBackground,
+    maxEdge,
+  });
   const buffer = framed?.buffer ?? working;
-  const meta = await sharp(buffer).metadata();
-  const hasAlpha = Boolean(meta.hasAlpha) || removedBackground;
 
-  // Nach Freisteller immer PNG mit Alpha — nie feste Hintergrundfarbe einbrennen.
-  // Ohne Freisteller: Originalqualität (kein Upscale, hohe PNG/WebP-Qualität).
-  if (hasAlpha || removedBackground) {
-    const png = await sharp(buffer)
-      .ensureAlpha()
-      .resize(MAX_EDGE, MAX_EDGE, {
-        fit: "inside",
-        withoutEnlargement: true,
-        kernel: "lanczos3",
-      })
-      .png({ compressionLevel: 6, adaptiveFiltering: true, effort: 7 })
-      .toBuffer({ resolveWithObject: true });
-    return {
-      buffer: png.data,
-      contentType: "image/png",
-      width: png.info.width,
-      height: png.info.height,
-      removedBackground,
-      reframed: Boolean(framed) || removedBackground,
-    };
-  }
-
+  // Immer WebP q90 — Alpha bleibt erhalten, Metadaten werden verworfen
   const webp = await sharp(buffer)
-    .resize(MAX_EDGE, MAX_EDGE, {
+    .rotate() // EXIF-Orientierung anwenden, dann Metadaten droppen
+    .ensureAlpha()
+    .resize(maxEdge, maxEdge, {
       fit: "inside",
       withoutEnlargement: true,
       kernel: "lanczos3",
     })
-    .webp({ quality: 100, alphaQuality: 100, nearLossless: true })
+    .webp({
+      quality: STORAGE_WEBP_QUALITY_PCT,
+      alphaQuality: 100,
+      effort: 6,
+      smartSubsample: true,
+    })
     .toBuffer({ resolveWithObject: true });
 
   return {
@@ -78,7 +67,7 @@ export async function optimizeProductImageBuffer(
     width: webp.info.width,
     height: webp.info.height,
     removedBackground,
-    reframed: Boolean(framed),
+    reframed: Boolean(framed) || removedBackground,
   };
 }
 
@@ -92,7 +81,6 @@ async function removeBackgroundNode(input: Buffer): Promise<Buffer | null> {
     output: { format: "image/png", quality: 1 },
   });
   const out = Buffer.from(await blob.arrayBuffer());
-  // Sanity: muss Transparenz haben
   const { data, info } = await sharp(out).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const total = Math.max(1, info.width * info.height);
   let nonOpaque = 0;
@@ -129,14 +117,14 @@ function sniffMime(buf: Buffer): string {
 }
 
 /**
- * Trim (weiß/transparent) + 1:1-Zentrierung mit PRODUCT_FILL (~12 % Padding).
- * Nach Sharp-Trim wird ein Sicherheitsrand wieder hinzugefügt, damit
- * weiche Kanten / Verpackungsränder nicht verloren gehen.
+ * Trim + 1:1-Zentrierung auf transparentem Canvas.
+ * Zwischenbuffer PNG (verlustfrei), finales Encoding macht der Caller als WebP.
  */
 export async function frameSquareCentered(
   input: Buffer,
-  options?: { force?: boolean }
+  options?: { force?: boolean; maxEdge?: number }
 ): Promise<{ buffer: Buffer } | null> {
+  const maxEdge = options?.maxEdge ?? MAX_EDGE_PRODUCT;
   const base = sharp(input, { failOn: "none" }).rotate();
   const meta = await base.metadata();
   const beforeW = meta.width ?? 0;
@@ -167,12 +155,10 @@ export async function frameSquareCentered(
     };
   }
 
-  // Sicherheitsrand: ~4 % der getrimmten Kante wiederherstellen
   const padX = Math.max(2, Math.round(trimmed.info.width * 0.04));
   const padY = Math.max(2, Math.round(trimmed.info.height * 0.04));
   const paddedW = trimmed.info.width + padX * 2;
   const paddedH = trimmed.info.height + padY * 2;
-  // Immer transparente Fläche — niemals Weiß/Creme einbrennen
   const padded = await sharp({
     create: {
       width: paddedW,
@@ -211,7 +197,7 @@ export async function frameSquareCentered(
   }
 
   const longest = Math.max(tw, th, 1);
-  const size = Math.min(MAX_EDGE, Math.max(longest, Math.round(longest / PRODUCT_FILL)));
+  const size = Math.min(maxEdge, Math.max(longest, Math.round(longest / PRODUCT_FILL)));
   const place = productFrame(tw, th, size);
   const resized = await sharp(padded.data)
     .resize(place.dw, place.dh, { fit: "fill", kernel: "lanczos3" })

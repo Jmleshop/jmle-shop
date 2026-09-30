@@ -13,6 +13,7 @@ import {
 } from "@/lib/image-editor/auto-process-upload";
 import { preloadBackgroundRemoval } from "@/lib/image-editor/remove-background";
 import type { RenderSettings } from "@/lib/image-editor/types";
+import { maxEdgeForFolder } from "@/lib/image-bounds";
 
 const ImageEditorModal = dynamic(() => import("@/components/admin/ImageEditorModal"), {
   ssr: false,
@@ -190,10 +191,19 @@ export default function ImageUpload({
         const uploaded: string[] = [];
         for (let i = 0; i < list.length; i++) {
           const file = list[i];
-          const processed = await autoProcessProductFile(file, (p) =>
-            setTurboProgress({ ...p, index: i + 1, total: list.length, fileName: file.name })
+          const processed = await autoProcessProductFile(
+            file,
+            (p) =>
+              setTurboProgress({
+                ...p,
+                index: i + 1,
+                total: list.length,
+                fileName: file.name,
+              }),
+            { maxEdge: maxEdgeForFolder(folder) }
           );
-          uploaded.push(await uploadProductImage(processed, folder, { alreadyEncoded: true }));
+          // WebP q90 + Bounds + EXIF-Strip — auch nach Turbo-Pipeline
+          uploaded.push(await uploadProductImage(processed, folder));
         }
         if (multiple) publish([...urlsRef.current, ...uploaded]);
         else publish(uploaded[0] ? [uploaded[0]] : []);

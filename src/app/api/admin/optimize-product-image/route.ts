@@ -25,11 +25,17 @@ export async function POST(request: Request) {
   }
 
   const removeBackground = String(form.get("removeBackground") ?? "1") !== "0";
+  const maxEdgeRaw = Number(form.get("maxEdge"));
+  const maxEdge =
+    Number.isFinite(maxEdgeRaw) && maxEdgeRaw >= 256 && maxEdgeRaw <= 4096
+      ? Math.round(maxEdgeRaw)
+      : undefined;
 
   try {
     const result = await optimizeProductImageBuffer(input, {
       removeBackground,
       force: true,
+      maxEdge,
     });
     return new NextResponse(new Uint8Array(result.buffer), {
       headers: {

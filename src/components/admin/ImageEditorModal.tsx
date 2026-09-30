@@ -669,7 +669,7 @@ export default function ImageEditorModal({
     setBusy("save");
     setError("");
     try {
-      // Nach Freisteller: immer transparentes PNG, keine Studio-/Farbflächen
+      // Nach Freisteller: transparentes WebP q90, keine Studio-/Farbflächen
       const settings: RenderSettings = bgRemoved
         ? {
             ...currentSettings(),
@@ -678,9 +678,9 @@ export default function ImageEditorModal({
             shadow: "none",
             watermark: false,
             upscale: 0,
-            exportQuality: 95,
+            exportQuality: 90,
           }
-        : currentSettings();
+        : { ...currentSettings(), exportQuality: 90, upscale: 0 };
       if (bulkApply) onRemember?.(settings);
       let file = await exportProductImage(bitmap, settings);
       try {
@@ -689,9 +689,9 @@ export default function ImageEditorModal({
         const framed = await fetch("/api/admin/frame-product-image", { method: "POST", body });
         if (framed.ok && framed.headers.get("X-Frame-Changed") === "1") {
           const blob = await framed.blob();
-          const type = blob.type || "image/png";
-          const ext = type.includes("png") ? "png" : "webp";
-          file = new File([blob], `product.${ext}`, { type });
+          file = new File([blob], "product.webp", {
+            type: blob.type || "image/webp",
+          });
         }
       } catch {
         /* keep the editor file when the trim service is unreachable */

@@ -1,62 +1,75 @@
-import imageCompression from "browser-image-compression";
+import {
+  MAX_EDGE_PRODUCT,
+  STORAGE_WEBP_QUALITY,
+  maxEdgeForFolder,
+} from "@/lib/image-bounds";
 
-/** Longest edge kept for web delivery. Never upscaled. */
-const MAX_EDGE = 2000;
-/** Size cap high enough that quality is not traded for kilobytes. */
-const MAX_MB = 8;
-const WEBP_QUALITY = 0.95;
-const PNG_QUALITY = 0.95;
+/**
+ * Client-seitige Speicher-Optimierung:
+ * - Immer WebP (inkl. Alpha für Freisteller)
+ * - quality 90 → optisch HD, deutlich kleinere Dateien
+ * - Max-Bounds je Ordner (Produkte 1000 / Banner 2048)
+ * - EXIF/Metadaten entfallen durch Canvas-Reencode
+ * - Keine festen Hintergrundfarben
+ */
 
-function outputFormat(file: File): { mime: "image/png" | "image/webp"; ext: "png" | "webp" } {
-  if (file.type === "image/png") return { mime: "image/png", ext: "png" };
-  return { mime: "image/webp", ext: "webp" };
+async function encodeWebpFromBitmap(
+  bitmap: ImageBitmap,
+  maxEdge: number,
+  quality = STORAGE_WEBP_QUALITY
+): Promise<File | null> {
+  const scale = Math.min(1, maxEdge / Math.max(1, bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  // Transparent lassen — keine Weiß-/Cream-Fläche
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/webp", quality)
+  );
+  if (!blob) return null;
+  return new File([blob], `upload-${Date.now()}.webp`, { type: "image/webp" });
 }
 
 export async function compressImageFile(
   file: File,
-  maxWidth = MAX_EDGE
+  maxEdge = MAX_EDGE_PRODUCT
 ): Promise<File> {
-  const { mime, ext } = outputFormat(file);
-  const png = mime === "image/png";
-  const quality = png ? PNG_QUALITY : WEBP_QUALITY;
   try {
+    const bitmap = await createImageBitmap(file);
+    try {
+      const encoded = await encodeWebpFromBitmap(bitmap, maxEdge);
+      if (encoded) return encoded;
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Fallback: browser-image-compression → WebP q90
+  try {
+    const imageCompression = (await import("browser-image-compression")).default;
     const compressed = await imageCompression(file, {
-      maxSizeMB: MAX_MB,
-      maxWidthOrHeight: maxWidth,
+      maxSizeMB: 1.5,
+      maxWidthOrHeight: maxEdge,
       useWebWorker: true,
-      fileType: mime,
-      initialQuality: quality,
+      fileType: "image/webp",
+      initialQuality: STORAGE_WEBP_QUALITY,
       alwaysKeepResolution: false,
     });
-    const name = file.name.replace(/\.\w+$/, `.${ext}`);
-    return new File([compressed], name, { type: mime });
+    return new File([compressed], file.name.replace(/\.\w+$/, ".webp"), {
+      type: "image/webp",
+    });
   } catch {
-    try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, maxWidth / Math.max(1, bitmap.width, bitmap.height));
-      const width = Math.max(1, Math.round(bitmap.width * scale));
-      const height = Math.max(1, Math.round(bitmap.height * scale));
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return file;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      // Niemals feste Hintergrundfarbe — Transparenz / Alpha erhalten
-      ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(bitmap, 0, 0, width, height);
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, mime, quality)
-      );
-      bitmap.close();
-      if (!blob) return file;
-      return new File([blob], file.name.replace(/\.\w+$/, `.${ext}`), {
-        type: mime,
-      });
-    } catch {
-      return file;
-    }
+    return file;
   }
 }
 
@@ -71,30 +84,41 @@ function fitCanvas(canvas: HTMLCanvasElement, maxEdge: number): HTMLCanvasElemen
   if (!ctx) return canvas;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
+  ctx.clearRect(0, 0, next.width, next.height);
   ctx.drawImage(canvas, 0, 0, next.width, next.height);
   return next;
 }
 
-/** One WebP encode. Larger canvases are scaled down before that single encode. */
+/** Canvas → WebP q90, skaliert auf maxEdge. */
 export async function canvasToCompressedFile(
   canvas: HTMLCanvasElement,
-  filename = "crop.webp"
+  filename = "crop.webp",
+  maxEdge = MAX_EDGE_PRODUCT
 ): Promise<File> {
-  const fitted = fitCanvas(canvas, MAX_EDGE);
+  const fitted = fitCanvas(canvas, maxEdge);
   const blob = await new Promise<Blob | null>((resolve) =>
-    fitted.toBlob(resolve, "image/webp", WEBP_QUALITY)
+    fitted.toBlob(resolve, "image/webp", STORAGE_WEBP_QUALITY)
   );
   if (!blob) throw new Error("Crop fehlgeschlagen");
-  return new File([blob], filename, { type: "image/webp" });
+  return new File([blob], filename.replace(/\.\w+$/, ".webp"), {
+    type: "image/webp",
+  });
 }
 
+/**
+ * Upload in Supabase Storage.
+ * Immer WebP-Optimierung (auch nach Turbo-Pipeline), Ordner steuert Max-Kante.
+ */
 export async function uploadProductImage(
   file: File,
   folder = "products",
   options?: { alreadyEncoded?: boolean }
 ): Promise<string> {
   const { createClient } = await import("@/lib/supabase/client");
-  const compressed = options?.alreadyEncoded ? file : await compressImageFile(file);
+  const maxEdge = maxEdgeForFolder(folder);
+  // Auch „alreadyEncoded“ Freisteller → WebP q90 + Bounds (Alpha bleibt)
+  void options?.alreadyEncoded;
+  const compressed = await compressImageFile(file, maxEdge);
   const supabase = createClient();
   const ext = compressed.type === "image/png" ? "png" : "webp";
   const path = `${folder}/${crypto.randomUUID()}.${ext}`;

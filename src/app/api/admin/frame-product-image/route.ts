@@ -22,11 +22,11 @@ export async function POST(request: Request) {
   const framed = await frameProductWebp(input);
   const output = framed ?? input;
   const changed = Boolean(framed);
-  // Freisteller bleiben PNG mit Alpha — keine feste Hintergrundfarbe
+  // WebP q90 mit Alpha — kompakt, optisch scharf, transparent
   return new NextResponse(new Uint8Array(output), {
     headers: {
       "Content-Type": changed
-        ? "image/png"
+        ? "image/webp"
         : file.type || "application/octet-stream",
       "X-Frame-Changed": changed ? "1" : "0",
     },

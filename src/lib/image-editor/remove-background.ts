@@ -212,9 +212,11 @@ export async function removeImageBackground(
 
 export async function removeImageBackgroundDetailed(
   blob: Blob,
-  onProgress?: (progress: RemovalProgress) => void
+  onProgress?: (progress: RemovalProgress) => void,
+  options?: { maxEdge?: number }
 ): Promise<RemovalResult> {
   const started = performance.now();
+  const maxEdge = options?.maxEdge ?? 1000;
   // Preload anstoßen (no-op wenn schon fertig)
   void preloadBackgroundRemoval(onProgress);
 
@@ -281,7 +283,7 @@ export async function removeImageBackgroundDetailed(
     engine,
   });
 
-  const finalized = await trimAndCenterCutout(cutout, { padding: 0.12, maxEdge: 2000 });
+  const finalized = await trimAndCenterCutout(cutout, { padding: 0.12, maxEdge });
   // Sicherheitsnetz: Final darf Transparenz nicht verlieren
   if (!(await blobHasTransparency(finalized))) {
     throw new Error("Freisteller verlor Transparenz bei der Finalisierung");
