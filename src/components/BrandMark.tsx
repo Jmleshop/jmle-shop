@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { originalImageSrc } from "@/lib/sharp-image";
@@ -11,16 +10,13 @@ type BrandMarkProps = {
   className?: string;
   /** Text-Fallback-Klassen wenn kein Logo (Farbe o. Ä.) */
   textClassName?: string;
-  /**
-   * Optionaler Höhen-Override. Standard: 44px Mobile / 50px Desktop
-   * via `.brand-mark-frame` — nie Briefmarken-Größe.
-   */
+  /** Optionaler Höhen-Override via `.brand-mark-frame` */
   heightClassName?: string;
   priority?: boolean;
 };
 
 /**
- * Markenlogo als Home-Link. Ohne Logo-URL: Text-Marke in voller Header-Größe.
+ * Markenlogo als Home-Link (`/`). Original-URL, natürliches Seitenverhältnis.
  */
 export default function BrandMark({
   logoUrl,
@@ -36,23 +32,22 @@ export default function BrandMark({
       href="/"
       prefetch
       className={cn(
-        "relative z-20 cursor-pointer inline-flex items-center justify-center shrink-0 min-h-11 transition-opacity hover:opacity-90 pointer-events-auto",
+        "relative z-20 inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center pointer-events-auto transition-opacity hover:opacity-90",
         className
       )}
       aria-label={`${name} – Home`}
     >
       {src ? (
-        <span className={cn("brand-mark-frame relative", heightClassName)}>
-          <Image
+        <span className={cn("brand-mark-frame", heightClassName)}>
+          {/* Native img: keine Next-Resize-Artefakte, Aspekt bleibt erhalten */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={src}
             alt={name}
-            width={480}
-            height={128}
-            priority={priority}
-            unoptimized
-            quality={100}
             className="brand-mark-img"
-            sizes="(max-width: 640px) 220px, (max-width: 1024px) 260px, 320px"
+            decoding="async"
+            fetchPriority={priority ? "high" : "auto"}
+            draggable={false}
           />
         </span>
       ) : (

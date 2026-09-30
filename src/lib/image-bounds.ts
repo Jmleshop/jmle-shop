@@ -4,10 +4,12 @@
  */
 export const MAX_EDGE_PRODUCT = 800;
 export const MAX_EDGE_BANNER = 1280;
-/** Logos ebenfalls begrenzt — keine Multi-MB-Originale mehr. */
-export const MAX_EDGE_LOGO = 800;
+/** Logos: höhere Kante für scharfe Header-Darstellung, Datei bleibt klein. */
+export const MAX_EDGE_LOGO = 1600;
 export const STORAGE_WEBP_QUALITY = 0.78;
 export const STORAGE_WEBP_QUALITY_PCT = 78;
+/** Logo-WebP: nah an Original, trotzdem kompakt. */
+export const LOGO_WEBP_QUALITY = 0.92;
 /** Ziel-Obergrenze Upload-Datei (MB) nach Kompression. */
 export const STORAGE_MAX_MB = 0.45;
 

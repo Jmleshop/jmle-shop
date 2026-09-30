@@ -125,25 +125,29 @@
   }
 }
 
-/* Header-/Footer-Logo: feste, gut lesbare Größe (40–50px), Seitenverhältnis erhalten */
+/* Header-/Footer-Logo: klar lesbar, Aspekt unangetastet (kein Stretch) */
 .brand-mark-frame {
-  display: block;
-  width: auto;
-  height: 44px;
-  max-width: min(18rem, 70vw);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  max-width: min(15rem, 58vw);
+  overflow: hidden;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: 50px;
-    max-width: 18rem;
+    height: 56px;
+    max-width: 17rem;
   }
 }
 .brand-mark-img {
+  display: block;
   height: 100%;
   width: auto;
-  max-height: 100%;
+  max-width: 100%;
   object-fit: contain;
   object-position: center;
+  image-rendering: auto;
 }
 .brand-mark-text {
   font-size: 2.5rem !important;

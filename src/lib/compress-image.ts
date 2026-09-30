@@ -1,4 +1,6 @@
 import {
+  isLogoFolder,
+  LOGO_WEBP_QUALITY,
   MAX_EDGE_PRODUCT,
   STORAGE_MAX_MB,
   STORAGE_WEBP_QUALITY,
@@ -41,12 +43,13 @@ async function encodeWebpFromBitmap(
 
 export async function compressImageFile(
   file: File,
-  maxEdge = MAX_EDGE_PRODUCT
+  maxEdge = MAX_EDGE_PRODUCT,
+  quality = STORAGE_WEBP_QUALITY
 ): Promise<File> {
   try {
     const bitmap = await createImageBitmap(file);
     try {
-      const encoded = await encodeWebpFromBitmap(bitmap, maxEdge);
+      const encoded = await encodeWebpFromBitmap(bitmap, maxEdge, quality);
       if (encoded) return encoded;
     } finally {
       bitmap.close();
@@ -58,11 +61,11 @@ export async function compressImageFile(
   try {
     const imageCompression = (await import("browser-image-compression")).default;
     const compressed = await imageCompression(file, {
-      maxSizeMB: STORAGE_MAX_MB,
+      maxSizeMB: quality >= LOGO_WEBP_QUALITY ? 0.9 : STORAGE_MAX_MB,
       maxWidthOrHeight: maxEdge,
       useWebWorker: true,
       fileType: "image/webp",
-      initialQuality: STORAGE_WEBP_QUALITY,
+      initialQuality: quality,
       alwaysKeepResolution: false,
     });
     return new File([compressed], file.name.replace(/\.\w+$/, ".webp"), {
@@ -130,8 +133,8 @@ export async function uploadProductImage(
     }
   }
 
-  // Immer neu enkodieren (auch Cutouts) → harte Bounds + q78, kein Raw-Upload
-  const compressed = await compressImageFile(working, maxEdge);
+  const quality = isLogoFolder(folder) ? LOGO_WEBP_QUALITY : STORAGE_WEBP_QUALITY;
+  const compressed = await compressImageFile(working, maxEdge, quality);
 
   const supabase = createClient();
   const path = `${folder}/${crypto.randomUUID()}.webp`;

@@ -15,12 +15,12 @@ describe("image-bounds", () => {
     assert.equal(isLogoFolder("products"), false);
   });
 
-  it("caps products/logos tightly; banners larger but bounded", () => {
+  it("caps products tightly; logos sharper; banners bounded", () => {
     assert.equal(maxEdgeForFolder("brand"), MAX_EDGE_LOGO);
     assert.equal(maxEdgeForFolder("products"), MAX_EDGE_PRODUCT);
     assert.equal(maxEdgeForFolder("banners"), MAX_EDGE_BANNER);
     assert.ok(MAX_EDGE_PRODUCT <= 800);
     assert.ok(MAX_EDGE_BANNER <= 1280);
-    assert.ok(MAX_EDGE_LOGO <= 800);
+    assert.ok(MAX_EDGE_LOGO >= 1200);
   });
 });
