@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Amiri, Noto_Sans_Arabic, Tajawal } from "next/font/google";
-import Header from "@/components/Header";
+import SiteHeader from "@/components/SiteHeader";
 import FooterNav from "@/components/FooterNav";
-import SiteFooter from "@/components/SiteFooter";
+import SiteFooterShell from "@/components/SiteFooterShell";
 import ConfettiBackground from "@/components/ConfettiBackground";
 import DevicePreviewToggle from "@/components/DevicePreviewToggle";
 import PageViewTracker from "@/components/PageViewTracker";
@@ -65,9 +65,9 @@ export default function RootLayout({
             <ShopLocaleProvider>
             <CartFlyProvider>
             <AppToaster />
-            <Header />
+            <SiteHeader />
             <main className="flex-1 pb-20 md:pb-0">{children}</main>
-            <SiteFooter />
+            <SiteFooterShell />
             <FooterNav />
             <DevicePreviewToggle />
             <PageViewTracker />

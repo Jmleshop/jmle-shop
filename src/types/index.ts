@@ -34,6 +34,8 @@ export interface SiteConfig {
   tagline: string;
   currency: string;
   locale: string;
+  /** Marken-Logo-URL (gespiegelt aus site_settings key=site_logo) */
+  logo?: string;
   categoriesSectionTitle?: string;
   brandsSectionTitle?: string;
   banner2SectionTitle?: string;

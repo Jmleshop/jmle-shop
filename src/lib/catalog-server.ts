@@ -360,19 +360,38 @@ async function fetchAllCategories(): Promise<Category[]> {
   );
 }
 
-async function fetchSiteConfig(): Promise<SiteConfig> {
+async function fetchSiteLogoUrl(): Promise<string> {
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("site_settings")
     .select("value")
-    .eq("key", "site")
+    .eq("key", "site_logo")
     .maybeSingle();
+  if (error || !data?.value) return "";
+  const value = data.value;
+  if (typeof value === "string") return value.trim();
+  if (value && typeof value === "object") {
+    const url = (value as { url?: unknown }).url;
+    if (typeof url === "string") return url.trim();
+  }
+  return "";
+}
+
+async function fetchSiteConfig(): Promise<SiteConfig> {
+  const supabase = createPublicClient();
+  const [{ data, error }, logoFromKey] = await Promise.all([
+    supabase.from("site_settings").select("value").eq("key", "site").maybeSingle(),
+    fetchSiteLogoUrl(),
+  ]);
 
   if (error || !data?.value) {
     if (error && !/relation|does not exist|42P01/i.test(error.message)) {
       console.error("[catalog] site_settings:", error.message);
     }
-    return DEFAULT_SITE_CONFIG;
+    return {
+      ...DEFAULT_SITE_CONFIG,
+      logo: logoFromKey || DEFAULT_SITE_CONFIG.logo || "",
+    };
   }
 
   const v = data.value as Partial<SiteConfig>;
@@ -382,11 +401,13 @@ async function fetchSiteConfig(): Promise<SiteConfig> {
     banner3: v.banner3SectionTitle,
     categories: v.categoriesSectionTitle,
   });
+  const logo = logoFromKey || (v.logo ?? "").trim() || "";
   return {
     ...DEFAULT_SITE_CONFIG,
     ...v,
     name: v.name || DEFAULT_SITE_CONFIG.name,
     tagline: v.tagline || DEFAULT_SITE_CONFIG.tagline,
+    logo,
     brandsSectionTitle: v.brandsSectionTitle ?? DEFAULT_SITE_CONFIG.brandsSectionTitle,
     banner2SectionTitle: v.banner2SectionTitle ?? DEFAULT_SITE_CONFIG.banner2SectionTitle,
     banner3SectionTitle: v.banner3SectionTitle ?? DEFAULT_SITE_CONFIG.banner3SectionTitle,
@@ -481,7 +502,7 @@ const getCategoriesCached = unstable_cache(
 
 const getSiteConfigCached = unstable_cache(
   fetchSiteConfig,
-  ["catalog-site-v3"],
+  ["catalog-site-v4"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "site"] }
 );
 

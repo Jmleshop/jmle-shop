@@ -17,11 +17,13 @@ const Ctx = createContext<{
 } | null>(null);
 
 export function AdminI18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<AdminLang>("de");
+  // Standard: Arabisch (RTL) für alle Admin-UI-Texte
+  const [lang, setLangState] = useState<AdminLang>("ar");
 
   useEffect(() => {
     const stored = localStorage.getItem("jmle-admin-lang");
     if (stored === "ar" || stored === "de") setLangState(stored);
+    else setLangState("ar");
   }, []);
 
   useEffect(() => {

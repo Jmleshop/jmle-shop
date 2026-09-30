@@ -69,7 +69,7 @@ function BannerSlideContent({
         quality={SHOP_IMAGE_QUALITY}
         priority={priority}
         className={cn("object-cover", isParallax && "scale-110 will-change-transform")}
-        sizes="100vw"
+        sizes="(max-width: 768px) 100vw, (max-width: 1920px) 100vw, 1920px"
         draggable={false}
       />
     );

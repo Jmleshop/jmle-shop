@@ -5,6 +5,7 @@ export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSection[] = [
     id: "sec-banner1",
     type: "slider",
     title: "",
+    titleAr: "",
     zone: "banner1",
     sortOrder: 0,
     active: true,
@@ -13,6 +14,7 @@ export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSection[] = [
     id: "sec-brands",
     type: "brands",
     title: "",
+    titleAr: "",
     sortOrder: 1,
     active: true,
   },
@@ -20,6 +22,7 @@ export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSection[] = [
     id: "sec-banner2",
     type: "slider",
     title: "",
+    titleAr: "",
     zone: "banner2",
     sortOrder: 2,
     active: true,
@@ -28,6 +31,7 @@ export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSection[] = [
     id: "sec-banner3",
     type: "slider",
     title: "",
+    titleAr: "",
     zone: "banner3",
     sortOrder: 3,
     active: true,
@@ -35,14 +39,16 @@ export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSection[] = [
   {
     id: "sec-categories",
     type: "categories",
-    title: "",
+    title: "تسوق على حسب الفئة",
+    titleAr: "تسوق على حسب الفئة",
     sortOrder: 4,
     active: true,
   },
   {
     id: "sec-offers",
     type: "products",
-    title: "",
+    title: "عروض خاصة",
+    titleAr: "عروض خاصة",
     productSource: "offers",
     sortOrder: 5,
     active: true,
@@ -50,7 +56,8 @@ export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSection[] = [
   {
     id: "sec-bestsellers",
     type: "products",
-    title: "",
+    title: "الأكثر مبيعاً",
+    titleAr: "الأكثر مبيعاً",
     productSource: "bestsellers",
     sortOrder: 6,
     active: true,
@@ -94,12 +101,16 @@ export function normalizeHomepageSections(
     if (!id || !["slider", "single", "brands", "products", "categories"].includes(type)) {
       continue;
     }
+    const title = String(row.title ?? "").trim();
+    const titleArRaw =
+      row.titleAr != null ? String(row.titleAr).trim() : "";
     out.push({
       id,
       type,
-      title: String(row.title ?? "").trim(),
+      title,
       titleDe: row.titleDe != null ? String(row.titleDe) : undefined,
-      titleAr: row.titleAr != null ? String(row.titleAr) : undefined,
+      // titleAr fällt auf title zurück (Admin speichert Arabisch oft in title)
+      titleAr: titleArRaw || title || undefined,
       zone:
         type === "slider" || type === "single"
           ? String(row.zone ?? id).trim() || id
@@ -115,9 +126,52 @@ export function normalizeHomepageSections(
     });
   }
 
-  return out.length
-    ? out.sort((a, b) => a.sortOrder - b.sortOrder)
-    : DEFAULT_HOMEPAGE_SECTIONS.map((s) => ({ ...s }));
+  if (!out.length) {
+    return DEFAULT_HOMEPAGE_SECTIONS.map((s) => ({ ...s }));
+  }
+
+  // Legacy-Titel nur setzen wenn Sektion noch komplett ohne Überschrift ist
+  return out
+    .map((s) => {
+      const empty = !(s.titleAr || s.title || "").trim();
+      if (!empty) return s;
+      if (s.type === "categories" && fallbackTitles?.categories) {
+        return {
+          ...s,
+          title: fallbackTitles.categories,
+          titleAr: fallbackTitles.categories,
+        };
+      }
+      if (s.type === "brands" && fallbackTitles?.brands) {
+        return {
+          ...s,
+          title: fallbackTitles.brands,
+          titleAr: fallbackTitles.brands,
+        };
+      }
+      if (
+        (s.zone === "banner2" || s.id === "sec-banner2") &&
+        fallbackTitles?.banner2
+      ) {
+        return {
+          ...s,
+          title: fallbackTitles.banner2,
+          titleAr: fallbackTitles.banner2,
+        };
+      }
+      if (
+        (s.zone === "banner3" || s.id === "sec-banner3") &&
+        fallbackTitles?.banner3
+      ) {
+        return {
+          ...s,
+          title: fallbackTitles.banner3,
+          titleAr: fallbackTitles.banner3,
+        };
+      }
+      return s;
+    })
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export function newSectionId(): string {

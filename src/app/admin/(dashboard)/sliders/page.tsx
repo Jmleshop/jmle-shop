@@ -534,30 +534,32 @@ export default function AdminSlidersPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">
-                    {t("sectionTitle")}
+                    {t("sectionTitleAr")}
                   </label>
                   <input
                     className="input-field"
-                    value={selected.title ?? ""}
-                    placeholder={
-                      lang === "de"
-                        ? "z. B. Sales & Aktionen"
-                        : "مثال: عروض وتخفيضات"
-                    }
+                    dir="rtl"
+                    value={selected.titleAr ?? selected.title ?? ""}
+                    placeholder="مثال: عروض وتخفيضات — اتركه فارغاً للإخفاء"
                     onChange={(e) => {
-                      const title = e.target.value;
+                      const titleAr = e.target.value;
                       setSections((list) =>
                         list.map((s) =>
-                          s.id === selected.id ? { ...s, title } : s
+                          s.id === selected.id
+                            ? { ...s, titleAr, title: titleAr }
+                            : s
                         )
                       );
                     }}
-                    onBlur={() => void updateSelected({ title: selected.title })}
+                    onBlur={() =>
+                      void updateSelected({
+                        titleAr: selected.titleAr ?? selected.title ?? "",
+                        title: selected.titleAr ?? selected.title ?? "",
+                      })
+                    }
                   />
                   <p className="text-[11px] text-gray-500 mt-1">
-                    {lang === "de"
-                      ? "Erscheint elegant oberhalb des Banners (Web-Text, nicht im Bild)."
-                      : "يظهر بأناقة فوق البانر كنص ويب وليس داخل الصورة."}
+                    يظهر بأناقة فوق القسم كنص ويب. الحقل الفارغ يخفي العنوان تماماً.
                   </p>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">

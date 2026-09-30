@@ -75,16 +75,19 @@ export default function OffersCarousel({
   const { t } = useShopLocale();
   if (!products.length) return null;
 
-  const heading = titleKey ? t(titleKey) : (title ?? t("homeOffers"));
+  // Leerer Titel = Überschrift ausblenden (kein i18n-Fallback auf der Startseite)
+  const heading = (title ?? "").trim() || (titleKey ? t(titleKey) : "");
   const loop = [...products, ...products];
   const duration = Math.max(20, products.length * 6);
 
   return (
     <section className="py-8 md:py-10 bg-gradient-to-b from-jmle-warm/60 to-transparent">
-      <div className="text-center mb-6 px-4">
-        <h2 className="section-title">{heading}</h2>
-        <div className="gold-divider" aria-hidden />
-      </div>
+      {heading ? (
+        <div className="text-center mb-6 px-4">
+          <h2 className="section-title">{heading}</h2>
+          <div className="gold-divider" aria-hidden />
+        </div>
+      ) : null}
 
       <div
         dir="ltr"

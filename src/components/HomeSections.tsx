@@ -109,7 +109,6 @@ export function HomepageSectionsRenderer({
               key={section.id}
               categories={categories}
               title={title || undefined}
-              titleKey={title ? undefined : "shopByCategory"}
             />
           );
         }
@@ -125,13 +124,6 @@ export function HomepageSectionsRenderer({
               key={section.id}
               products={products}
               title={title || undefined}
-              titleKey={
-                title
-                  ? undefined
-                  : section.productSource === "bestsellers"
-                    ? "homeBestsellers"
-                    : "homeOffers"
-              }
               reverse={section.productSource === "bestsellers"}
             />
           );

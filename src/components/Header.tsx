@@ -9,9 +9,16 @@ import { useCartFly } from "@/context/CartFlyContext";
 import { useShopLocale } from "@/components/ShopLocale";
 import { formatPrice } from "@/lib/catalog";
 import HeaderSearch from "@/components/HeaderSearch";
+import BrandMark from "@/components/BrandMark";
 import { cn } from "@/lib/cn";
 
-export default function Header() {
+export default function Header({
+  logoUrl = "",
+  siteName = "jmle",
+}: {
+  logoUrl?: string;
+  siteName?: string;
+}) {
   const { total, itemCount, user } = useCart();
   const { count: wishCount } = useWishlist();
   const { lang, setLang, t } = useShopLocale();
@@ -25,7 +32,6 @@ export default function Header() {
   }, [registerCartIcon, itemCount]);
 
   const onScroll = useCallback(() => {
-    // Nur Schatten/Blur toggeln — keine Höhen-/DOM-Umschaltung (kein Zittern)
     setScrolled(window.scrollY > 12);
   }, []);
 
@@ -98,12 +104,13 @@ export default function Header() {
               <User size={22} />
             </Link>
           </div>
-          <Link
-            href="/"
-            className="font-display text-2xl tracking-[0.2em] text-brand-orange hover:text-brand-red transition-colors text-center"
-          >
-            jmle
-          </Link>
+          <BrandMark
+            logoUrl={logoUrl}
+            name={siteName}
+            priority
+            heightClassName="h-8"
+            textClassName="text-2xl"
+          />
           <div className="flex items-center justify-end gap-0.5">
             {cartLink}
             <button
@@ -133,12 +140,13 @@ export default function Header() {
               </Link>
             ))}
           </nav>
-          <Link
-            href="/"
-            className="font-display text-[1.85rem] tracking-[0.2em] text-brand-orange hover:text-brand-red transition-colors text-center shrink-0"
-          >
-            jmle
-          </Link>
+          <BrandMark
+            logoUrl={logoUrl}
+            name={siteName}
+            priority
+            heightClassName="h-10"
+            textClassName="text-[1.85rem]"
+          />
           <div className="flex items-center gap-0.5 justify-end">
             <button
               type="button"
@@ -189,9 +197,12 @@ export default function Header() {
           />
           <aside className="absolute top-0 end-0 h-full w-[min(100%,20rem)] bg-jmle-cream border-s border-orange-200/50 shadow-boutique p-5 animate-fade-up flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <span className="font-display text-xl tracking-[0.15em] text-brand-orange">
-                jmle
-              </span>
+              <BrandMark
+                logoUrl={logoUrl}
+                name={siteName}
+                heightClassName="h-8"
+                textClassName="text-xl tracking-[0.15em]"
+              />
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}

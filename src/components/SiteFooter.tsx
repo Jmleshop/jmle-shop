@@ -2,19 +2,27 @@
 
 import Link from "next/link";
 import { useShopLocale } from "@/components/ShopLocale";
+import BrandMark from "@/components/BrandMark";
 
-export default function SiteFooter() {
+export default function SiteFooter({
+  logoUrl = "",
+  siteName = "jmle",
+}: {
+  logoUrl?: string;
+  siteName?: string;
+}) {
   const { t } = useShopLocale();
   return (
     <footer className="relative bg-gradient-to-b from-gold-dark via-jmle-orange-dark to-jmle-mahogany text-white py-14 px-4 md:px-8 mt-auto border-t border-amber-200/20">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
-          <Link
-            href="/"
-            className="font-display text-3xl tracking-[0.28em] text-jmle-yellow hover:text-white transition-colors"
-          >
-            jmle
-          </Link>
+          <BrandMark
+            logoUrl={logoUrl}
+            name={siteName}
+            heightClassName="h-10 mx-auto"
+            textClassName="text-3xl tracking-[0.28em] text-jmle-yellow hover:text-white"
+            className="justify-center"
+          />
           <p className="text-jmle-ocher/80 text-sm mt-2 font-ui font-light">
             {t("tagline")}
           </p>
@@ -62,17 +70,17 @@ export default function SiteFooter() {
             <ul className="space-y-2.5 text-white/70 font-body">
               <li>
                 <Link href="/legal/impressum" className="hover:text-white transition-colors">
-                  Impressum
+                  بيانات الناشر
                 </Link>
               </li>
               <li>
                 <Link href="/legal/datenschutz" className="hover:text-white transition-colors">
-                  Datenschutz
+                  الخصوصية
                 </Link>
               </li>
               <li>
                 <Link href="/legal/widerruf" className="hover:text-white transition-colors">
-                  Widerrufsbelehrung
+                  حق الإلغاء
                 </Link>
               </li>
             </ul>
@@ -87,7 +95,7 @@ export default function SiteFooter() {
         </div>
 
         <div className="border-t border-white/10 pt-6 text-center text-xs text-white/45 font-ui">
-          <p>&copy; {new Date().getFullYear()} jmle. {t("rights")}</p>
+          <p>&copy; {new Date().getFullYear()} {siteName}. {t("rights")}</p>
         </div>
       </div>
     </footer>
