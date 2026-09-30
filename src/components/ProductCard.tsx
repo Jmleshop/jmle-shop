@@ -94,7 +94,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             fill
             quality={SHOP_IMAGE_QUALITY}
             className="product-image-media transition-transform duration-500 ease-boutique"
-            sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 320px"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 320px"
           />
           <div className="absolute inset-x-0 top-0 p-1 sm:p-2 flex gap-1 justify-between items-start pointer-events-none">
             <div className="flex flex-wrap gap-1">
