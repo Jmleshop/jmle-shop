@@ -72,8 +72,8 @@ function baseConfig(
         phase: download ? "download" : "process",
         ratio,
         label: download
-          ? "⚡ Lade Turbo-KI-Modell…"
-          : "⚡ Entferne Hintergrund mit KI (Turbo-Modus)…",
+          ? "⚡ جاري تحميل نموذج التوربو…"
+          : "⚡ إزالة الخلفية بالذكاء الاصطناعي (وضع التوربو)…",
         engine: device === "gpu" ? "webgpu" : "wasm",
       });
     },
