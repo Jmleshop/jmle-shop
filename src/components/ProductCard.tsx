@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ShoppingBag, Minus, Plus, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useCartFly } from "@/context/CartFlyContext";
 import type { Product } from "@/types";
 import { ProductPrice, StockBadge } from "@/components/ProductPrice";
 import WishlistButton from "@/components/WishlistButton";
 import { useShopLocale } from "@/components/ShopLocale";
-import { productTitle } from "@/lib/shop-i18n";
+import { useAutoTranslate } from "@/hooks/useAutoTranslate";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import { maxBuyQuantity } from "@/lib/pricing";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
@@ -35,8 +36,14 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
+  const { flyToCart } = useCartFly();
   const { lang, t } = useShopLocale();
-  const title = productTitle(lang, product);
+  const title = useAutoTranslate(
+    lang,
+    lang === "de" ? product.nameDe : product.name,
+    lang === "de" ? product.name : product.nameDe
+  );
+  const imgRef = useRef<HTMLDivElement>(null);
   const out = product.stock <= 0;
   const seals = detectSeals(product);
   const max = maxBuyQuantity(product.stock, product.maxOrderQuantity);
@@ -57,6 +64,10 @@ export default function ProductCard({ product }: ProductCardProps) {
     e.preventDefault();
     e.stopPropagation();
     if (out) return;
+    const rect = imgRef.current?.getBoundingClientRect();
+    if (rect) {
+      flyToCart({ image: originalImageSrc(product.image), fromRect: rect });
+    }
     await addItem(product.id, Math.max(1, Math.min(max || 1, qty)));
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
@@ -64,15 +75,16 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <article
-      className={`group relative card-boutique overflow-hidden transition-all duration-300 ease-boutique hover:-translate-y-1 hover:shadow-gold hover:border-amber-200/80 ${
+      className={`group relative card-boutique overflow-hidden transition-all duration-300 ease-boutique hover:-translate-y-1 hover:shadow-gold hover:border-orange-200/80 ${
         out ? "opacity-60" : ""
       }`}
     >
       <div className="absolute top-2 end-2 z-30">
         <WishlistButton productId={product.id} size="sm" />
       </div>
-      <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40">
+      <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40">
         <div
+          ref={imgRef}
           className="relative aspect-square overflow-hidden !bg-white flex items-center justify-center"
           style={{ backgroundColor: "#ffffff" }}
         >

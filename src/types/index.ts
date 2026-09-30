@@ -8,11 +8,31 @@ export interface SiteConfig {
   ogImage?: string;
 }
 
+export type SliderZone = "banner1" | "banner2";
+
 export interface Slide {
   id: string;
   image: string;
   title: string;
   subtitle: string;
+  titleAr?: string;
+  titleDe?: string;
+  subtitleAr?: string;
+  subtitleDe?: string;
+  linkUrl?: string | null;
+  linkCategoryId?: string | null;
+  sliderZone?: SliderZone;
+  sortOrder?: number;
+  active?: boolean;
+}
+
+export interface BrandLogo {
+  id: string;
+  name: string;
+  image: string;
+  linkUrl?: string | null;
+  sortOrder?: number;
+  active?: boolean;
 }
 
 export interface Category {
@@ -22,6 +42,7 @@ export interface Category {
   image: string;
   parentId?: string | null;
   sortOrder?: number;
+  showOnHomepage?: boolean;
   children?: Category[];
 }
 
@@ -103,6 +124,7 @@ export interface FoodCategory {
   image: string | null;
   sort_order: number;
   parent_id: string | null;
+  show_on_homepage?: boolean;
   deleted_at: string | null;
   created_at?: string;
   updated_at?: string;

@@ -13,7 +13,10 @@ import type { Product } from "@/types";
 interface OffersCarouselProps {
   products: Product[];
   title?: string;
-  titleKey?: Extract<ShopMsgKey, "homeOffers" | "homeLatest" | "homeFeatured">;
+  titleKey?: Extract<
+    ShopMsgKey,
+    "homeOffers" | "homeLatest" | "homeFeatured" | "homeBestsellers"
+  >;
   /** Laufrichtung umkehren (für die zweite Reihe) */
   reverse?: boolean;
 }

@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import {
-  getCategoriesAsync,
-  getFeaturedProductsAsync,
+  getBanner2SlidesAsync,
+  getBrandLogosAsync,
+  getBestsellersAsync,
+  getHomepageCategoriesAsync,
   getOffersAsync,
-  getRegularProductsAsync,
   getSiteConfigAsync,
   getSlidesAsync,
 } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
-import HeroSlider from "@/components/HeroSlider";
+import CompactBannerSlider from "@/components/CompactBannerSlider";
+import BrandLogoTicker from "@/components/BrandLogoTicker";
 import OffersCarousel from "@/components/OffersCarousel";
 import CategoryGrid from "@/components/CategoryGrid";
-import { ProductGrid } from "@/components/ProductCard";
 
-// Immer serverseitig frisch rendern, damit importierte Produkte sofort erscheinen.
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -51,23 +51,26 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [slides, categories, featured, offers, regular] = await Promise.all([
-    getSlidesAsync(),
-    getCategoriesAsync(),
-    getFeaturedProductsAsync(),
-    getOffersAsync(),
-    getRegularProductsAsync(),
-  ]);
+  const [banner1, brands, banner2, categories, offers, bestsellers] =
+    await Promise.all([
+      getSlidesAsync(),
+      getBrandLogosAsync(),
+      getBanner2SlidesAsync(),
+      getHomepageCategoriesAsync(),
+      getOffersAsync(),
+      getBestsellersAsync(),
+    ]);
 
   return (
     <>
-      <HeroSlider slides={slides} />
-      {/* Obere Reihe: nur Rabatt-/Angebotsprodukte */}
-      <OffersCarousel products={offers} titleKey="homeOffers" />
-      {/* Untere Reihe: reguläre / neueste Produkte (Gegenrichtung) */}
-      <OffersCarousel products={regular} titleKey="homeLatest" reverse />
+      <div className="flex flex-col gap-2 sm:gap-3">
+        <CompactBannerSlider slides={banner1} />
+        <BrandLogoTicker logos={brands} />
+        <CompactBannerSlider slides={banner2} />
+      </div>
       <CategoryGrid categories={categories} titleKey="shopByCategory" />
-      <ProductGrid products={featured} titleKey="homeFeatured" />
+      <OffersCarousel products={offers} titleKey="homeOffers" />
+      <OffersCarousel products={bestsellers} titleKey="homeBestsellers" reverse />
     </>
   );
 }

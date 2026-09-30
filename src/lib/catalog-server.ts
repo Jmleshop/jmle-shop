@@ -21,7 +21,7 @@ import {
   productIsOnSale,
 } from "@/lib/category-special";
 import { originalImageSrc } from "@/lib/sharp-image";
-import type { Category, Product, SiteConfig, Slide } from "@/types";
+import type { BrandLogo, Category, Product, SiteConfig, Slide, SliderZone } from "@/types";
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
 const REVALIDATE_SECONDS = 60;
@@ -62,6 +62,32 @@ type CategoryRow = {
   image?: string | null;
   parent_id?: string | null;
   sort_order?: number | null;
+  show_on_homepage?: boolean | null;
+};
+
+type HeroSlideRow = {
+  id: string;
+  image?: string | null;
+  title?: string | null;
+  subtitle?: string | null;
+  title_ar?: string | null;
+  title_de?: string | null;
+  subtitle_ar?: string | null;
+  subtitle_de?: string | null;
+  link_url?: string | null;
+  link_category_id?: string | null;
+  slider_zone?: string | null;
+  sort_order?: number | null;
+  active?: boolean | null;
+};
+
+type BrandLogoRow = {
+  id: string;
+  name?: string | null;
+  image?: string | null;
+  link_url?: string | null;
+  sort_order?: number | null;
+  active?: boolean | null;
 };
 
 export function mapPublicProduct(row: PublicRow): Product {
@@ -114,6 +140,42 @@ function mapCategory(row: CategoryRow): Category {
     image: originalImageSrc(row.image || PLACEHOLDER_IMAGE),
     parentId: row.parent_id ?? null,
     sortOrder: row.sort_order ?? 0,
+    showOnHomepage: row.show_on_homepage !== false,
+  };
+}
+
+function mapHeroSlide(row: HeroSlideRow): Slide {
+  const titleAr = String(row.title_ar || row.title || "");
+  const titleDe = String(row.title_de || "");
+  const subtitleAr = String(row.subtitle_ar || row.subtitle || "");
+  const subtitleDe = String(row.subtitle_de || "");
+  const zone: SliderZone =
+    row.slider_zone === "banner2" ? "banner2" : "banner1";
+  return {
+    id: String(row.id),
+    image: String(row.image || PLACEHOLDER_IMAGE),
+    title: titleAr || titleDe,
+    subtitle: subtitleAr || subtitleDe,
+    titleAr,
+    titleDe,
+    subtitleAr,
+    subtitleDe,
+    linkUrl: row.link_url || null,
+    linkCategoryId: row.link_category_id || null,
+    sliderZone: zone,
+    sortOrder: row.sort_order ?? 0,
+    active: row.active !== false,
+  };
+}
+
+function mapBrandLogo(row: BrandLogoRow): BrandLogo {
+  return {
+    id: String(row.id),
+    name: String(row.name || ""),
+    image: originalImageSrc(String(row.image || PLACEHOLDER_IMAGE)),
+    linkUrl: row.link_url || null,
+    sortOrder: row.sort_order ?? 0,
+    active: row.active !== false,
   };
 }
 
@@ -217,20 +279,36 @@ async function fetchProductsFromBaseTable(
 
 async function fetchAllCategories(): Promise<Category[]> {
   const supabase = createPublicClient();
-  const { data, error } = await supabase
+  // show_on_homepage optional — Fallback ohne Spalte
+  let data: CategoryRow[] | null = null;
+  let error: { message: string } | null = null;
+
+  const full = await supabase
     .from("categories")
-    .select("id, name_ar, name_de, image, parent_id, sort_order, deleted_at")
+    .select("id, name_ar, name_de, image, parent_id, sort_order, deleted_at, show_on_homepage")
     .is("deleted_at", null)
     .order("sort_order", { ascending: true });
+
+  if (full.error && /show_on_homepage|column/i.test(full.error.message)) {
+    const basic = await supabase
+      .from("categories")
+      .select("id, name_ar, name_de, image, parent_id, sort_order, deleted_at")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true });
+    data = (basic.data as CategoryRow[] | null) ?? null;
+    error = basic.error;
+  } else {
+    data = (full.data as CategoryRow[] | null) ?? null;
+    error = full.error;
+  }
 
   if (error || !data) {
     console.error("[catalog] categories:", error?.message);
     return [];
   }
   return nestCategories(
-    (data as CategoryRow[])
+    data
       .map(mapCategory)
-      // Echte DB-„Sale“-Kategorien ausblenden → nur virtuelle /categories/sale
       .filter((c) => !isSaleCategoryName(c.name, c.nameEn))
   );
 }
@@ -259,32 +337,67 @@ async function fetchSiteConfig(): Promise<SiteConfig> {
   };
 }
 
-async function fetchHeroSlides(): Promise<Slide[]> {
+async function fetchHeroSlides(zone?: SliderZone): Promise<Slide[]> {
   const supabase = createPublicClient();
-  const { data, error } = await supabase
+  const selectFull =
+    "id, image, title, subtitle, title_ar, title_de, subtitle_ar, subtitle_de, link_url, link_category_id, slider_zone, sort_order, active";
+  const selectBasic = "id, image, title, subtitle, sort_order, active";
+
+  let query = supabase
     .from("hero_slides")
-    .select("id, image, title, subtitle, sort_order")
+    .select(selectFull)
     .eq("active", true)
     .order("sort_order", { ascending: true });
+
+  if (zone) {
+    query = query.eq("slider_zone", zone);
+  }
+
+  let { data, error } = await query;
+
+  if (error && /column|slider_zone|link_url|title_ar/i.test(error.message)) {
+    const basic = await supabase
+      .from("hero_slides")
+      .select(selectBasic)
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
+    data = basic.data as typeof data;
+    error = basic.error;
+    // Ohne Zone-Spalte: nur banner1 bekommt Defaults/Legacy-Daten
+    if (!error && zone === "banner2") return [];
+  }
 
   if (error || !data?.length) {
     if (error && !/relation|does not exist|42P01/i.test(error.message)) {
       console.error("[catalog] hero_slides:", error.message);
     }
+    if (zone === "banner2") return [];
     return DEFAULT_HERO_SLIDES;
   }
 
-  return data.map((row) => ({
-    id: String(row.id),
-    image: String(row.image),
-    title: String(row.title),
-    subtitle: String(row.subtitle ?? ""),
-  }));
+  return (data as HeroSlideRow[]).map(mapHeroSlide);
+}
+
+async function fetchBrandLogos(): Promise<BrandLogo[]> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("brand_logos")
+    .select("id, name, image, link_url, sort_order, active")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+
+  if (error || !data?.length) {
+    if (error && !/relation|does not exist|42P01/i.test(error.message)) {
+      console.error("[catalog] brand_logos:", error.message);
+    }
+    return [];
+  }
+  return (data as BrandLogoRow[]).map(mapBrandLogo);
 }
 
 const getCategoriesCached = unstable_cache(
   fetchAllCategories,
-  ["catalog-categories-v2"],
+  ["catalog-categories-v3"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "categories"] }
 );
 
@@ -295,9 +408,21 @@ const getSiteConfigCached = unstable_cache(
 );
 
 const getSlidesCached = unstable_cache(
-  fetchHeroSlides,
-  ["catalog-slides-v1"],
+  () => fetchHeroSlides("banner1"),
+  ["catalog-slides-banner1-v2"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides"] }
+);
+
+const getBanner2Cached = unstable_cache(
+  () => fetchHeroSlides("banner2"),
+  ["catalog-slides-banner2-v1"],
+  { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides"] }
+);
+
+const getBrandLogosCached = unstable_cache(
+  fetchBrandLogos,
+  ["catalog-brand-logos-v1"],
+  { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides", "brands"] }
 );
 
 /**
@@ -314,7 +439,6 @@ export const getProductsAsync = cache(async (): Promise<Product[]> => {
 export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
   const dbTree = await getCategoriesCached();
   const tree = dbTree.length ? dbTree : FALLBACK_CATEGORIES;
-  // Virtuelle Sammelkategorie „Alle Produkte" ganz vorne (listet ALLE Produkte)
   const all: Category = {
     id: ALL_CATEGORY.id,
     name: ALL_CATEGORY.name,
@@ -322,9 +446,9 @@ export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
     image: ALL_CATEGORY.image,
     parentId: null,
     sortOrder: ALL_CATEGORY.sortOrder,
+    showOnHomepage: true,
     children: [],
   };
-  // Virtuelle Sale-Kategorie (Produkte kommen dynamisch über Rabatt)
   const sale: Category = {
     id: SALE_CATEGORY.id,
     name: SALE_CATEGORY.name,
@@ -332,9 +456,24 @@ export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
     image: SALE_CATEGORY.image,
     parentId: null,
     sortOrder: SALE_CATEGORY.sortOrder,
+    showOnHomepage: true,
     children: [],
   };
   return [all, sale, ...tree];
+});
+
+/** Nur Kategorien, die auf der Startseite erscheinen sollen (ohne virtuelle). */
+export const getHomepageCategoriesAsync = cache(async (): Promise<Category[]> => {
+  const tree = await getCategoriesCached();
+  const source = tree.length ? tree : FALLBACK_CATEGORIES;
+  const filterVisible = (nodes: Category[]): Category[] =>
+    nodes
+      .filter((c) => c.showOnHomepage !== false)
+      .map((c) => ({
+        ...c,
+        children: c.children?.length ? filterVisible(c.children) : [],
+      }));
+  return filterVisible(source);
 });
 
 export const getSiteConfigAsync = cache(async (): Promise<SiteConfig> => {
@@ -343,6 +482,16 @@ export const getSiteConfigAsync = cache(async (): Promise<SiteConfig> => {
 
 export const getSlidesAsync = cache(async (): Promise<Slide[]> => {
   return getSlidesCached();
+});
+
+export const getBanner1SlidesAsync = getSlidesAsync;
+
+export const getBanner2SlidesAsync = cache(async (): Promise<Slide[]> => {
+  return getBanner2Cached();
+});
+
+export const getBrandLogosAsync = cache(async (): Promise<BrandLogo[]> => {
+  return getBrandLogosCached();
 });
 
 export const getFlatCategoriesAsync = cache(async (): Promise<Category[]> => {
@@ -422,10 +571,25 @@ export const getFeaturedProductsAsync = cache(async (): Promise<Product[]> => {
   return offers.length ? offers : products.slice(0, 8);
 });
 
-/** Nur reduzierte Produkte (für die obere Angebote-Reihe). */
+/** Nur reduzierte Produkte (für die Angebote-Leiste). */
 export const getOffersAsync = cache(async (): Promise<Product[]> => {
   const products = await getProductsAsync();
   return products.filter(productIsOnSale);
+});
+
+/**
+ * Bestseller: Badge „bestseller“, sonst meistverkaufte / Featured-Fallback.
+ */
+export const getBestsellersAsync = cache(async (): Promise<Product[]> => {
+  const products = await getProductsAsync();
+  const tagged = products.filter((p) =>
+    (p.badges ?? []).includes("bestseller")
+  );
+  if (tagged.length) return tagged;
+  // Fallback: höchster Rabatt / neueste als „populär“
+  const featured = products.filter((p) => p.featured);
+  if (featured.length) return featured;
+  return products.slice(0, 12);
 });
 
 /**

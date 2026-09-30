@@ -49,10 +49,31 @@ export async function PUT(request: Request, { params }: RouteParams) {
       image: parsed.data.image,
       sort_order: parsed.data.sort_order,
       parent_id: parsed.data.parent_id,
+      show_on_homepage: parsed.data.show_on_homepage,
     })
     .eq("id", id)
     .select()
     .single();
+
+  if (error && /show_on_homepage|column/i.test(error.message)) {
+    const retry = await auth.supabase
+      .from("categories")
+      .update({
+        name_ar: parsed.data.name_ar,
+        name_de: parsed.data.name_de,
+        image: parsed.data.image,
+        sort_order: parsed.data.sort_order,
+        parent_id: parsed.data.parent_id,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    if (retry.error) {
+      return NextResponse.json({ error: retry.error.message }, { status: 500 });
+    }
+    bustCatalogCache();
+    return NextResponse.json({ category: retry.data });
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

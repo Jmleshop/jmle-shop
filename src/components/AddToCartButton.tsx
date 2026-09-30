@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ShoppingBag, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useCartFly } from "@/context/CartFlyContext";
 import { maxBuyQuantity } from "@/lib/pricing";
 import { Button } from "@/components/ui";
 import { useShopLocale } from "@/components/ShopLocale";
@@ -11,13 +12,17 @@ export default function AddToCartButton({
   productId,
   stock,
   maxOrderQuantity,
+  imageUrl,
 }: {
   productId: string;
   stock: number;
   maxOrderQuantity: number | null;
+  imageUrl?: string;
 }) {
   const { addItem } = useCart();
+  const { flyToCart } = useCartFly();
   const { t } = useShopLocale();
+  const btnRef = useRef<HTMLDivElement>(null);
   const [added, setAdded] = useState(false);
   const max = maxBuyQuantity(stock, maxOrderQuantity);
   const options = useMemo(
@@ -40,13 +45,20 @@ export default function AddToCartButton({
   }
 
   const handleClick = async () => {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect && imageUrl) {
+      flyToCart({ image: imageUrl, fromRect: rect });
+    }
     await addItem(productId, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+    <div
+      ref={btnRef}
+      className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center"
+    >
       <label className="text-sm text-gray-600 font-ui flex items-center gap-2 min-h-12">
         {t("qtyLabel")}
         <select

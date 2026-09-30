@@ -6,11 +6,11 @@ type Size = "sm" | "md" | "lg" | "icon";
 
 const variantCls: Record<Variant, string> = {
   primary:
-    "bg-gold text-white shadow-gold-sm hover:bg-jmle-yellow hover:text-luxury-black hover:shadow-gold",
+    "bg-brand-orange text-white shadow-gold-sm hover:bg-brand-red hover:text-white hover:shadow-gold",
   outline:
-    "border border-amber-200/80 bg-white/70 text-gold hover:bg-gold hover:text-white hover:border-gold",
-  ghost: "bg-transparent text-luxury-charcoal hover:bg-jmle-warm hover:text-gold-dark",
-  soft: "bg-jmle-warm text-luxury-black border border-amber-200/40 hover:border-gold/40",
+    "border border-orange-200/80 bg-white/70 text-brand-orange hover:bg-brand-orange hover:text-white hover:border-brand-orange",
+  ghost: "bg-transparent text-luxury-charcoal hover:bg-jmle-warm hover:text-brand-orange",
+  soft: "bg-jmle-warm text-luxury-black border border-orange-200/40 hover:border-brand-orange/40",
 };
 
 const sizeCls: Record<Size, string> = {

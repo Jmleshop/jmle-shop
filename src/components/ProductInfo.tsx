@@ -127,6 +127,7 @@ export default function ProductInfo({
           productId={product.id}
           stock={product.stock}
           maxOrderQuantity={product.maxOrderQuantity}
+          imageUrl={product.image}
         />
       </div>
 

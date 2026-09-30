@@ -159,6 +159,7 @@ export const categoryCreateSchema = z
     image: z.unknown().optional(),
     sort_order: z.unknown().optional(),
     parent_id: z.unknown().optional(),
+    show_on_homepage: z.unknown().optional(),
   })
   .transform((raw, ctx) => {
     const name_ar = asString(raw.name_ar);
@@ -166,6 +167,9 @@ export const categoryCreateSchema = z
       ctx.addIssue({ code: "custom", message: "Arabischer Name ist Pflicht", path: ["name_ar"] });
     }
     const sort = asNullableNumber(raw.sort_order) ?? 0;
+    const showRaw = raw.show_on_homepage;
+    const show_on_homepage =
+      showRaw === false || showRaw === "false" || showRaw === 0 ? false : true;
     return {
       id: asNullableString(raw.id) ?? undefined,
       name_ar,
@@ -173,6 +177,7 @@ export const categoryCreateSchema = z
       image: asNullableString(raw.image),
       sort_order: Math.max(0, Math.floor(sort)),
       parent_id: asNullableString(raw.parent_id),
+      show_on_homepage,
     };
   })
   .superRefine((data, ctx) => {

@@ -41,9 +41,16 @@ const messages = {
     cartCount: "سلة التسوق، {count} منتج",
     langSwitch: "Deutsch",
     homeOffers: "عروض خاصة",
+    homeBestsellers: "الأكثر مبيعاً",
     homeLatest: "أحدث المنتجات",
     homeFeatured: "عروض ومنتجات",
     shopByCategory: "تسوق على حسب الفئة",
+    quickSearch: "بحث سريع",
+    slidePrev: "الشريحة السابقة",
+    slideNext: "الشريحة التالية",
+    slideOf: "الشريحة {n}",
+    brandPartners: "علاماتنا التجارية",
+    downloadImage: "تنزيل الصورة",
     allCategories: "جميع الفئات",
     noCategories: "لا توجد فئات",
     allProducts: "جميع المنتجات",
@@ -150,9 +157,16 @@ const messages = {
     cartCount: "Warenkorb, {count} Produkte",
     langSwitch: "العربية",
     homeOffers: "Angebote",
+    homeBestsellers: "Bestseller",
     homeLatest: "Neueste Produkte",
     homeFeatured: "Angebote & Produkte",
     shopByCategory: "Nach Kategorie einkaufen",
+    quickSearch: "Schnellsuche",
+    slidePrev: "Vorherige Folie",
+    slideNext: "Nächste Folie",
+    slideOf: "Folie {n}",
+    brandPartners: "Unsere Marken",
+    downloadImage: "Bild herunterladen",
     allCategories: "Alle Kategorien",
     noCategories: "Keine Kategorien",
     allProducts: "Alle Produkte",
@@ -240,10 +254,13 @@ export function shopText(
 const ARABIC = /[\u0600-\u06FF]/;
 
 export function productTitle(
-  _lang: ShopLang,
+  lang: ShopLang,
   product: { name: string; nameDe?: string | null }
 ): string {
-  return product.name?.trim() || product.nameDe?.trim() || "";
+  const ar = product.name?.trim() || "";
+  const de = product.nameDe?.trim() || "";
+  if (lang === "de") return de || ar;
+  return ar || de;
 }
 
 export function categoryTitle(
@@ -252,8 +269,38 @@ export function categoryTitle(
 ): string {
   if (category.id === "all") return shopText(lang, "allProducts");
   if (category.id === "sale") return shopText(lang, "saleCategory");
-  if (lang === "de") return category.nameEn?.trim() || category.name;
-  return category.name?.trim() || category.nameEn?.trim() || "";
+  const ar = category.name?.trim() || "";
+  const de = category.nameEn?.trim() || "";
+  if (lang === "de") return de || ar;
+  return ar || de;
+}
+
+export function slideTitle(
+  lang: ShopLang,
+  slide: {
+    title: string;
+    titleAr?: string | null;
+    titleDe?: string | null;
+  }
+): string {
+  const ar = (slide.titleAr || slide.title || "").trim();
+  const de = (slide.titleDe || "").trim();
+  if (lang === "de") return de || ar;
+  return ar || de;
+}
+
+export function slideSubtitle(
+  lang: ShopLang,
+  slide: {
+    subtitle: string;
+    subtitleAr?: string | null;
+    subtitleDe?: string | null;
+  }
+): string {
+  const ar = (slide.subtitleAr || slide.subtitle || "").trim();
+  const de = (slide.subtitleDe || "").trim();
+  if (lang === "de") return de || ar;
+  return ar || de;
 }
 
 /** Picks the paragraph written in the active language when both scripts are stored. */

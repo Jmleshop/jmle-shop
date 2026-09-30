@@ -18,13 +18,13 @@ export const PRODUCT_BADGES: ProductBadgeDef[] = [
     key: "bestseller",
     labelDe: "Bestseller",
     labelAr: "الأكثر مبيعاً",
-    className: "bg-gold text-white",
+    className: "bg-brand-orange text-white",
   },
   {
     key: "sale",
     labelDe: "Im Angebot",
     labelAr: "في العرض",
-    className: "bg-red-500 text-white",
+    className: "bg-brand-red text-white",
   },
   {
     key: "quality",

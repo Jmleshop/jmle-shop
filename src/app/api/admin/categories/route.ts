@@ -69,7 +69,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { name_ar, name_de, image, sort_order, parent_id } = parsed.data;
+  const { name_ar, name_de, image, sort_order, parent_id, show_on_homepage } =
+    parsed.data;
   const id =
     (parsed.data.id && parsed.data.id.trim()) ||
     slugify(name_de || name_ar) ||
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
     image,
     sort_order,
     parent_id,
+    show_on_homepage,
   };
 
   let { data, error } = await auth.supabase
@@ -89,6 +91,17 @@ export async function POST(request: Request) {
     .insert(payload)
     .select()
     .single();
+
+  if (error && /show_on_homepage|column/i.test(error.message)) {
+    const { show_on_homepage: _drop, ...withoutShow } = payload;
+    const retry = await auth.supabase
+      .from("categories")
+      .insert(withoutShow)
+      .select()
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     const withoutId = {

@@ -115,8 +115,18 @@ function SortableCategoryRow({
             <span className="w-4" />
           )}
           <span className="flex-1 font-medium text-sm">{categoryLabel(item)}</span>
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              item.show_on_homepage !== false
+                ? "bg-brand-orange/15 text-brand-orange"
+                : "bg-gray-100 text-gray-400"
+            }`}
+            title="Startseite"
+          >
+            {item.show_on_homepage !== false ? "Home" : "—"}
+          </span>
           <span className="text-[11px] text-gray-400 hidden sm:inline">
-            Ebene {depth + 1}
+            Pos. {(item.sort_order ?? 0) + 1} · Ebene {depth + 1}
           </span>
           <span className="text-xs text-gray-400 hidden md:inline" dir="rtl">
             {item.name_ar}
@@ -155,6 +165,7 @@ export default function AdminCategoriesPage() {
     image: "",
     parent_id: "",
     kind: "main" as "main" | "sub",
+    show_on_homepage: true,
   });
   const [error, setError] = useState("");
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
@@ -235,10 +246,18 @@ export default function AdminCategoriesPage() {
         image: c.image ?? "",
         parent_id: c.parent_id ?? "",
         kind: c.parent_id ? "sub" : "main",
+        show_on_homepage: c.show_on_homepage !== false,
       });
     } else {
       setEditingId(null);
-      setForm({ name_ar: "", name_de: "", image: "", parent_id: "", kind: "main" });
+      setForm({
+        name_ar: "",
+        name_de: "",
+        image: "",
+        parent_id: "",
+        kind: "main",
+        show_on_homepage: true,
+      });
     }
     setShowForm(true);
     setError("");
@@ -339,7 +358,10 @@ export default function AdminCategoriesPage() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-        <h1 className="text-2xl font-semibold">{t("categories")}</h1>
+        <div>
+          <h1 className="text-2xl font-semibold">{t("categories")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t("homepageOrder")}</p>
+        </div>
         <div className="flex items-center gap-3">
           <Link
             href="/admin/trash"
@@ -354,8 +376,8 @@ export default function AdminCategoriesPage() {
         </div>
       </div>
       <p className="text-sm text-gray-500 mb-2">
-        Ziehen zum Sortieren. Nach rechts einrücken, um eine Unterkategorie zu erzeugen (max. 3
-        Ebenen).
+        Ziehen zum Sortieren (Pos. 1, 2, 3…). Nach rechts einrücken = Unterkategorie (max. 3 Ebenen).
+        Checkbox „Startseite“ steuert die Anzeige im Shop.
       </p>
       <p className="text-[11px] text-gray-400 mb-6">
         Zeile nach rechts wischen → Papierkorb (Soft Delete). Griff-Icon = Sortieren.
@@ -371,6 +393,17 @@ export default function AdminCategoriesPage() {
             </div>
             <input required dir="rtl" className="input-field" placeholder={`${t("nameAr")} *`} value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} />
             <input className="input-field" placeholder={t("nameDe")} value={form.name_de} onChange={(e) => setForm({ ...form, name_de: e.target.value })} />
+            <label className="flex items-center gap-2 text-sm font-medium min-h-11">
+              <input
+                type="checkbox"
+                checked={form.show_on_homepage}
+                onChange={(e) =>
+                  setForm({ ...form, show_on_homepage: e.target.checked })
+                }
+                className="w-4 h-4 accent-brand-orange"
+              />
+              {t("showOnHomepage")}
+            </label>
             <div className="space-y-2">
               <p className="text-sm font-medium">{t("category")}</p>
               <label className="flex items-center gap-2 text-sm">

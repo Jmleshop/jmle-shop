@@ -5,6 +5,7 @@ import Image from "next/image";
 import type { Category } from "@/types";
 import { useShopLocale } from "@/components/ShopLocale";
 import { categoryTitle, type ShopMsgKey } from "@/lib/shop-i18n";
+import { useAutoTranslate } from "@/hooks/useAutoTranslate";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 interface CategoryTileProps {
@@ -13,7 +14,14 @@ interface CategoryTileProps {
 
 export function CategoryTile({ category }: CategoryTileProps) {
   const { lang } = useShopLocale();
-  const title = categoryTitle(lang, category);
+  const title = useAutoTranslate(
+    lang,
+    lang === "de" ? category.nameEn : category.name,
+    lang === "de" ? category.name : category.nameEn
+  );
+  const fallbackTitle = categoryTitle(lang, category);
+  const label =
+    category.id === "all" || category.id === "sale" ? fallbackTitle : title || fallbackTitle;
   return (
     <Link
       href={`/categories/${category.id}`}
@@ -27,7 +35,7 @@ export function CategoryTile({ category }: CategoryTileProps) {
         <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-gold-sm transition-transform duration-300 ease-boutique group-hover:scale-105 group-hover:-translate-y-1">
           <Image
             src={originalImageSrc(category.image)}
-            alt={title}
+            alt={label}
             fill
             quality={SHOP_IMAGE_QUALITY}
             className="object-cover"
@@ -35,8 +43,8 @@ export function CategoryTile({ category }: CategoryTileProps) {
           />
         </div>
       </div>
-      <span className="font-ui text-xs sm:text-sm font-medium text-luxury-charcoal group-hover:text-gold transition-colors text-center leading-snug">
-        {title}
+      <span className="font-ui text-xs sm:text-sm font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug">
+        {label}
       </span>
     </Link>
   );

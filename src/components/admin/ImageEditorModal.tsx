@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { createPortal } from "react-dom";
 import {
   Check,
+  Download,
   FlipHorizontal,
   FlipVertical,
   Loader2,
@@ -61,7 +62,7 @@ import {
 } from "@/lib/image-editor/types";
 
 type TabId = "ai" | "adjust" | "crop" | "studio";
-type Busy = "bg" | "save" | null;
+type Busy = "bg" | "save" | "download" | null;
 
 const CHECKER: CSSProperties = {
   backgroundColor: "#f8fafc",
@@ -565,6 +566,59 @@ export default function ImageEditorModal({
     } catch (cause) {
       console.error(cause);
       setError(cause instanceof Error ? cause.message : copy.bgError);
+      setBusy(null);
+    }
+  };
+
+  const onDownload = async () => {
+    if (!bitmap || busy) return;
+    setBusy("download");
+    setError("");
+    try {
+      const settings = currentSettings();
+      const webp = await exportProductImage(bitmap, settings);
+      // PNG-Variante für maximale Qualität (Canvas-Neucodierung)
+      const pngBlob = await new Promise<Blob | null>((resolve) => {
+        const img = new window.Image();
+        const url = URL.createObjectURL(webp);
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            URL.revokeObjectURL(url);
+            resolve(null);
+            return;
+          }
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url);
+          canvas.toBlob((b) => resolve(b), "image/png");
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(null);
+        };
+        img.src = url;
+      });
+
+      const file = pngBlob
+        ? new File([pngBlob], `jmle-product-${Date.now()}.png`, { type: "image/png" })
+        : webp;
+      const href = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = file.name.endsWith(".png")
+        ? file.name
+        : `jmle-product-${Date.now()}.webp`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch (cause) {
+      console.error(cause);
+      setError(cause instanceof Error ? cause.message : copy.bgError);
+    } finally {
       setBusy(null);
     }
   };
@@ -1114,8 +1168,24 @@ export default function ImageEditorModal({
               <RotateCw size={16} />
             </IconAction>
           </div>
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={busy === "save"}>
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={busy === "save" || busy === "download"}>
             {copy.cancel}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={phase !== "ready" || busy !== null || lowRes === "ask"}
+            leadingIcon={
+              busy === "download" ? (
+                <Loader2 className="animate-spin" size={14} />
+              ) : (
+                <Download size={14} />
+              )
+            }
+            onClick={() => void onDownload()}
+          >
+            {busy === "download" ? copy.downloading : copy.download}
           </Button>
           <Button
             type="button"
