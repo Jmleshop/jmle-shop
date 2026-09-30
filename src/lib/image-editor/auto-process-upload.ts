@@ -12,9 +12,9 @@ export type AutoProcessProgress = RemovalProgress & {
 };
 
 /**
- * Zero-Click-Pipeline für neue Uploads:
- * Freisteller (WebGPU/WASM → Server) + Trim/Zentrierung.
- * Speicher-WebP q90 übernimmt anschließend uploadProductImage.
+ * @deprecated Nicht mehr vom Upload aufgerufen.
+ * Auto-Freisteller ist deaktiviert (schneidet Motive).
+ * Nur noch für explizite manuelle/Batch-Aufrufe gedacht.
  */
 export async function autoProcessProductFile(
   file: File,
