@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -22,7 +22,19 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, ChevronDown, ChevronRight, GripVertical, Pencil, Plus, X, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  FileSpreadsheet,
+  GripVertical,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import ImageUpload from "@/components/admin/ImageUpload";
 import SwipeToDeleteRow from "@/components/admin/SwipeToDeleteRow";
@@ -37,6 +49,17 @@ import {
 } from "@/lib/category-dnd";
 import { categoryDepth, categoryLabel } from "@/lib/category-tree";
 import type { FoodCategory } from "@/types";
+
+type ExcelImportResult = {
+  success?: boolean;
+  updated?: number;
+  created?: number;
+  skipped?: number;
+  message?: string;
+  error?: string;
+  issues?: Array<{ row: number; message: string }>;
+  applyErrors?: string[];
+};
 
 function SortableCategoryRow({
   item,
@@ -172,6 +195,10 @@ export default function AdminCategoriesPage() {
   const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [excelBusy, setExcelBusy] = useState(false);
+  const [excelDragOver, setExcelDragOver] = useState(false);
+  const [excelResult, setExcelResult] = useState<ExcelImportResult | null>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
 
   const toggleSelect = (id: string) =>
     setSelected((prev) => {
@@ -180,6 +207,43 @@ export default function AdminCategoriesPage() {
       else next.add(id);
       return next;
     });
+
+  const downloadExcel = (query: string, fallbackName: string) => {
+    const a = document.createElement("a");
+    a.href = `/api/admin/categories/excel?${query}`;
+    a.download = fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const importExcelFile = async (file: File) => {
+    if (excelBusy) return;
+    setExcelBusy(true);
+    setExcelResult(null);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/admin/categories/excel", {
+        method: "POST",
+        body: form,
+      });
+      const data = (await res.json()) as ExcelImportResult;
+      if (!res.ok) {
+        setExcelResult({ error: data.error || "Import fehlgeschlagen" });
+        setError(data.error || "Import fehlgeschlagen");
+        return;
+      }
+      setExcelResult(data);
+      load();
+    } catch {
+      setExcelResult({ error: "Import fehlgeschlagen" });
+      setError("Import fehlgeschlagen");
+    } finally {
+      setExcelBusy(false);
+    }
+  };
 
   const bulkDelete = async () => {
     if (selected.size === 0) return;
@@ -379,9 +443,133 @@ export default function AdminCategoriesPage() {
         Ziehen zum Sortieren (Pos. 1, 2, 3…). Nach rechts einrücken = Unterkategorie (max. 3 Ebenen).
         Checkbox „Startseite“ steuert die Anzeige im Shop.
       </p>
-      <p className="text-[11px] text-gray-400 mb-6">
+      <p className="text-[11px] text-gray-400 mb-4">
         Zeile nach rechts wischen → Papierkorb (Soft Delete). Griff-Icon = Sortieren.
       </p>
+
+      <div className="mb-6 rounded-2xl border border-orange-100 bg-white p-4 sm:p-5 space-y-3">
+        <div className="flex flex-wrap items-center gap-2 justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-luxury-ink">
+            <FileSpreadsheet size={18} className="text-brand-orange" />
+            Excel-Management (Export & Import)
+          </div>
+          <button
+            type="button"
+            className="text-xs text-brand-orange underline-offset-2 hover:underline min-h-9"
+            onClick={() =>
+              downloadExcel("template=1&format=xlsx", "kategorien-vorlage.xlsx")
+            }
+          >
+            Muster-Vorlage herunterladen
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-jmle-cream px-3 py-2.5 text-sm min-h-11 hover:border-brand-orange"
+            onClick={() =>
+              downloadExcel("format=xlsx", "kategorien-export.xlsx")
+            }
+          >
+            <Download size={16} />
+            Kategorien als Excel exportieren
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-xl border border-orange-200 px-3 py-2.5 text-sm min-h-11 hover:border-brand-orange"
+            onClick={() =>
+              downloadExcel("format=csv", "kategorien-export.csv")
+            }
+          >
+            <Download size={16} />
+            Als CSV exportieren
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-3 py-2.5 text-sm text-white min-h-11 hover:bg-brand-orange/90 disabled:opacity-50"
+            disabled={excelBusy}
+            onClick={() => excelInputRef.current?.click()}
+          >
+            <Upload size={16} />
+            {excelBusy ? "Import läuft…" : "Kategorien aus Excel importieren / aktualisieren"}
+          </button>
+          <input
+            ref={excelInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void importExcelFile(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+        <div
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") excelInputRef.current?.click();
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setExcelDragOver(true);
+          }}
+          onDragLeave={() => setExcelDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setExcelDragOver(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) void importExcelFile(file);
+          }}
+          onClick={() => excelInputRef.current?.click()}
+          className={`rounded-xl border-2 border-dashed px-4 py-6 text-center text-sm cursor-pointer transition-colors ${
+            excelDragOver
+              ? "border-brand-orange bg-brand-orange/10"
+              : "border-orange-200 bg-jmle-warm/40 hover:border-brand-orange/60"
+          }`}
+        >
+          <p className="font-medium text-luxury-charcoal">
+            .xlsx oder .csv hierher ziehen
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Bestehende IDs werden aktualisiert · leere/neue IDs legen Kategorien an · Hierarchie über Parent_ID
+          </p>
+        </div>
+        {excelResult && (
+          <div
+            className={`rounded-xl px-4 py-3 text-sm ${
+              excelResult.error ||
+              (excelResult.applyErrors && excelResult.applyErrors.length > 0) ||
+              (excelResult.issues && excelResult.issues.length > 0)
+                ? "bg-amber-50 border border-amber-200 text-amber-950"
+                : "bg-emerald-50 border border-emerald-200 text-emerald-900"
+            }`}
+          >
+            <p className="font-medium">
+              {excelResult.error ||
+                excelResult.message ||
+                `${excelResult.updated ?? 0} aktualisiert, ${excelResult.created ?? 0} neu`}
+            </p>
+            {excelResult.issues && excelResult.issues.length > 0 && (
+              <ul className="mt-2 text-xs space-y-1 list-disc ps-4">
+                {excelResult.issues.slice(0, 8).map((issue) => (
+                  <li key={`${issue.row}-${issue.message}`}>
+                    Zeile {issue.row}: {issue.message}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {excelResult.applyErrors && excelResult.applyErrors.length > 0 && (
+              <ul className="mt-2 text-xs space-y-1 list-disc ps-4 text-red-700">
+                {excelResult.applyErrors.slice(0, 8).map((msg) => (
+                  <li key={msg}>{msg}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
       {showForm && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4">
           <form onSubmit={save} className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4">
