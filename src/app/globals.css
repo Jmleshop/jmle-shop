@@ -73,9 +73,11 @@
   }
 
   /**
-   * PRODUKT-REGEL (dauerhaft):
-   * 1:1-Container, transparent, flex-zentriert, object-contain.
-   * ~10 % Innenabstand, nie cover/crop, Seitenfarbe scheint durch.
+   * PRODUKT-REGEL (dauerhaft, alle aktuellen + zukünftigen Produkte):
+   * - object-contain + center (NIEMALS cover)
+   * - transparenter Container → Seitenfarbe (jmle-cream) scheint durch
+   * - ~10 % Innenabstand trotz Next/Image fill (absolute inset)
+   * - mix-blend-mode: multiply als Fallback gegen Studio-Weiß
    */
   .product-image-frame {
     position: relative;
@@ -85,16 +87,18 @@
     justify-content: center;
     overflow: hidden;
     background: transparent !important;
-    padding: 10%;
   }
 
   .product-image-media {
     object-fit: contain !important;
     object-position: center !important;
-    width: 100% !important;
-    height: 100% !important;
+    inset: 10% !important;
+    width: 80% !important;
+    height: 80% !important;
+    max-width: 80% !important;
+    max-height: 80% !important;
+    margin: auto !important;
     transform: none !important;
-    /* Fallback: Studio-Weiß optisch ausblenden */
     mix-blend-mode: multiply;
   }
 
@@ -134,20 +138,20 @@
   }
 }
 
-/* Header-Logo: mobil ≥48–56px, Desktop ≥64–80px, contain, zentriert */
+/* Header-Logo: mobil 56px, Desktop 80px — contain, zentriert, Originalqualität */
 .brand-mark-frame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 3.25rem; /* 52px */
+  height: 3.5rem; /* 56px */
   width: auto;
   max-width: min(16rem, 72vw);
   overflow: visible;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: 4.5rem; /* 72px */
-    max-width: 20rem;
+    height: 5rem; /* 80px */
+    max-width: 22rem;
   }
 }
 /* Footer/Hero-Mark über dem Slogan — groß & markant */
@@ -181,13 +185,13 @@
   image-rendering: auto;
 }
 .brand-mark-text {
-  font-size: 2rem !important;
+  font-size: 2.25rem !important;
   line-height: 1 !important;
   letter-spacing: 0.08em;
 }
 @media (min-width: 1024px) {
   .brand-mark-text {
-    font-size: 2.75rem !important;
+    font-size: 3rem !important;
   }
 }
 

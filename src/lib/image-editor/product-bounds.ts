@@ -3,7 +3,8 @@ import { squarePlacement } from "./geometry";
 
 /**
  * Längste Motiv-Seite füllt diesen Anteil des Quadrats.
- * ~10 % Padding pro Seite → vollständig sichtbar, zentriert.
+ * ~10 % Padding pro Seite (8–12 %-Regel) → vollständig sichtbar, zentriert.
+ * Gilt für alle Uploads/Cutouts automatisch.
  */
 export const PRODUCT_FILL = 0.8;
 

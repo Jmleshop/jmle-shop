@@ -18,8 +18,9 @@ interface CompactBannerSliderProps {
   single?: boolean;
 }
 
-/** Global: volle Banner sichtbar (object-contain), nichts abschneiden. */
-export const BANNER_HEIGHT_CLASS = "h-44 sm:h-52 md:h-64 lg:h-72";
+/** Global: Banner vollständig sichtbar (object-contain), Text/Preis nie croppen. */
+export const BANNER_HEIGHT_CLASS =
+  "h-40 sm:h-48 md:h-64 lg:h-72 w-full";
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;

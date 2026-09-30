@@ -93,8 +93,8 @@ export default function Header({
           scrolled && "shadow-gold-sm bg-jmle-cream/98"
         )}
       >
-        {/* Mobile: Profil | Logo | Warenkorb + Menü — Logo ~52px */}
-        <div className="lg:hidden max-w-7xl mx-auto px-3 h-[72px] grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        {/* Mobile: Profil | Logo | Warenkorb + Menü — Logo 56px */}
+        <div className="lg:hidden max-w-7xl mx-auto px-3 h-20 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <div className="flex justify-start">
             <Link
               href={user ? "/profile" : "/auth/login"}
@@ -123,8 +123,8 @@ export default function Header({
           </div>
         </div>
 
-        {/* Desktop — Logo ~72px, klar lesbar */}
-        <div className="hidden lg:grid max-w-7xl mx-auto px-4 h-[96px] grid-cols-[1fr_auto_1fr] items-center gap-2">
+        {/* Desktop — Logo 80px, klar lesbar */}
+        <div className="hidden lg:grid max-w-7xl mx-auto px-4 h-[108px] grid-cols-[1fr_auto_1fr] items-center gap-2">
           <nav
             className="flex items-center gap-1 justify-start"
             aria-label={t("mainNav")}
