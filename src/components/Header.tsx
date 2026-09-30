@@ -109,7 +109,7 @@ export default function Header({
             name={siteName}
             priority
             heightClassName="h-11"
-            textClassName="text-[1.75rem] text-brand-orange hover:text-brand-red"
+            textClassName="text-[2.5rem] tracking-[0.08em] text-brand-orange hover:text-brand-red"
           />
           <div className="flex items-center justify-end gap-0.5">
             {cartLink}
@@ -145,7 +145,7 @@ export default function Header({
             name={siteName}
             priority
             heightClassName="h-[50px]"
-            textClassName="text-[2.15rem] text-brand-orange hover:text-brand-red"
+            textClassName="text-[3rem] tracking-[0.08em] text-brand-orange hover:text-brand-red"
           />
           <div className="flex items-center gap-0.5 justify-end">
             <button
@@ -201,7 +201,7 @@ export default function Header({
                 logoUrl={logoUrl}
                 name={siteName}
                 heightClassName="h-11"
-                textClassName="text-[1.75rem] tracking-[0.12em] text-brand-orange hover:text-brand-red"
+                textClassName="text-[2.5rem] tracking-[0.08em] text-brand-orange hover:text-brand-red"
               />
               <button
                 type="button"

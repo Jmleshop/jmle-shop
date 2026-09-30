@@ -56,7 +56,7 @@ export default function BrandMark({
       ) : (
         <span
           className={cn(
-            "font-display tracking-[0.12em] leading-none transition-colors text-[1.75rem] lg:text-[2.15rem]",
+            "font-display tracking-[0.08em] leading-none transition-colors text-[2.5rem] lg:text-[3rem]",
             textClassName || "text-brand-orange hover:text-brand-red"
           )}
         >
