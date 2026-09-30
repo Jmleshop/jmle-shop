@@ -12,6 +12,7 @@ import {
   EyeOff,
   Layers,
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { Button } from "@/components/ui";
@@ -189,24 +190,49 @@ export default function AdminSlidersPage() {
       "";
     const categoriesTitle =
       ordered.find((s) => s.type === "categories")?.title ?? "";
-    const res = await fetch("/api/admin/site", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        homepageSections: ordered,
-        brandsSectionTitle: brandsTitle,
-        banner2SectionTitle: banner2Title,
-        banner3SectionTitle: banner3Title,
-        categoriesSectionTitle: categoriesTitle,
-      }),
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (!res.ok) {
-      setError(data.error || "Fehler");
+    try {
+      const res = await fetch("/api/admin/site", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          homepageSections: ordered,
+          brandsSectionTitle: brandsTitle,
+          banner2SectionTitle: banner2Title,
+          banner3SectionTitle: banner3Title,
+          categoriesSectionTitle: categoriesTitle,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setSaving(false);
+      if (!res.ok) {
+        const raw =
+          typeof data.error === "string" && data.error.trim()
+            ? data.error
+            : lang === "de"
+              ? "Site-Einstellungen konnten nicht gespeichert werden."
+              : "تعذّر حفظ إعدادات الموقع.";
+        const clean = /violates not-null|null value in column|PGRST|SQL/i.test(
+          raw
+        )
+          ? lang === "de"
+            ? "Speichern fehlgeschlagen. Bitte erneut versuchen."
+            : "فشل الحفظ. يرجى المحاولة مرة أخرى."
+          : raw;
+        setError(clean);
+        toast.error(clean);
+        return false;
+      }
+      return true;
+    } catch {
+      setSaving(false);
+      const clean =
+        lang === "de"
+          ? "Netzwerkfehler beim Speichern."
+          : "خطأ في الشبكة أثناء الحفظ.";
+      setError(clean);
+      toast.error(clean);
       return false;
     }
-    return true;
   };
 
   const updateSelected = async (patch: Partial<HomepageSection>) => {

@@ -1,13 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Stabile IDs für Schemas, in denen site_settings.id NOT NULL ist. */
+/**
+ * Stabile UUIDs für bekannte Keys — immer mitsenden,
+ * damit PostgREST/Postgres nie id=null inseriert.
+ */
 export const SITE_SETTING_ROW_IDS: Record<string, string> = {
-  site: "site_config_main",
-  site_logo: "site_logo_main",
+  site: "00000000-0000-4000-8000-000000000001",
+  site_logo: "00000000-0000-4000-8000-000000000002",
 };
 
 export function siteSettingRowId(key: string): string {
-  return SITE_SETTING_ROW_IDS[key] ?? `site_setting_${key}`;
+  return SITE_SETTING_ROW_IDS[key] ?? crypto.randomUUID();
 }
 
 /** Rohe Postgres-/PostgREST-Fehler in Admin-taugliche Meldungen übersetzen. */
@@ -32,9 +35,15 @@ export function friendlySiteSettingsError(
       : "لا توجد صلاحية لحفظ إعدادات الموقع.";
   }
   if (/Could not find the ['"]id['"] column|PGRST204/i.test(raw)) {
+    // Spalte fehlt — Caller fallbackt; Message nur wenn alles scheitert
     return lang === "de"
       ? "Datenbank-Schema veraltet. Bitte Migration ausführen oder Support kontaktieren."
       : "مخطط قاعدة البيانات قديم. يرجى تشغيل الترحيل أو التواصل مع الدعم.";
+  }
+  if (/invalid input syntax for type uuid/i.test(raw)) {
+    return lang === "de"
+      ? "Speichern fehlgeschlagen: ungültige ID. Bitte erneut versuchen."
+      : "فشل الحفظ: معرّف غير صالح. يرجى المحاولة مرة أخرى.";
   }
   // Keine rohen SQL-Details an den Admin
   if (/violates|relation|column|SQL|postgres|PGRST/i.test(raw)) {
@@ -50,11 +59,16 @@ type UpsertResult = {
   error?: string;
 };
 
+function isMissingIdColumn(message: string): boolean {
+  return /Could not find the ['"]id['"] column|PGRST204/i.test(message);
+}
+
 /**
  * Robustes Speichern von site_settings:
- * 1) Update vorhandener Zeile per key
- * 2) Insert mit stabiler id (für Schemas mit id NOT NULL)
- * 3) Fallback Insert ohne id (Schema nur key PK)
+ * - Immer stabile/UUID-id mitsenden (verhindert null-id NOT NULL)
+ * - Update wenn key existiert, sonst Insert
+ * - Fallback ohne id-Spalte für ältere Schemas
+ * - Zusätzlicher Upsert-Fallback bei Race Conditions
  */
 export async function upsertSiteSetting(
   supabase: SupabaseClient,
@@ -63,32 +77,83 @@ export async function upsertSiteSetting(
 ): Promise<UpsertResult> {
   const updated_at = new Date().toISOString();
   const id = siteSettingRowId(key);
+  const base = { key, value, updated_at };
+  const withId = { ...base, id };
 
   const { data: existing, error: readError } = await supabase
     .from("site_settings")
-    .select("key")
+    .select("key, id")
     .eq("key", key)
     .maybeSingle();
 
   if (readError) {
+    // select id kann scheitern wenn Spalte fehlt → ohne id weiterlesen
+    if (isMissingIdColumn(readError.message)) {
+      const retry = await supabase
+        .from("site_settings")
+        .select("key")
+        .eq("key", key)
+        .maybeSingle();
+      if (retry.error) {
+        return { error: friendlySiteSettingsError(retry.error.message) };
+      }
+      if (retry.data) {
+        const upd = await supabase
+          .from("site_settings")
+          .update({ value, updated_at })
+          .eq("key", key)
+          .select("value")
+          .maybeSingle();
+        if (upd.error) {
+          return { error: friendlySiteSettingsError(upd.error.message) };
+        }
+        return { data: upd.data ?? { value } };
+      }
+      const ins = await supabase
+        .from("site_settings")
+        .insert(base)
+        .select("value")
+        .maybeSingle();
+      if (ins.error) {
+        return { error: friendlySiteSettingsError(ins.error.message) };
+      }
+      return { data: ins.data ?? { value } };
+    }
     return { error: friendlySiteSettingsError(readError.message) };
   }
 
   if (existing) {
+    // Vorhandene Zeile: value updaten; id nur setzen wenn Spalte leer/null
+    const patch: Record<string, unknown> = { value, updated_at };
+    const existingId = (existing as { id?: string | null }).id;
+    if (!existingId) patch.id = id;
+
     const { data, error } = await supabase
       .from("site_settings")
-      .update({ value, updated_at })
+      .update(patch)
       .eq("key", key)
       .select("value")
       .maybeSingle();
+
     if (error) {
+      if (isMissingIdColumn(error.message) && "id" in patch) {
+        const retry = await supabase
+          .from("site_settings")
+          .update({ value, updated_at })
+          .eq("key", key)
+          .select("value")
+          .maybeSingle();
+        if (retry.error) {
+          return { error: friendlySiteSettingsError(retry.error.message) };
+        }
+        return { data: retry.data ?? { value } };
+      }
       return { error: friendlySiteSettingsError(error.message) };
     }
     return { data: data ?? { value } };
   }
 
-  // Neu anlegen — zuerst mit id (deckt NOT NULL id ab)
-  const withId = { id, key, value, updated_at };
+  // Neu anlegen — immer mit UUID-id
   const insertWithId = await supabase
     .from("site_settings")
     .insert(withId)
@@ -102,10 +167,10 @@ export async function upsertSiteSetting(
   const msg = insertWithId.error.message || "";
 
   // Schema ohne id-Spalte
-  if (/Could not find the ['"]id['"] column|PGRST204/i.test(msg)) {
+  if (isMissingIdColumn(msg)) {
     const insertKeyOnly = await supabase
       .from("site_settings")
-      .insert({ key, value, updated_at })
+      .insert(base)
       .select("value")
       .maybeSingle();
     if (insertKeyOnly.error) {
@@ -114,20 +179,7 @@ export async function upsertSiteSetting(
     return { data: insertKeyOnly.data ?? { value } };
   }
 
-  // id NOT NULL ohne Default — UUID versuchen
-  if (/null value in column ["']?id["']?/i.test(msg)) {
-    const insertUuid = await supabase
-      .from("site_settings")
-      .insert({ id: crypto.randomUUID(), key, value, updated_at })
-      .select("value")
-      .maybeSingle();
-    if (insertUuid.error) {
-      return { error: friendlySiteSettingsError(insertUuid.error.message) };
-    }
-    return { data: insertUuid.data ?? { value } };
-  }
-
-  // Upsert-Fallback (race: Zeile zwischen select und insert entstanden)
+  // Upsert-Fallback (Race / unique)
   if (/duplicate key|unique constraint/i.test(msg)) {
     const { data, error } = await supabase
       .from("site_settings")
@@ -141,5 +193,26 @@ export async function upsertSiteSetting(
     return { data: data ?? { value } };
   }
 
-  return { error: friendlySiteSettingsError(msg) };
+  // Letzter Versuch: PostgREST-Upsert mit onConflict=key inkl. id
+  const upsert = await supabase
+    .from("site_settings")
+    .upsert(withId, { onConflict: "key" })
+    .select("value")
+    .maybeSingle();
+  if (!upsert.error) {
+    return { data: upsert.data ?? { value } };
+  }
+  if (isMissingIdColumn(upsert.error.message)) {
+    const upsertKey = await supabase
+      .from("site_settings")
+      .upsert(base, { onConflict: "key" })
+      .select("value")
+      .maybeSingle();
+    if (upsertKey.error) {
+      return { error: friendlySiteSettingsError(upsertKey.error.message) };
+    }
+    return { data: upsertKey.data ?? { value } };
+  }
+
+  return { error: friendlySiteSettingsError(upsert.error.message || msg) };
 }
