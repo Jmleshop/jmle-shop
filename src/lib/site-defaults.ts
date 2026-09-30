@@ -1,4 +1,5 @@
 import type { BrandLogo, SiteConfig, Slide } from "@/types";
+import { DEFAULT_HOMEPAGE_SECTIONS } from "@/lib/homepage-sections";
 
 /** Fallback, falls Supabase site_settings / hero_slides noch leer sind */
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
@@ -16,6 +17,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     banner2: "Banner 2",
     banner3: "Banner 3",
   },
+  homepageSections: DEFAULT_HOMEPAGE_SECTIONS,
   description:
     "متجر jmle للمواد الغذائية العربية الأصيلة — بهارات، أرز، زيوت والمزيد",
 };

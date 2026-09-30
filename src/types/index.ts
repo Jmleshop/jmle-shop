@@ -1,11 +1,32 @@
-export type SliderZone = "banner1" | "banner2" | "banner3";
+/** Freie Zone-ID (banner1, banner2, oder dynamische Sektions-ID) */
+export type SliderZone = string;
 export type SlideMediaType = "image" | "video" | "parallax" | "product_card";
+export type HomepageSectionType =
+  | "slider"
+  | "single"
+  | "brands"
+  | "products"
+  | "categories";
 
 export interface SliderZoneLabels {
   banner1?: string;
   brands?: string;
   banner2?: string;
   banner3?: string;
+  [key: string]: string | undefined;
+}
+
+export interface HomepageSection {
+  id: string;
+  type: HomepageSectionType;
+  title?: string;
+  titleDe?: string;
+  titleAr?: string;
+  /** Slider-Zone für type=slider|single */
+  zone?: string;
+  productSource?: "offers" | "bestsellers" | "all";
+  sortOrder: number;
+  active: boolean;
 }
 
 export interface SiteConfig {
@@ -18,6 +39,7 @@ export interface SiteConfig {
   banner2SectionTitle?: string;
   banner3SectionTitle?: string;
   zoneLabels?: SliderZoneLabels;
+  homepageSections?: HomepageSection[];
   description?: string;
   ogImage?: string;
 }

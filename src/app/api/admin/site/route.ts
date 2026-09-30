@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import { DEFAULT_SITE_CONFIG } from "@/lib/site-defaults";
+import { normalizeHomepageSections } from "@/lib/homepage-sections";
 
 function bust() {
   try {
@@ -57,7 +58,7 @@ export async function PUT(request: Request) {
     .maybeSingle();
 
   const prev = (existing?.value as Record<string, unknown> | null) ?? {};
-  const next = {
+  const merged = {
     ...DEFAULT_SITE_CONFIG,
     ...prev,
     ...body,
@@ -66,6 +67,18 @@ export async function PUT(request: Request) {
       ...((prev.zoneLabels as Record<string, string> | undefined) ?? {}),
       ...((body.zoneLabels as Record<string, string> | undefined) ?? {}),
     },
+  };
+  const next = {
+    ...merged,
+    homepageSections: normalizeHomepageSections(
+      body.homepageSections ?? prev.homepageSections ?? merged.homepageSections,
+      {
+        brands: String(merged.brandsSectionTitle ?? ""),
+        banner2: String(merged.banner2SectionTitle ?? ""),
+        banner3: String(merged.banner3SectionTitle ?? ""),
+        categories: String(merged.categoriesSectionTitle ?? ""),
+      }
+    ),
   };
 
   const { data, error } = await auth.supabase

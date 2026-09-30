@@ -1,23 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
   Plus,
   Trash2,
-  Images,
   Building2,
-  PanelsTopLeft,
   LayoutTemplate,
   Eye,
   EyeOff,
+  Layers,
 } from "lucide-react";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { Button } from "@/components/ui";
-
-type Tab = "banner1" | "brands" | "banner2" | "banner3" | "settings";
+import {
+  createHomepageSection,
+  normalizeHomepageSections,
+} from "@/lib/homepage-sections";
+import type { HomepageSection, HomepageSectionType } from "@/types";
 
 type SlideRow = {
   id: string;
@@ -50,19 +52,6 @@ type BrandRow = {
 
 type CatOption = { id: string; name_de: string; name_ar: string };
 
-type SiteForm = {
-  brandsSectionTitle: string;
-  banner2SectionTitle: string;
-  banner3SectionTitle: string;
-  categoriesSectionTitle: string;
-  zoneLabels: {
-    banner1: string;
-    brands: string;
-    banner2: string;
-    banner3: string;
-  };
-};
-
 const emptySlide = (): Omit<SlideRow, "id"> & { id?: string } => ({
   image: "",
   title_ar: "",
@@ -79,22 +68,18 @@ const emptySlide = (): Omit<SlideRow, "id"> & { id?: string } => ({
   interactive_style: "",
 });
 
-const defaultSite = (): SiteForm => ({
-  brandsSectionTitle: "",
-  banner2SectionTitle: "",
-  banner3SectionTitle: "",
-  categoriesSectionTitle: "",
-  zoneLabels: {
-    banner1: "Hero Banner 1",
-    brands: "Marken-Logos",
-    banner2: "Banner 2",
-    banner3: "Banner 3",
-  },
-});
+const TYPE_LABELS: Record<HomepageSectionType, { de: string; ar: string }> = {
+  slider: { de: "Banner-Slider", ar: "سلايدر بانر" },
+  single: { de: "Einzelbanner", ar: "بانر واحد" },
+  brands: { de: "Marken-Ticker", ar: "شريط العلامات" },
+  products: { de: "Produkt-Grid", ar: "شبكة منتجات" },
+  categories: { de: "Kategorien", ar: "الفئات" },
+};
 
 export default function AdminSlidersPage() {
   const { t, lang } = useAdminI18n();
-  const [tab, setTab] = useState<Tab>("banner1");
+  const [sections, setSections] = useState<HomepageSection[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [slides, setSlides] = useState<SlideRow[]>([]);
   const [logos, setLogos] = useState<BrandRow[]>([]);
   const [categories, setCategories] = useState<CatOption[]>([]);
@@ -109,20 +94,32 @@ export default function AdminSlidersPage() {
     link_url: "",
     active: true,
   });
-  const [site, setSite] = useState<SiteForm>(defaultSite());
 
-  const zoneLabel = (key: keyof SiteForm["zoneLabels"]) =>
-    site.zoneLabels[key]?.trim() ||
-    (key === "banner1"
-      ? t("sliderBanner1")
-      : key === "brands"
-        ? t("sliderBrands")
-        : key === "banner2"
-          ? t("sliderBanner2")
-          : t("sliderBanner3"));
+  const selected = useMemo(
+    () => sections.find((s) => s.id === selectedId) ?? null,
+    [sections, selectedId]
+  );
 
-  const loadSlides = useCallback(async (zone: "banner1" | "banner2" | "banner3") => {
-    const res = await fetch(`/api/admin/slides?zone=${zone}`);
+  const typeLabel = (type: HomepageSectionType) =>
+    lang === "de" ? TYPE_LABELS[type].de : TYPE_LABELS[type].ar;
+
+  const loadSections = useCallback(async () => {
+    const res = await fetch("/api/admin/site");
+    const data = await res.json();
+    if (!res.ok) return;
+    const s = data.site ?? {};
+    const normalized = normalizeHomepageSections(s.homepageSections, {
+      brands: s.brandsSectionTitle,
+      banner2: s.banner2SectionTitle,
+      banner3: s.banner3SectionTitle,
+      categories: s.categoriesSectionTitle,
+    });
+    setSections(normalized);
+    setSelectedId((prev) => prev ?? normalized[0]?.id ?? null);
+  }, []);
+
+  const loadSlides = useCallback(async (zone: string) => {
+    const res = await fetch(`/api/admin/slides?zone=${encodeURIComponent(zone)}`);
     const data = await res.json();
     if (!res.ok) {
       setError(data.error || "Fehler");
@@ -154,59 +151,143 @@ export default function AdminSlidersPage() {
     }
   }, []);
 
-  const loadSite = useCallback(async () => {
-    const res = await fetch("/api/admin/site");
-    const data = await res.json();
-    if (!res.ok) return;
-    const s = data.site ?? {};
-    setSite({
-      brandsSectionTitle: s.brandsSectionTitle ?? "",
-      banner2SectionTitle: s.banner2SectionTitle ?? "",
-      banner3SectionTitle: s.banner3SectionTitle ?? "",
-      categoriesSectionTitle: s.categoriesSectionTitle ?? "",
-      zoneLabels: {
-        banner1: s.zoneLabels?.banner1 || "Hero Banner 1",
-        brands: s.zoneLabels?.brands || "Marken-Logos",
-        banner2: s.zoneLabels?.banner2 || "Banner 2",
-        banner3: s.zoneLabels?.banner3 || "Banner 3",
-      },
-    });
-  }, []);
+  useEffect(() => {
+    void loadSections();
+    void loadCategories();
+  }, [loadSections, loadCategories]);
 
   useEffect(() => {
     setError("");
     setForm(emptySlide());
     setEditingId(null);
     setBrandForm({ id: "", name: "", image: "", link_url: "", active: true });
-    void loadSite();
-    void loadCategories();
-    if (tab === "brands") void loadLogos();
-    else if (tab === "settings") return;
-    else void loadSlides(tab);
-  }, [tab, loadLogos, loadSlides, loadCategories, loadSite]);
+    if (!selected) return;
+    if (selected.type === "brands") void loadLogos();
+    else if (selected.type === "slider" || selected.type === "single") {
+      void loadSlides(selected.zone || selected.id);
+    } else {
+      setSlides([]);
+    }
+  }, [selected, loadLogos, loadSlides]);
 
-  const saveSite = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const persistSections = async (next: HomepageSection[]) => {
+    const ordered = next
+      .map((s, i) => ({ ...s, sortOrder: i }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    setSections(ordered);
     setSaving(true);
     setError("");
+    const brandsTitle =
+      ordered.find((s) => s.type === "brands")?.title ?? "";
+    const banner2Title =
+      ordered.find((s) => s.zone === "banner2" || s.id === "sec-banner2")?.title ??
+      "";
+    const banner3Title =
+      ordered.find((s) => s.zone === "banner3" || s.id === "sec-banner3")?.title ??
+      "";
+    const categoriesTitle =
+      ordered.find((s) => s.type === "categories")?.title ?? "";
     const res = await fetch("/api/admin/site", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(site),
+      body: JSON.stringify({
+        homepageSections: ordered,
+        brandsSectionTitle: brandsTitle,
+        banner2SectionTitle: banner2Title,
+        banner3SectionTitle: banner3Title,
+        categoriesSectionTitle: categoriesTitle,
+      }),
     });
     const data = await res.json();
     setSaving(false);
     if (!res.ok) {
       setError(data.error || "Fehler");
+      return false;
+    }
+    return true;
+  };
+
+  const updateSelected = async (patch: Partial<HomepageSection>) => {
+    if (!selected) return;
+    const next = sections.map((s) =>
+      s.id === selected.id ? { ...s, ...patch } : s
+    );
+    await persistSections(next);
+  };
+
+  const addBannerSection = async (type: "slider" | "single" = "slider") => {
+    const created = createHomepageSection(type, sections.length);
+    created.title = lang === "de" ? "Neue Banner-Sektion" : "قسم بانر جديد";
+    const next = [...sections, created];
+    const ok = await persistSections(next);
+    if (ok) setSelectedId(created.id);
+  };
+
+  const addSectionOfType = async (type: HomepageSectionType) => {
+    if (type === "slider" || type === "single") {
+      await addBannerSection(type);
       return;
     }
+    const created = createHomepageSection(type, sections.length);
+    created.title =
+      type === "brands"
+        ? lang === "de"
+          ? "Marken"
+          : "العلامات"
+        : type === "categories"
+          ? lang === "de"
+            ? "Kategorien"
+            : "الفئات"
+          : lang === "de"
+            ? "Angebote"
+            : "عروض";
+    const next = [...sections, created];
+    const ok = await persistSections(next);
+    if (ok) setSelectedId(created.id);
+  };
+
+  const removeSection = async (id: string) => {
+    if (sections.length <= 1) {
+      setError(
+        lang === "de"
+          ? "Mindestens eine Sektion muss bleiben."
+          : "يجب الإبقاء على قسم واحد على الأقل."
+      );
+      return;
+    }
+    if (
+      !confirm(
+        lang === "de"
+          ? "Sektion von der Startseite entfernen?"
+          : "إزالة القسم من الصفحة الرئيسية؟"
+      )
+    ) {
+      return;
+    }
+    const next = sections.filter((s) => s.id !== id);
+    const ok = await persistSections(next);
+    if (ok) setSelectedId(next[0]?.id ?? null);
+  };
+
+  const moveSection = async (id: string, dir: -1 | 1) => {
+    const idx = sections.findIndex((s) => s.id === id);
+    const j = idx + dir;
+    if (idx < 0 || j < 0 || j >= sections.length) return;
+    const next = [...sections];
+    const tmp = next[idx];
+    next[idx] = next[j];
+    next[j] = tmp;
+    await persistSections(next);
   };
 
   const saveSlide = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selected || (selected.type !== "slider" && selected.type !== "single")) {
+      return;
+    }
     setSaving(true);
     setError("");
-    const zone = tab === "banner2" || tab === "banner3" ? tab : "banner1";
+    const zone = selected.zone || selected.id;
     const res = await fetch("/api/admin/slides", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -249,6 +330,8 @@ export default function AdminSlidersPage() {
   };
 
   const toggleSlideActive = async (s: SlideRow) => {
+    if (!selected) return;
+    const zone = selected.zone || selected.id;
     await fetch("/api/admin/slides", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -257,21 +340,19 @@ export default function AdminSlidersPage() {
         active: s.active === false,
         title_ar: s.title_ar || s.title || "",
         title_de: s.title_de || "",
+        slider_zone: zone,
       }),
     });
-    if (tab === "banner1" || tab === "banner2" || tab === "banner3") {
-      await loadSlides(tab);
-    }
+    await loadSlides(zone);
   };
 
   const deleteSlide = async (id: string) => {
+    if (!selected) return;
     if (!confirm(lang === "de" ? "Banner löschen?" : "حذف اللافتة؟")) return;
     await fetch(`/api/admin/slides?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
-    if (tab === "banner1" || tab === "banner2" || tab === "banner3") {
-      await loadSlides(tab);
-    }
+    await loadSlides(selected.zone || selected.id);
   };
 
   const moveSlide = async (id: string, dir: -1 | 1) => {
@@ -325,45 +406,15 @@ export default function AdminSlidersPage() {
     await loadLogos();
   };
 
-  const tabs: { id: Tab; icon: typeof Images; label: string }[] = [
-    { id: "banner1", icon: PanelsTopLeft, label: zoneLabel("banner1") },
-    { id: "brands", icon: Building2, label: zoneLabel("brands") },
-    { id: "banner2", icon: Images, label: zoneLabel("banner2") },
-    { id: "banner3", icon: LayoutTemplate, label: zoneLabel("banner3") },
-    {
-      id: "settings",
-      icon: PanelsTopLeft,
-      label: lang === "de" ? "Titel & Namen" : "العناوين والأسماء",
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-luxury-ink">{t("sliders")}</h1>
         <p className="text-sm text-gray-500 mt-1">
           {lang === "de"
-            ? "Hero Banner 1, Marken-Logos, Banner 2 & Banner 3 — aktivieren, sortieren, verlinken und benennen."
-            : "إدارة اللافتات وشعارات العلامات: تفعيل، ترتيب، ربط وإعادة تسمية."}
+            ? "Flexible Sektionen-Verwaltung: beliebig viele Banner, Marken, Kategorien und Produkt-Blöcke — Titel, Typ und Reihenfolge frei steuerbar."
+            : "إدارة أقسام مرنة: عدد غير محدود من البانرات والعلامات والفئات والمنتجات — مع عنوان ونوع وترتيب حر."}
         </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {tabs.map(({ id, icon: Icon, label }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium min-h-11 transition-colors ${
-              tab === id
-                ? "bg-brand-orange text-white shadow-gold-sm"
-                : "bg-white border border-orange-100 text-luxury-charcoal hover:border-brand-orange"
-            }`}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
       </div>
 
       {error && (
@@ -372,352 +423,614 @@ export default function AdminSlidersPage() {
         </p>
       )}
 
-      {tab === "settings" ? (
-        <form onSubmit={saveSite} className="card-boutique p-4 sm:p-5 space-y-4 max-w-2xl">
-          <h2 className="font-medium text-luxury-ink">{t("zoneRename")}</h2>
-          {(
-            [
-              ["banner1", "banner1"],
-              ["brands", "brands"],
-              ["banner2", "banner2"],
-              ["banner3", "banner3"],
-            ] as const
-          ).map(([key]) => (
-            <div key={key}>
-              <label className="block text-xs text-gray-500 mb-1">{key}</label>
-              <input
-                className="input-field"
-                value={site.zoneLabels[key]}
-                onChange={(e) =>
-                  setSite((s) => ({
-                    ...s,
-                    zoneLabels: { ...s.zoneLabels, [key]: e.target.value },
-                  }))
-                }
-              />
+      <div className="grid xl:grid-cols-[minmax(280px,340px)_1fr] gap-6">
+        {/* Sections list */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => void addBannerSection("slider")}
+              disabled={saving}
+            >
+              <Plus size={16} />
+              {lang === "de"
+                ? "+ Neue Banner-Sektion hinzufügen"
+                : "+ إضافة قسم بانر جديد"}
+            </Button>
+            <div className="relative">
+              <select
+                className="input-field !min-h-11 py-2 text-sm"
+                defaultValue=""
+                onChange={(e) => {
+                  const v = e.target.value as HomepageSectionType | "";
+                  if (v) void addSectionOfType(v);
+                  e.target.value = "";
+                }}
+              >
+                <option value="" disabled>
+                  {lang === "de" ? "Andere Sektion…" : "قسم آخر…"}
+                </option>
+                <option value="single">{typeLabel("single")}</option>
+                <option value="brands">{typeLabel("brands")}</option>
+                <option value="products">{typeLabel("products")}</option>
+                <option value="categories">{typeLabel("categories")}</option>
+              </select>
+            </div>
+          </div>
+
+          {sections.map((section, i) => (
+            <div
+              key={section.id}
+              className={`card-boutique p-3 flex gap-2 items-start ${
+                selectedId === section.id ? "ring-2 ring-brand-orange/40" : ""
+              }`}
+            >
+              <button
+                type="button"
+                className="flex-1 text-start min-w-0"
+                onClick={() => setSelectedId(section.id)}
+              >
+                <p className="text-sm font-medium text-luxury-ink truncate">
+                  {section.title?.trim() ||
+                    typeLabel(section.type) ||
+                    section.id}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {typeLabel(section.type)}
+                  {section.zone ? ` · ${section.zone}` : ""}
+                  {section.active === false
+                    ? ` · ${t("inactive")}`
+                    : ""}
+                  {` · #${i + 1}`}
+                </p>
+              </button>
+              <div className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  className="p-1.5 text-gray-400 hover:text-brand-orange disabled:opacity-30"
+                  onClick={() => void moveSection(section.id, -1)}
+                  disabled={i === 0 || saving}
+                  aria-label="Up"
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="p-1.5 text-gray-400 hover:text-brand-orange disabled:opacity-30"
+                  onClick={() => void moveSection(section.id, 1)}
+                  disabled={i === sections.length - 1 || saving}
+                  aria-label="Down"
+                >
+                  <ArrowDown size={14} />
+                </button>
+              </div>
+              <button
+                type="button"
+                className="p-1.5 text-brand-red"
+                onClick={() => void removeSection(section.id)}
+                disabled={saving}
+                aria-label="Delete"
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
           ))}
-          <h2 className="font-medium text-luxury-ink pt-2">{t("sectionTitle")}</h2>
-          <p className="text-xs text-gray-500">
-            {lang === "de"
-              ? "Leer lassen = keine Überschrift und kein Extra-Abstand auf der Startseite."
-              : "اتركه فارغاً = بدون عنوان وبدون مسافة إضافية."}
-          </p>
-          <input
-            className="input-field"
-            placeholder={zoneLabel("brands")}
-            value={site.brandsSectionTitle}
-            onChange={(e) => setSite({ ...site, brandsSectionTitle: e.target.value })}
-          />
-          <input
-            className="input-field"
-            placeholder={zoneLabel("banner2")}
-            value={site.banner2SectionTitle}
-            onChange={(e) => setSite({ ...site, banner2SectionTitle: e.target.value })}
-          />
-          <input
-            className="input-field"
-            placeholder={zoneLabel("banner3")}
-            value={site.banner3SectionTitle}
-            onChange={(e) => setSite({ ...site, banner3SectionTitle: e.target.value })}
-          />
-          <input
-            className="input-field"
-            placeholder={t("categoriesSectionTitle")}
-            value={site.categoriesSectionTitle}
-            onChange={(e) =>
-              setSite({ ...site, categoriesSectionTitle: e.target.value })
-            }
-          />
-          <Button type="submit" disabled={saving}>
-            {saving ? t("saving") : t("save")}
-          </Button>
-        </form>
-      ) : tab !== "brands" ? (
-        <div className="grid lg:grid-cols-2 gap-6">
-          <form onSubmit={saveSlide} className="card-boutique p-4 sm:p-5 space-y-3">
-            <h2 className="font-medium text-luxury-ink">
-              {editingId
-                ? lang === "de"
-                  ? "Banner bearbeiten"
-                  : "تعديل اللافتة"
-                : lang === "de"
-                  ? "Neues Banner"
-                  : "لافتة جديدة"}
-            </h2>
-            <ImageUpload
-              value={form.image || ""}
-              onChange={(url) =>
-                setForm((f) => ({ ...f, image: typeof url === "string" ? url : url[0] || "" }))
-              }
-              folder="banners"
-            />
-            <select
-              className="input-field"
-              value={form.media_type || "image"}
-              onChange={(e) => setForm({ ...form, media_type: e.target.value })}
-            >
-              <option value="image">{lang === "de" ? "Bild" : "صورة"}</option>
-              <option value="video">{lang === "de" ? "Produkt-Video / Reel" : "فيديو / ريل"}</option>
-              <option value="parallax">{lang === "de" ? "Parallax-Banner" : "بانر متوازي"}</option>
-              <option value="product_card">
-                {lang === "de" ? "Animierte Produkt-Karte" : "بطاقة منتج متحركة"}
-              </option>
-            </select>
-            {(form.media_type === "video" || form.media_type === "product_card") && (
-              <input
-                className="input-field"
-                placeholder={t("videoUrl")}
-                value={form.video_url || ""}
-                onChange={(e) => setForm({ ...form, video_url: e.target.value })}
-              />
-            )}
-            <input
-              className="input-field"
-              dir="rtl"
-              placeholder={t("nameAr")}
-              value={form.title_ar || ""}
-              onChange={(e) => setForm({ ...form, title_ar: e.target.value })}
-            />
-            <input
-              className="input-field"
-              placeholder={t("nameDe")}
-              value={form.title_de || ""}
-              onChange={(e) => setForm({ ...form, title_de: e.target.value })}
-            />
-            <input
-              className="input-field"
-              dir="rtl"
-              placeholder={lang === "de" ? "Untertitel (AR)" : "العنوان الفرعي"}
-              value={form.subtitle_ar || ""}
-              onChange={(e) => setForm({ ...form, subtitle_ar: e.target.value })}
-            />
-            <input
-              className="input-field"
-              placeholder={lang === "de" ? "Untertitel (DE)" : "العنوان الفرعي DE"}
-              value={form.subtitle_de || ""}
-              onChange={(e) => setForm({ ...form, subtitle_de: e.target.value })}
-            />
-            <input
-              className="input-field"
-              placeholder={lang === "de" ? "Link-URL (optional)" : "رابط (اختياري)"}
-              value={form.link_url || ""}
-              onChange={(e) => setForm({ ...form, link_url: e.target.value })}
-            />
-            <select
-              className="input-field"
-              value={form.link_category_id || ""}
-              onChange={(e) =>
-                setForm({ ...form, link_category_id: e.target.value })
-              }
-            >
-              <option value="">
-                {lang === "de" ? "— Kategorie-Link —" : "— رابط فئة —"}
-              </option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name_de || c.name_ar}
-                </option>
-              ))}
-            </select>
-            <label className="flex items-center gap-2 text-sm min-h-11">
-              <input
-                type="checkbox"
-                checked={form.active !== false}
-                onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                className="w-4 h-4 accent-brand-orange"
-              />
-              {t("active")}
-            </label>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={saving || !form.image}>
-                <Plus size={16} />
-                {saving ? t("saving") : t("save")}
-              </Button>
-              {editingId && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setEditingId(null);
-                    setForm(emptySlide());
-                  }}
-                >
-                  {lang === "de" ? "Abbrechen" : "إلغاء"}
-                </Button>
-              )}
-            </div>
-          </form>
-
-          <div className="space-y-3">
-            {slides.length === 0 && (
-              <p className="text-sm text-gray-500">
-                {lang === "de" ? "Noch keine Banner." : "لا توجد لافتات بعد."}
-              </p>
-            )}
-            {slides.map((s, i) => (
-              <div
-                key={s.id}
-                className="card-boutique p-3 flex gap-3 items-center"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={s.image}
-                  alt=""
-                  className="w-24 h-14 object-cover rounded-lg bg-orange-50"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {s.title_de || s.title_ar || s.title || s.id}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {s.media_type && s.media_type !== "image"
-                      ? `${s.media_type} · `
-                      : ""}
-                    {s.link_category_id
-                      ? `→ /categories/${s.link_category_id}`
-                      : s.link_url || "—"}
-                    {s.active === false ? ` · ${t("inactive")}` : ""}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    className="p-2 min-h-10 min-w-10 text-gray-400 hover:text-brand-orange"
-                    onClick={() => void moveSlide(s.id, -1)}
-                    disabled={i === 0}
-                  >
-                    <ArrowUp size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="p-2 min-h-10 min-w-10 text-gray-400 hover:text-brand-orange"
-                    onClick={() => void moveSlide(s.id, 1)}
-                    disabled={i === slides.length - 1}
-                  >
-                    <ArrowDown size={16} />
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="p-2 text-gray-500 hover:text-brand-orange"
-                  onClick={() => void toggleSlideActive(s)}
-                  title={s.active === false ? t("active") : t("inactive")}
-                >
-                  {s.active === false ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-                <button
-                  type="button"
-                  className="text-sm text-brand-orange px-2"
-                  onClick={() => editSlide(s)}
-                >
-                  {t("edit")}
-                </button>
-                <button
-                  type="button"
-                  className="p-2 text-brand-red"
-                  onClick={() => void deleteSlide(s.id)}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-          </div>
         </div>
-      ) : (
-        <div className="grid lg:grid-cols-2 gap-6">
-          <form onSubmit={saveBrand} className="card-boutique p-4 sm:p-5 space-y-3">
-            <h2 className="font-medium text-luxury-ink">
-              {brandForm.id
-                ? lang === "de"
-                  ? "Logo bearbeiten"
-                  : "تعديل الشعار"
-                : lang === "de"
-                  ? "Marken-Logo hinzufügen"
-                  : "إضافة شعار علامة"}
-            </h2>
-            <p className="text-xs text-gray-500">
+
+        {/* Detail panel */}
+        <div className="space-y-4">
+          {!selected ? (
+            <p className="text-sm text-gray-500">
               {lang === "de"
-                ? "PNG mit transparentem Hintergrund empfohlen. Logos erscheinen in Originalfarben."
-                : "يُفضّل PNG بخلفية شفافة. تظهر الشعارات بألوانها الأصلية."}
+                ? "Sektion auswählen oder neue Banner-Sektion hinzufügen."
+                : "اختر قسماً أو أضف بانر جديد."}
             </p>
-            <ImageUpload
-              value={brandForm.image}
-              onChange={(url) =>
-                setBrandForm((f) => ({
-                  ...f,
-                  image: typeof url === "string" ? url : url[0] || "",
-                }))
-              }
-              folder="brands"
-            />
-            <input
-              className="input-field"
-              placeholder={lang === "de" ? "Markenname" : "اسم العلامة"}
-              value={brandForm.name}
-              onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
-            />
-            <input
-              className="input-field"
-              placeholder={lang === "de" ? "Link (optional)" : "رابط (اختياري)"}
-              value={brandForm.link_url}
-              onChange={(e) =>
-                setBrandForm({ ...brandForm, link_url: e.target.value })
-              }
-            />
-            <Button type="submit" disabled={saving || !brandForm.image}>
-              <Plus size={16} />
-              {saving ? t("saving") : t("save")}
-            </Button>
-          </form>
-
-          <div className="space-y-3">
-            {logos.length === 0 && (
-              <p className="text-sm text-gray-500">
-                {lang === "de" ? "Noch keine Logos." : "لا توجد شعارات بعد."}
-              </p>
-            )}
-            {logos.map((l) => (
-              <div
-                key={l.id}
-                className="card-boutique p-3 flex gap-3 items-center"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={l.image}
-                  alt={l.name}
-                  className="w-20 h-12 object-contain rounded-lg bg-transparent"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{l.name || l.id}</p>
+          ) : (
+            <>
+              <div className="card-boutique p-4 sm:p-5 space-y-3">
+                <div className="flex items-center gap-2 text-luxury-ink font-medium">
+                  <Layers size={18} />
+                  {lang === "de" ? "Sektion bearbeiten" : "تعديل القسم"}
                 </div>
-                <button
-                  type="button"
-                  className="text-sm text-brand-orange px-2"
-                  onClick={() =>
-                    setBrandForm({
-                      id: l.id,
-                      name: l.name,
-                      image: l.image,
-                      link_url: l.link_url || "",
-                      active: l.active !== false,
-                    })
-                  }
-                >
-                  {t("edit")}
-                </button>
-                <button
-                  type="button"
-                  className="p-2 text-brand-red"
-                  onClick={() => void deleteBrand(l.id)}
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    {t("sectionTitle")}
+                  </label>
+                  <input
+                    className="input-field"
+                    value={selected.title ?? ""}
+                    placeholder={
+                      lang === "de"
+                        ? "z. B. Sales & Aktionen"
+                        : "مثال: عروض وتخفيضات"
+                    }
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      setSections((list) =>
+                        list.map((s) =>
+                          s.id === selected.id ? { ...s, title } : s
+                        )
+                      );
+                    }}
+                    onBlur={() => void updateSelected({ title: selected.title })}
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {lang === "de"
+                      ? "Erscheint elegant oberhalb des Banners (Web-Text, nicht im Bild)."
+                      : "يظهر بأناقة فوق البانر كنص ويب وليس داخل الصورة."}
+                  </p>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      {lang === "de" ? "Typ" : "النوع"}
+                    </label>
+                    <select
+                      className="input-field"
+                      value={selected.type}
+                      onChange={(e) => {
+                        const type = e.target.value as HomepageSectionType;
+                        const patch: Partial<HomepageSection> = { type };
+                        if (type === "slider" || type === "single") {
+                          patch.zone = selected.zone || selected.id;
+                          patch.productSource = undefined;
+                        } else if (type === "products") {
+                          patch.productSource = selected.productSource || "offers";
+                          patch.zone = undefined;
+                        } else {
+                          patch.zone = undefined;
+                          patch.productSource = undefined;
+                        }
+                        void updateSelected(patch);
+                      }}
+                    >
+                      {(Object.keys(TYPE_LABELS) as HomepageSectionType[]).map(
+                        (key) => (
+                          <option key={key} value={key}>
+                            {typeLabel(key)}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                  {selected.type === "products" && (
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">
+                        {lang === "de" ? "Produktquelle" : "مصدر المنتجات"}
+                      </label>
+                      <select
+                        className="input-field"
+                        value={selected.productSource || "offers"}
+                        onChange={(e) =>
+                          void updateSelected({
+                            productSource: e.target.value as
+                              | "offers"
+                              | "bestsellers"
+                              | "all",
+                          })
+                        }
+                      >
+                        <option value="offers">
+                          {lang === "de" ? "Angebote" : "عروض"}
+                        </option>
+                        <option value="bestsellers">
+                          {lang === "de" ? "Bestseller" : "الأكثر مبيعاً"}
+                        </option>
+                        <option value="all">
+                          {lang === "de" ? "Alle Produkte" : "كل المنتجات"}
+                        </option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">
+                      {lang === "de" ? "Position" : "الترتيب"}
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="input-field"
+                      value={
+                        sections.findIndex((s) => s.id === selected.id) + 1
+                      }
+                      onChange={(e) => {
+                        const pos = Math.max(
+                          1,
+                          Math.min(sections.length, Number(e.target.value) || 1)
+                        );
+                        const idx = sections.findIndex((s) => s.id === selected.id);
+                        if (idx < 0) return;
+                        const next = [...sections];
+                        const [item] = next.splice(idx, 1);
+                        next.splice(pos - 1, 0, item);
+                        void persistSections(next);
+                      }}
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm min-h-11">
+                  <input
+                    type="checkbox"
+                    checked={selected.active !== false}
+                    onChange={(e) =>
+                      void updateSelected({ active: e.target.checked })
+                    }
+                    className="w-4 h-4 accent-brand-orange"
+                  />
+                  {t("active")}
+                </label>
               </div>
-            ))}
-          </div>
+
+              {(selected.type === "slider" || selected.type === "single") && (
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <form
+                    onSubmit={saveSlide}
+                    className="card-boutique p-4 sm:p-5 space-y-3"
+                  >
+                    <h2 className="font-medium text-luxury-ink flex items-center gap-2">
+                      <LayoutTemplate size={16} />
+                      {editingId
+                        ? lang === "de"
+                          ? "Banner bearbeiten"
+                          : "تعديل اللافتة"
+                        : lang === "de"
+                          ? "Neues Banner"
+                          : "لافتة جديدة"}
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      {lang === "de"
+                        ? "Titel/Untertitel optional — nur als scharfes Web-Overlay. Platzhalter wie „Banner“ werden nicht angezeigt. Sektions-Titel steht oben außerhalb des Bildes."
+                        : "العنوان اختياري كنص ويب حاد. النصوص النائبة مثل Banner لا تُعرض. عنوان القسم يظهر خارج الصورة."}
+                    </p>
+                    <ImageUpload
+                      value={form.image || ""}
+                      onChange={(url) =>
+                        setForm((f) => ({
+                          ...f,
+                          image: typeof url === "string" ? url : url[0] || "",
+                        }))
+                      }
+                      folder="banners"
+                    />
+                    <select
+                      className="input-field"
+                      value={form.media_type || "image"}
+                      onChange={(e) =>
+                        setForm({ ...form, media_type: e.target.value })
+                      }
+                    >
+                      <option value="image">
+                        {lang === "de" ? "Bild" : "صورة"}
+                      </option>
+                      <option value="video">
+                        {lang === "de" ? "Produkt-Video / Reel" : "فيديو / ريل"}
+                      </option>
+                      <option value="parallax">
+                        {lang === "de" ? "Parallax-Banner" : "بانر متوازي"}
+                      </option>
+                      <option value="product_card">
+                        {lang === "de"
+                          ? "Animierte Produkt-Karte"
+                          : "بطاقة منتج متحركة"}
+                      </option>
+                    </select>
+                    {(form.media_type === "video" ||
+                      form.media_type === "product_card") && (
+                      <input
+                        className="input-field"
+                        placeholder={t("videoUrl")}
+                        value={form.video_url || ""}
+                        onChange={(e) =>
+                          setForm({ ...form, video_url: e.target.value })
+                        }
+                      />
+                    )}
+                    <input
+                      className="input-field"
+                      dir="rtl"
+                      placeholder={t("nameAr")}
+                      value={form.title_ar || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, title_ar: e.target.value })
+                      }
+                    />
+                    <input
+                      className="input-field"
+                      placeholder={t("nameDe")}
+                      value={form.title_de || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, title_de: e.target.value })
+                      }
+                    />
+                    <input
+                      className="input-field"
+                      dir="rtl"
+                      placeholder={
+                        lang === "de" ? "Untertitel (AR)" : "العنوان الفرعي"
+                      }
+                      value={form.subtitle_ar || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, subtitle_ar: e.target.value })
+                      }
+                    />
+                    <input
+                      className="input-field"
+                      placeholder={
+                        lang === "de" ? "Untertitel (DE)" : "العنوان الفرعي DE"
+                      }
+                      value={form.subtitle_de || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, subtitle_de: e.target.value })
+                      }
+                    />
+                    <input
+                      className="input-field"
+                      placeholder={
+                        lang === "de" ? "Link-URL (optional)" : "رابط (اختياري)"
+                      }
+                      value={form.link_url || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, link_url: e.target.value })
+                      }
+                    />
+                    <select
+                      className="input-field"
+                      value={form.link_category_id || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, link_category_id: e.target.value })
+                      }
+                    >
+                      <option value="">
+                        {lang === "de"
+                          ? "— Kategorie-Link —"
+                          : "— رابط فئة —"}
+                      </option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name_de || c.name_ar}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="flex items-center gap-2 text-sm min-h-11">
+                      <input
+                        type="checkbox"
+                        checked={form.active !== false}
+                        onChange={(e) =>
+                          setForm({ ...form, active: e.target.checked })
+                        }
+                        className="w-4 h-4 accent-brand-orange"
+                      />
+                      {t("active")}
+                    </label>
+                    <div className="flex gap-2">
+                      <Button type="submit" disabled={saving || !form.image}>
+                        <Plus size={16} />
+                        {saving ? t("saving") : t("save")}
+                      </Button>
+                      {editingId && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingId(null);
+                            setForm(emptySlide());
+                          }}
+                        >
+                          {lang === "de" ? "Abbrechen" : "إلغاء"}
+                        </Button>
+                      )}
+                    </div>
+                  </form>
+
+                  <div className="space-y-3">
+                    {slides.length === 0 && (
+                      <p className="text-sm text-gray-500">
+                        {lang === "de"
+                          ? "Noch keine Banner in dieser Sektion."
+                          : "لا توجد لافتات في هذا القسم بعد."}
+                      </p>
+                    )}
+                    {slides.map((s, i) => (
+                      <div
+                        key={s.id}
+                        className="card-boutique p-3 flex gap-3 items-center"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={s.image}
+                          alt=""
+                          className="w-24 h-14 object-cover rounded-lg bg-orange-50"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {s.title_de || s.title_ar || s.title || s.id}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {s.media_type && s.media_type !== "image"
+                              ? `${s.media_type} · `
+                              : ""}
+                            {s.link_category_id
+                              ? `→ /categories/${s.link_category_id}`
+                              : s.link_url || "—"}
+                            {s.active === false ? ` · ${t("inactive")}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            className="p-2 min-h-10 min-w-10 text-gray-400 hover:text-brand-orange"
+                            onClick={() => void moveSlide(s.id, -1)}
+                            disabled={i === 0}
+                          >
+                            <ArrowUp size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="p-2 min-h-10 min-w-10 text-gray-400 hover:text-brand-orange"
+                            onClick={() => void moveSlide(s.id, 1)}
+                            disabled={i === slides.length - 1}
+                          >
+                            <ArrowDown size={16} />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className="p-2 text-gray-500 hover:text-brand-orange"
+                          onClick={() => void toggleSlideActive(s)}
+                          title={
+                            s.active === false ? t("active") : t("inactive")
+                          }
+                        >
+                          {s.active === false ? (
+                            <EyeOff size={16} />
+                          ) : (
+                            <Eye size={16} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-sm text-brand-orange px-2"
+                          onClick={() => editSlide(s)}
+                        >
+                          {t("edit")}
+                        </button>
+                        <button
+                          type="button"
+                          className="p-2 text-brand-red"
+                          onClick={() => void deleteSlide(s.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selected.type === "brands" && (
+                <div className="grid lg:grid-cols-2 gap-6">
+                  <form
+                    onSubmit={saveBrand}
+                    className="card-boutique p-4 sm:p-5 space-y-3"
+                  >
+                    <h2 className="font-medium text-luxury-ink flex items-center gap-2">
+                      <Building2 size={16} />
+                      {brandForm.id
+                        ? lang === "de"
+                          ? "Logo bearbeiten"
+                          : "تعديل الشعار"
+                        : lang === "de"
+                          ? "Marken-Logo hinzufügen"
+                          : "إضافة شعار علامة"}
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      {lang === "de"
+                        ? "PNG mit transparentem Hintergrund empfohlen."
+                        : "يُفضّل PNG بخلفية شفافة."}
+                    </p>
+                    <ImageUpload
+                      value={brandForm.image}
+                      onChange={(url) =>
+                        setBrandForm((f) => ({
+                          ...f,
+                          image: typeof url === "string" ? url : url[0] || "",
+                        }))
+                      }
+                      folder="brands"
+                    />
+                    <input
+                      className="input-field"
+                      placeholder={
+                        lang === "de" ? "Markenname" : "اسم العلامة"
+                      }
+                      value={brandForm.name}
+                      onChange={(e) =>
+                        setBrandForm({ ...brandForm, name: e.target.value })
+                      }
+                    />
+                    <input
+                      className="input-field"
+                      placeholder={
+                        lang === "de" ? "Link (optional)" : "رابط (اختياري)"
+                      }
+                      value={brandForm.link_url}
+                      onChange={(e) =>
+                        setBrandForm({ ...brandForm, link_url: e.target.value })
+                      }
+                    />
+                    <Button
+                      type="submit"
+                      disabled={saving || !brandForm.image}
+                    >
+                      <Plus size={16} />
+                      {saving ? t("saving") : t("save")}
+                    </Button>
+                  </form>
+
+                  <div className="space-y-3">
+                    {logos.length === 0 && (
+                      <p className="text-sm text-gray-500">
+                        {lang === "de"
+                          ? "Noch keine Logos."
+                          : "لا توجد شعارات بعد."}
+                      </p>
+                    )}
+                    {logos.map((l) => (
+                      <div
+                        key={l.id}
+                        className="card-boutique p-3 flex gap-3 items-center"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={l.image}
+                          alt={l.name}
+                          className="w-20 h-12 object-contain rounded-lg bg-transparent"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {l.name || l.id}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="text-sm text-brand-orange px-2"
+                          onClick={() =>
+                            setBrandForm({
+                              id: l.id,
+                              name: l.name,
+                              image: l.image,
+                              link_url: l.link_url || "",
+                              active: l.active !== false,
+                            })
+                          }
+                        >
+                          {t("edit")}
+                        </button>
+                        <button
+                          type="button"
+                          className="p-2 text-brand-red"
+                          onClick={() => void deleteBrand(l.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(selected.type === "products" ||
+                selected.type === "categories") && (
+                <p className="text-sm text-gray-500 card-boutique p-4">
+                  {lang === "de"
+                    ? "Inhalt kommt automatisch aus dem Katalog. Hier nur Titel, Typ und Reihenfolge steuern."
+                    : "المحتوى يأتي تلقائياً من الكتالوج. هنا تضبط العنوان والنوع والترتيب فقط."}
+                </p>
+              )}
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

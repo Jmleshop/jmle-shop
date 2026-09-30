@@ -14,8 +14,8 @@ function bust() {
 }
 
 function parseZone(raw: unknown): SliderZone {
-  if (raw === "banner2" || raw === "banner3") return raw;
-  return "banner1";
+  const zone = String(raw ?? "").trim();
+  return zone || "banner1";
 }
 
 export async function GET(request: Request) {
@@ -26,10 +26,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const zoneParam = searchParams.get("zone");
-  const zone =
-    zoneParam === "banner1" || zoneParam === "banner2" || zoneParam === "banner3"
-      ? zoneParam
-      : null;
+  const zone = zoneParam ? parseZone(zoneParam) : null;
 
   let query = auth.supabase
     .from("hero_slides")
@@ -95,7 +92,7 @@ export async function POST(request: Request) {
   const payload = {
     id,
     image,
-    title: titleAr || titleDe || "Banner",
+    title: titleAr || titleDe || "",
     subtitle: subtitleAr || subtitleDe || "",
     title_ar: titleAr || null,
     title_de: titleDe || null,

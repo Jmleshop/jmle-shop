@@ -25,29 +25,72 @@ function fileKey(file: File, index: number) {
 }
 
 async function downloadImageUrl(url: string, filename = "bild") {
-  try {
-    const res = await fetch(url, { mode: "cors" });
-    if (!res.ok) throw new Error("download failed");
-    const blob = await res.blob();
-    const ext =
-      blob.type.includes("png")
-        ? "png"
-        : blob.type.includes("webp")
-          ? "webp"
-          : blob.type.includes("jpeg") || blob.type.includes("jpg")
-            ? "jpg"
-            : "img";
+  const guessExt = (type: string) =>
+    type.includes("png")
+      ? "png"
+      : type.includes("webp")
+        ? "webp"
+        : type.includes("jpeg") || type.includes("jpg")
+          ? "jpg"
+          : "png";
+
+  const saveBlob = async (blob: Blob) => {
+    const ext = guessExt(blob.type || "");
+    const safeName = `${filename}.${ext}`;
+    const file = new File([blob], safeName, {
+      type: blob.type || `image/${ext}`,
+    });
+
+    // iOS/Android: Web Share speichert oft direkt in Fotos/Album
+    const nav = navigator as Navigator & {
+      canShare?: (data?: ShareData) => boolean;
+      share?: (data: ShareData) => Promise<void>;
+    };
+    if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
+      await nav.share({ files: [file], title: safeName });
+      return;
+    }
+
     const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = objectUrl;
-    a.download = `${filename}.${ext}`;
+    a.download = safeName;
+    a.rel = "noopener";
+    a.style.display = "none";
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(objectUrl);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2500);
+  };
+
+  try {
+    const res = await fetch(url, { mode: "cors", credentials: "omit", cache: "no-store" });
+    if (!res.ok) throw new Error("download failed");
+    await saveBlob(await res.blob());
   } catch {
-    // Fallback: neues Tab öffnen
-    window.open(url, "_blank", "noopener,noreferrer");
+    try {
+      // Same-origin / blob URLs: XHR as second path (better than Safari tab)
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.responseType = "blob";
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300 && xhr.response) {
+            resolve(xhr.response as Blob);
+          } else reject(new Error("xhr failed"));
+        };
+        xhr.onerror = () => reject(new Error("xhr failed"));
+        xhr.send();
+      });
+      await saveBlob(blob);
+    } catch {
+      // Letzter Fallback: verstecktes iframe, kein neuer Tab
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      window.setTimeout(() => iframe.remove(), 4000);
+    }
   }
 }
 
@@ -247,11 +290,18 @@ export default function ImageUpload({
         {urls.map((url, index) => (
           <div
             key={url}
-            className={`relative h-24 w-24 overflow-hidden rounded-xl bg-white ring-2 ${
+            className={`relative h-24 w-24 overflow-hidden rounded-xl bg-jmle-cream ring-2 ${
               index === 0 ? "ring-gold" : "ring-transparent"
             }`}
           >
-            <Image src={url} alt="" fill unoptimized className="object-contain" sizes="96px" />
+            <Image
+              src={url}
+              alt=""
+              fill
+              unoptimized
+              className="object-contain object-center"
+              sizes="96px"
+            />
             {editorEnabled && (
               <button
                 type="button"
@@ -341,10 +391,23 @@ export default function ImageUpload({
           key={session.key}
           source={session.source}
           step={session.step}
-          seed={session.replaceUrl ? null : bulkRef.current}
+          seed={
+            session.replaceUrl
+              ? null
+              : bulkRef.current
+                ? {
+                    // Crop/Zentrierung NIEMALS auf andere Bilder übernehmen
+                    ...bulkRef.current,
+                    crop: { x: 0, y: 0, w: 1, h: 1 },
+                  }
+                : null
+          }
           autoExport={Boolean(bulkRef.current) && !session.replaceUrl && batchIndexRef.current > 0}
           onRemember={(settings) => {
-            bulkRef.current = settings;
+            bulkRef.current = {
+              ...settings,
+              crop: { x: 0, y: 0, w: 1, h: 1 },
+            };
           }}
           onComplete={(file) => void onEditorDone(file)}
           onCancel={() => {

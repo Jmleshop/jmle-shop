@@ -6,8 +6,8 @@ export type RemovalProgress = {
 
 /**
  * ISNet-Freisteller im Browser (`@imgly/background-removal`).
- * Das Modell wird beim ersten Aufruf von der IMG.LY-CDN geladen und danach vom Browser gecacht.
- * `isnet` ist das große Modell und hält feine Produktkanten besser als die quantisierte Variante.
+ * `isnet_fp16` ist das kleinere, hochoptimierte Modell — typisch 2–3s nach Cache,
+ * vollständig kostenlos (WASM im Client, keine externe API).
  */
 export async function removeImageBackground(
   blob: Blob,
@@ -22,11 +22,11 @@ export async function removeImageBackground(
   const { removeBackground } = await import("@imgly/background-removal");
 
   return removeBackground(blob, {
-    model: "isnet",
+    model: "isnet_fp16",
     device: "cpu",
     output: {
       format: "image/png",
-      quality: 0.95,
+      quality: 0.92,
     },
     progress: (key: string, current: number, total: number) => {
       const ratio = total > 0 ? Math.max(0, Math.min(1, current / total)) : 0;

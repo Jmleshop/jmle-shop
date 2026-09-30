@@ -85,8 +85,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40">
         <div
           ref={imgRef}
-          className="relative aspect-square overflow-hidden !bg-white flex items-center justify-center"
-          style={{ backgroundColor: "#ffffff" }}
+          className="relative aspect-square overflow-hidden bg-jmle-cream flex items-center justify-center"
         >
           <Image
             src={originalImageSrc(product.image)}
@@ -94,7 +93,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             fill
             unoptimized
             quality={SHOP_IMAGE_QUALITY}
-            className="object-contain transition-transform duration-500 ease-boutique group-hover:scale-105"
+            className="object-contain object-center transition-transform duration-500 ease-boutique group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
           />
           <div className="absolute inset-x-0 top-0 p-2 flex gap-1.5 justify-between items-start pointer-events-none">

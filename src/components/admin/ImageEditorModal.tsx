@@ -158,11 +158,11 @@ export default function ImageEditorModal({
   const [flipV, setFlipV] = useState(false);
   const [crop, setCrop] = useState<NormRect>(FULL_FRAME);
   const [aspectId, setAspectId] = useState<CropAspectId>("original");
-  const [background, setBackground] = useState<BackgroundMode>("white");
+  const [background, setBackground] = useState<BackgroundMode>("transparent");
   const [zoom, setZoom] = useState(1);
   const [straighten, setStraighten] = useState(0);
   const [shadow, setShadow] = useState<ShadowMode>("none");
-  const [backgroundColor, setBackgroundColor] = useState("#f8f9fa");
+  const [backgroundColor, setBackgroundColor] = useState("#FFF7ED");
   const [watermark, setWatermark] = useState(false);
   const [studio, setStudio] = useState<StudioBackground>("none");
   const [margin, setMargin] = useState(true);
@@ -251,7 +251,8 @@ export default function ImageEditorModal({
     setFlipV(false);
     setCrop(FULL_FRAME);
     setAspectId("original");
-    setBackground("white");
+    setBackground("transparent");
+    setBackgroundColor("#FFF7ED");
     setTab("adjust");
     setLowRes("pending");
     setMargin(true);
@@ -279,39 +280,42 @@ export default function ImageEditorModal({
           setRotation(seed.rotation);
           setFlipH(seed.flipH);
           setFlipV(seed.flipV);
-          setCrop(seed.crop);
+          // Crop nie aus Seed übernehmen — jedes Bild bekommt eigene Bounding-Box
           setBackground(seed.background);
           setStraighten(seed.straighten ?? 0);
           setShadow(seed.shadow ?? "none");
-          setBackgroundColor(seed.backgroundColor ?? "#f8f9fa");
+          setBackgroundColor(seed.backgroundColor ?? "#FFF7ED");
           setWatermark(Boolean(seed.watermark));
           setStudio(seed.studio ?? "none");
           setMargin(seed.margin !== false);
           setHeal(seed.heal ?? []);
         } else {
-          setAspectId("square");
           setMargin(true);
-          setBackground("white");
-          try {
-            const preview = renderFilteredCanvas(
-              next,
-              {
-                adjustments: DEFAULT_ADJUSTMENTS,
-                rotation: 0,
-                flipH: false,
-                flipV: false,
-              },
-              Math.min(1600, Math.max(next.width, next.height))
-            );
-            const ctx = preview.getContext("2d", { willReadFrequently: true });
-            if (ctx) {
-              const pixels = ctx.getImageData(0, 0, preview.width, preview.height);
-              const bounds = smartBounds(pixels.data, preview.width, preview.height, 0);
-              if (bounds) setCrop(bounds);
-            }
-          } catch {
-            /* full frame stays */
+          setBackground("transparent");
+          setBackgroundColor("#FFF7ED");
+        }
+        setAspectId("square");
+        try {
+          const preview = renderFilteredCanvas(
+            next,
+            {
+              adjustments: seed?.adjustments
+                ? { ...DEFAULT_ADJUSTMENTS, ...seed.adjustments }
+                : DEFAULT_ADJUSTMENTS,
+              rotation: seed?.rotation ?? 0,
+              flipH: seed?.flipH ?? false,
+              flipV: seed?.flipV ?? false,
+            },
+            Math.min(1600, Math.max(next.width, next.height))
+          );
+          const ctx = preview.getContext("2d", { willReadFrequently: true });
+          if (ctx) {
+            const pixels = ctx.getImageData(0, 0, preview.width, preview.height);
+            const bounds = smartBounds(pixels.data, preview.width, preview.height, 0.06);
+            if (bounds) setCrop(bounds);
           }
+        } catch {
+          /* full frame stays */
         }
         setLowRes(Math.min(next.width, next.height) < MIN_SOURCE_EDGE ? "ask" : "ok");
         setPhase("ready");
@@ -452,6 +456,30 @@ export default function ImageEditorModal({
       replaceBitmap(next);
       setBgRemoved(true);
       setBackground("transparent");
+      setBackgroundColor("#FFF7ED");
+      setAspectId("square");
+      setMargin(true);
+      // Objekt anhand Bounding-Box exakt in die 1:1-Mitte setzen
+      try {
+        const preview = renderFilteredCanvas(
+          next,
+          {
+            adjustments: DEFAULT_ADJUSTMENTS,
+            rotation: 0,
+            flipH: false,
+            flipV: false,
+          },
+          Math.min(1600, Math.max(next.width, next.height))
+        );
+        const ctx = preview.getContext("2d", { willReadFrequently: true });
+        if (ctx) {
+          const pixels = ctx.getImageData(0, 0, preview.width, preview.height);
+          const bounds = smartBounds(pixels.data, preview.width, preview.height, 0.06);
+          if (bounds) setCrop(bounds);
+        }
+      } catch {
+        /* keep prior crop */
+      }
       setTab("ai");
     } catch (cause) {
       console.error(cause);
@@ -469,7 +497,8 @@ export default function ImageEditorModal({
       const next = await bitmapFromBlob(blob);
       replaceBitmap(next);
       setBgRemoved(false);
-      setBackground("white");
+      setBackground("transparent");
+      setBackgroundColor("#FFF7ED");
     } catch {
       setError(copy.loadError);
     }
@@ -577,7 +606,7 @@ export default function ImageEditorModal({
     try {
       const settings = currentSettings();
       const webp = await exportProductImage(bitmap, settings);
-      // PNG-Variante für maximale Qualität (Canvas-Neucodierung)
+      // PNG-Variante für Album-Download (Transparenz erhalten)
       const pngBlob = await new Promise<Blob | null>((resolve) => {
         const img = new window.Image();
         const url = URL.createObjectURL(webp);
@@ -605,16 +634,28 @@ export default function ImageEditorModal({
       const file = pngBlob
         ? new File([pngBlob], `jmle-product-${Date.now()}.png`, { type: "image/png" })
         : webp;
+
+      const nav = navigator as Navigator & {
+        canShare?: (data?: ShareData) => boolean;
+        share?: (data: ShareData) => Promise<void>;
+      };
+      if (typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], title: file.name });
+        return;
+      }
+
       const href = URL.createObjectURL(file);
       const a = document.createElement("a");
       a.href = href;
       a.download = file.name.endsWith(".png")
         ? file.name
         : `jmle-product-${Date.now()}.webp`;
+      a.rel = "noopener";
+      a.style.display = "none";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(href);
+      window.setTimeout(() => URL.revokeObjectURL(href), 2500);
     } catch (cause) {
       console.error(cause);
       setError(cause instanceof Error ? cause.message : copy.bgError);
@@ -670,7 +711,8 @@ export default function ImageEditorModal({
     setWatermark(false);
     setStudio("none");
     setHeal([]);
-    setBackground("white");
+    setBackground("transparent");
+    setBackgroundColor("#FFF7ED");
     setExportQuality(DEFAULT_EXPORT_QUALITY);
     setUpscale(0);
     void onRestoreBackground();
@@ -769,16 +811,16 @@ export default function ImageEditorModal({
               <CropOverlay crop={crop} normRatio={normRatio} onChange={setCrop} />
             </div>
             {busy === "bg" && progress && (
-              <div className="absolute inset-x-6 bottom-4 rounded-xl bg-white/95 p-3 shadow">
-                <p className="text-xs font-medium text-gray-700">
+              <div className="absolute inset-x-6 bottom-4 rounded-xl bg-jmle-cream/95 p-3 shadow-lg ring-1 ring-orange-200/60">
+                <p className="text-xs font-medium text-luxury-ink">
                   {progress.label} · {Math.round(progress.ratio * 100)} %
                 </p>
                 <p className="mt-1 text-[11px] text-gray-500">
-                  Das Freistell-Modell läuft lokal auf dem Prozessor, ein Bild nach dem anderen.
+                  Kostenloses WASM-Modell (fp16) — lokal im Browser, ohne API-Kosten.
                 </p>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200">
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-orange-100">
                   <div
-                    className="h-full bg-gold transition-all"
+                    className="h-full rounded-full bg-gradient-to-r from-brand-orange to-gold transition-all duration-200"
                     style={{ width: `${Math.round(progress.ratio * 100)}%` }}
                   />
                 </div>
