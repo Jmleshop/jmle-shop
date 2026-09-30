@@ -2,23 +2,29 @@ import { squarePlacement } from "./geometry";
 
 /**
  * Längste Motiv-Seite füllt diesen Anteil des Quadrats.
- * 12 % Padding pro Seite → fill = 0.76 (Schutz vor Kanten-Clipping).
+ * 8 % Padding pro Seite → fill = 0.84 (kein „Karten“-Rahmen).
  */
-export const PRODUCT_FILL = 0.76;
+export const PRODUCT_FILL = 0.84;
 
-/** Konservativer Sharp/Canvas-Trim: nur fast reines Weiß / Alpha. */
-export const TRIM_THRESHOLD = 6;
+/** Trim: Alpha/Near-transparent + helles Studio-Weiß. */
+export const TRIM_THRESHOLD = 12;
 
-/** Extra Rand um die Bounding-Box, damit weiche Kanten/AA nicht abgeschnitten werden. */
-export const BOUNDS_EXPAND_RATIO = 0.04;
+/** Extra Rand um die Bounding-Box (relativ zur Motivbox, nicht Canvas). */
+export const BOUNDS_EXPAND_RATIO = 0.02;
 
-/** Near-white studio backdrop — cream/logo-Pixel bleiben Vordergrund. */
+/**
+ * Studio-Matte außerhalb des Produkts (Weiß/Cream/Grau).
+ * Farblogos und Verpackungsfarben bleiben Vordergrund.
+ */
 export function isBackdropPixel(r: number, g: number, b: number, a: number): boolean {
-  if (a < 8) return true;
+  if (a < 24) return true;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  // Nur sehr helles, fast farbloses Studio-Weiß
-  return min >= 252 && max - min <= 8;
+  const chroma = max - min;
+  if (min >= 248 && chroma <= 10) return true;
+  if (a < 200 && min >= 230 && chroma <= 28) return true;
+  if (a < 160 && min >= 210 && chroma <= 20) return true;
+  return false;
 }
 
 export type PixelBox = { x: number; y: number; w: number; h: number };

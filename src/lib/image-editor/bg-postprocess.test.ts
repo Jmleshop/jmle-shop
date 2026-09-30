@@ -36,23 +36,23 @@ describe("bg-postprocess", () => {
     assert.equal(analyzeAlpha(data, 8, 8).hasCutout, false);
   });
 
-  it("computes alpha bounding box with safety expand", () => {
-    const data = rgba(20, 20, (x, y) =>
-      x >= 5 && x <= 14 && y >= 4 && y <= 12 ? [10, 10, 10, 255] : [0, 0, 0, 0]
+  it("computes opaque-core bounding box with feather expand", () => {
+    const data = rgba(40, 40, (x, y) =>
+      x >= 10 && x <= 29 && y >= 8 && y <= 27 ? [10, 10, 10, 255] : [0, 0, 0, 0]
     );
-    const tight = alphaBounds(data, 20, 20, 8, false);
-    assert.deepEqual(tight, { x: 5, y: 4, w: 10, h: 9 });
-    const expanded = alphaBounds(data, 20, 20, 8, true);
+    const tight = alphaBounds(data, 40, 40, 128, false);
+    assert.deepEqual(tight, { x: 10, y: 8, w: 20, h: 20 });
+    const expanded = alphaBounds(data, 40, 40, 128, true);
     assert.ok(expanded);
-    // Expand darf Motiv nicht verkleinern
-    assert.ok(expanded!.x <= 5);
-    assert.ok(expanded!.y <= 4);
-    assert.ok(expanded!.x + expanded!.w >= 15);
-    assert.ok(expanded!.y + expanded!.h >= 13);
+    // Feather darf Motiv nicht verkleinern
+    assert.ok(expanded!.x <= 10);
+    assert.ok(expanded!.y <= 8);
+    assert.ok(expanded!.x + expanded!.w >= 30);
+    assert.ok(expanded!.y + expanded!.h >= 28);
   });
 
-  it("uses ~12% padding fill factor", () => {
-    assert.ok(Math.abs(CUTOUT_PADDING - 0.12) < 1e-9);
-    assert.ok(Math.abs(CUTOUT_FILL - 0.76) < 1e-9);
+  it("uses ~8% padding fill factor", () => {
+    assert.ok(Math.abs(CUTOUT_PADDING - 0.08) < 1e-9);
+    assert.ok(Math.abs(CUTOUT_FILL - 0.84) < 1e-9);
   });
 });

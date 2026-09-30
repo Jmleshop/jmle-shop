@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { MAX_EDGE_PRODUCT, STORAGE_WEBP_QUALITY_PCT } from "./image-bounds";
 import { PRODUCT_FILL, TRIM_THRESHOLD, productFrame } from "./image-editor/product-bounds";
+import { repairCutoutMask } from "./image-editor/cutout-mask-repair";
 
 export type OptimizeResult = {
   buffer: Buffer;
@@ -12,10 +13,10 @@ export type OptimizeResult = {
 };
 
 /**
- * Server-Pipeline: Freisteller → Trim → 1:1-Zentrierung → WebP q90.
- * - Transparenter Alpha-Kanal (keine festen Hintergründe)
- * - EXIF/ICC entfernt (sharp default ohne withMetadata)
- * - Max-Kante standardmäßig Produkt-Größe (1000)
+ * Server-Pipeline: Freisteller → Masken-Reparatur → Trim → 1:1 → WebP q90.
+ * - Transparenter Alpha-Kanal (keine festen Hintergründe / Kästen)
+ * - Produkt bleibt ein zusammenhängendes Objekt
+ * - EXIF/ICC entfernt
  */
 export async function optimizeProductImageBuffer(
   input: Buffer,
@@ -30,7 +31,7 @@ export async function optimizeProductImageBuffer(
     try {
       const cut = await removeBackgroundNode(working);
       if (cut) {
-        working = cut;
+        working = await repairCutoutBuffer(cut);
         removedBackground = true;
       }
     } catch (err) {
@@ -46,7 +47,7 @@ export async function optimizeProductImageBuffer(
 
   // Immer WebP q90 — Alpha bleibt erhalten, Metadaten werden verworfen
   const webp = await sharp(buffer)
-    .rotate() // EXIF-Orientierung anwenden, dann Metadaten droppen
+    .rotate()
     .ensureAlpha()
     .resize(maxEdge, maxEdge, {
       fit: "inside",
@@ -77,7 +78,7 @@ async function removeBackgroundNode(input: Buffer): Promise<Buffer | null> {
     type: sniffMime(input),
   });
   const blob = await removeBackground(source, {
-    model: "small",
+    model: "medium",
     output: { format: "image/png", quality: 1 },
   });
   const out = Buffer.from(await blob.arrayBuffer());
@@ -91,6 +92,21 @@ async function removeBackgroundNode(input: Buffer): Promise<Buffer | null> {
   }
   if (nonOpaque / total < 0.02 || solid / total < 0.002) return null;
   return out;
+}
+
+/** Masken-Reparatur auf Sharp-PNG: Löcher schließen, Matte killen. */
+async function repairCutoutBuffer(input: Buffer): Promise<Buffer> {
+  const { data, info } = await sharp(input)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const pixels = new Uint8ClampedArray(data.buffer, data.byteOffset, data.byteLength);
+  repairCutoutMask(pixels, info.width, info.height);
+  return sharp(Buffer.from(pixels), {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  })
+    .png()
+    .toBuffer();
 }
 
 function sniffMime(buf: Buffer): string {
@@ -135,8 +151,10 @@ export async function frameSquareCentered(
   let trimmed: { data: Buffer; info: { width: number; height: number } };
   try {
     if (hasAlpha) {
+      // Nur transparente Ränder trimmen — kein Weiß-Trim auf Freistellern
       trimmed = await base
         .clone()
+        .ensureAlpha()
         .trim({
           background: { r: 0, g: 0, b: 0, alpha: 0 },
           threshold: TRIM_THRESHOLD,
@@ -155,8 +173,8 @@ export async function frameSquareCentered(
     };
   }
 
-  const padX = Math.max(2, Math.round(trimmed.info.width * 0.04));
-  const padY = Math.max(2, Math.round(trimmed.info.height * 0.04));
+  const padX = Math.max(2, Math.round(trimmed.info.width * 0.02));
+  const padY = Math.max(2, Math.round(trimmed.info.height * 0.02));
   const paddedW = trimmed.info.width + padX * 2;
   const paddedH = trimmed.info.height + padY * 2;
   const padded = await sharp({

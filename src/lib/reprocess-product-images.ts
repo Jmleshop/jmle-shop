@@ -51,15 +51,22 @@ export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
   const hasAlpha = Boolean(meta.hasAlpha);
   let trimmed: { data: Buffer; info: { width: number; height: number } };
   try {
-    const white = await base
-      .clone()
-      .trim({ background: "#ffffff", threshold: TRIM_THRESHOLD })
-      .toBuffer({ resolveWithObject: true });
-    trimmed = hasAlpha
-      ? await sharp(white.data)
-          .trim({ background: { r: 255, g: 255, b: 255, alpha: 0 }, threshold: TRIM_THRESHOLD })
-          .toBuffer({ resolveWithObject: true })
-      : white;
+    if (hasAlpha) {
+      // Freisteller: nur transparente Ränder — kein Weiß-Trim (würde Matte/Kästen erzeugen)
+      trimmed = await base
+        .clone()
+        .ensureAlpha()
+        .trim({
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+          threshold: TRIM_THRESHOLD,
+        })
+        .toBuffer({ resolveWithObject: true });
+    } else {
+      trimmed = await base
+        .clone()
+        .trim({ background: "#ffffff", threshold: TRIM_THRESHOLD })
+        .toBuffer({ resolveWithObject: true });
+    }
   } catch {
     return null;
   }

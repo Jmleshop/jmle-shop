@@ -1,16 +1,22 @@
 /**
  * Post-Processing nach Freistellung:
- * Transparenz prüfen, Motiv-Box mit Sicherheitsrand, 1:1 zentrieren.
- * Motiv darf niemals abgeschnitten werden — nur störender Hintergrund.
+ * Maske reparieren (ein zusammenhängendes Produkt), Matte entfernen,
+ * Motiv zentriert auf transparentem 1:1-Canvas — ohne Kasten.
  */
 
-import { BOUNDS_EXPAND_RATIO, expandPixelBox } from "./product-bounds";
+import {
+  expandBoxByPixels,
+  opaqueCoreBounds,
+  repairCutoutMask,
+} from "./cutout-mask-repair";
 
-/** 12 % Innenabstand → ~76 % Motivfläche (Schutz vor Kanten-Clipping). */
-export const CUTOUT_PADDING = 0.12;
+/** ~8 % Innenabstand → ~84 % Motivfläche (enger, kein „Karten“-Rahmen). */
+export const CUTOUT_PADDING = 0.08;
 export const CUTOUT_FILL = 1 - CUTOUT_PADDING * 2;
 /** Produkt-Cutouts: 1000px reicht für Retina-Karten, spart Speicher. */
 export const HD_MAX_EDGE = 1000;
+/** Fester Feather-Rand um die Kern-Silhouette (Pixel). */
+export const CUTOUT_FEATHER_PX = 4;
 
 export type AlphaStats = {
   width: number;
@@ -67,39 +73,30 @@ export async function blobHasTransparency(blob: Blob): Promise<boolean> {
 export type PixelBox = { x: number; y: number; w: number; h: number };
 
 /**
- * Bounding-Box aller sichtbaren Pixel inkl. weicher Kanten.
- * alphaCut niedrig + Expand → kein Abschneiden von AA/Feather.
+ * Bounding-Box der deckenden Silhouette inkl. kleinem Feather.
+ * Nach Masken-Reparatur: keine Soft-Matte-Ausdehnung mehr.
  */
 export function alphaBounds(
   data: Uint8ClampedArray,
   width: number,
   height: number,
-  alphaCut = 8,
+  alphaCut = 128,
   expand = true
 ): PixelBox | null {
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
-  for (let y = 0; y < height; y++) {
-    const row = y * width;
-    for (let x = 0; x < width; x++) {
-      const a = data[(row + x) * 4 + 3];
-      if (a < alphaCut) continue;
-      if (x < minX) minX = x;
-      if (y < minY) minY = y;
-      if (x > maxX) maxX = x;
-      if (y > maxY) maxY = y;
-    }
-  }
-  if (maxX < minX || maxY < minY) return null;
-  const tight = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
-  return expand ? expandPixelBox(tight, width, height, BOUNDS_EXPAND_RATIO) : tight;
+  const tight = opaqueCoreBounds(data, width, height, alphaCut);
+  if (!tight) return null;
+  if (!expand) return tight;
+  // Feather relativ zur Motivgröße — nicht zur vollen Canvas-Kante
+  const pad = Math.max(
+    CUTOUT_FEATHER_PX,
+    Math.round(Math.max(tight.w, tight.h) * 0.02)
+  );
+  return expandBoxByPixels(tight, width, height, pad);
 }
 
 /**
- * Trimmt transparente Ränder (mit Sicherheitsrand) und zentriert das
- * gesamte Motiv auf einem HD-1:1-Canvas — ohne Motivteile abzuschneiden.
+ * Trimmt transparente Ränder und zentriert das unversehrte Motiv
+ * auf einem transparenten HD-1:1-Canvas — ohne festen Hintergrund.
  */
 export async function trimAndCenterCutout(
   blob: Blob,
@@ -113,6 +110,11 @@ export async function trimAndCenterCutout(
   try {
     const { ctx, canvas } = canvasFromBitmap(bitmap);
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // 1) Maske reparieren: ein zusammenhängendes Produkt, keine Matte
+    repairCutoutMask(pixels.data, canvas.width, canvas.height);
+    ctx.putImageData(pixels, 0, 0);
+
     const box = alphaBounds(pixels.data, canvas.width, canvas.height);
     if (!box) {
       return blob;
@@ -132,11 +134,28 @@ export async function trimAndCenterCutout(
     out.height = side;
     const outCtx = out.getContext("2d");
     if (!outCtx) throw new Error("Canvas nicht verfügbar");
+    // 100 % transparent — kein Weiß/Cream/Grau
     outCtx.clearRect(0, 0, side, side);
     outCtx.imageSmoothingEnabled = true;
     outCtx.imageSmoothingQuality = "high";
-    // Gesamtes Motiv inkl. Expand-Rand zeichnen — nie enger croppen
     outCtx.drawImage(canvas, box.x, box.y, box.w, box.h, dx, dy, dw, dh);
+
+    // Nach dem Scale nochmals Matte-Reste an weichen Kanten killen
+    const outPixels = outCtx.getImageData(0, 0, side, side);
+    for (let i = 0; i < outPixels.data.length; i += 4) {
+      const a = outPixels.data[i + 3];
+      if (a === 0) {
+        outPixels.data[i] = 0;
+        outPixels.data[i + 1] = 0;
+        outPixels.data[i + 2] = 0;
+      } else if (a < 24) {
+        outPixels.data[i] = 0;
+        outPixels.data[i + 1] = 0;
+        outPixels.data[i + 2] = 0;
+        outPixels.data[i + 3] = 0;
+      }
+    }
+    outCtx.putImageData(outPixels, 0, 0);
 
     const result = await new Promise<Blob | null>((resolve) =>
       out.toBlob(resolve, "image/png")

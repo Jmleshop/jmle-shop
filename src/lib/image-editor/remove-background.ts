@@ -200,7 +200,7 @@ async function runServerRemoval(
  * Hybrid-Freisteller:
  * 1) WebGPU / WASM (isnet_fp16) im Browser
  * 2) Transparenz-Check — bei Fehlschlag Retry / Server-Fallback
- * 3) Trim + 1:1-Zentrierung mit 10 % Padding
+ * 3) Masken-Reparatur + Trim + 1:1-Zentrierung (transparent, ohne Kasten)
  */
 export async function removeImageBackground(
   blob: Blob,
@@ -283,7 +283,7 @@ export async function removeImageBackgroundDetailed(
     engine,
   });
 
-  const finalized = await trimAndCenterCutout(cutout, { padding: 0.12, maxEdge });
+  const finalized = await trimAndCenterCutout(cutout, { padding: 0.08, maxEdge });
   // Sicherheitsnetz: Final darf Transparenz nicht verlieren
   if (!(await blobHasTransparency(finalized))) {
     throw new Error("Freisteller verlor Transparenz bei der Finalisierung");

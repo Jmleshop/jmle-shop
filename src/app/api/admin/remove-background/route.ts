@@ -7,7 +7,7 @@ export const maxDuration = 60;
 
 /**
  * Ultra-schneller Server-Fallback für Freisteller.
- * Primary: @imgly/background-removal-node (small ONNX)
+ * Primary: @imgly/background-removal-node (medium ONNX)
  * Optional: Hugging Face Inference (briaai/RMBG-1.4) wenn HF_TOKEN gesetzt.
  */
 export async function POST(request: Request) {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     return new NextResponse(new Uint8Array(png), {
       headers: {
         "Content-Type": "image/png",
-        "X-Bg-Engine": "imgly-node-small",
+        "X-Bg-Engine": "imgly-node-medium",
         "Cache-Control": "no-store",
       },
     });
@@ -79,10 +79,10 @@ async function removeWithNode(input: Buffer): Promise<Buffer> {
   // Mime-typisierter Blob — die Node-Lib lehnt Buffer ohne type ab
   const source = new Blob([new Uint8Array(input)], { type: "image/png" });
   const blob = await removeBackground(source, {
-    model: "small",
+    model: "medium",
     output: {
       format: "image/png",
-      quality: 0.92,
+      quality: 1,
     },
   });
   const ab = await blob.arrayBuffer();
