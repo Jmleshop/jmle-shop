@@ -20,9 +20,11 @@ export function Skeleton({
 
 export function ProductCardSkeleton() {
   return (
-    <div className="card-boutique overflow-hidden" aria-busy="true">
-      <Skeleton className="aspect-square rounded-none" />
-      <div className="p-3 space-y-2">
+    <div className="overflow-hidden rounded-2xl border border-orange-100/80 bg-transparent" aria-busy="true">
+      <div className="product-image-frame">
+        <Skeleton className="absolute inset-[10%] rounded-lg" />
+      </div>
+      <div className="bg-white/95 p-3 space-y-2">
         <Skeleton className="h-4 w-[80%] mx-auto" />
         <Skeleton className="h-3 w-1/2 mx-auto" />
         <Skeleton className="h-10 w-full mt-2" />
