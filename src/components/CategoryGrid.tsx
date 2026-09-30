@@ -33,30 +33,39 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
       href={`/categories/${category.id}`}
       className={
         isSub
-          ? "group flex w-[5.5rem] sm:w-[6rem] shrink-0 flex-col items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 rounded-full"
+          ? "group flex flex-col items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
           : "group relative z-0 flex flex-col items-center gap-2.5 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 rounded-2xl"
       }
     >
-      <div
-        className={
-          isSub
-            ? "relative size-[5.5rem] sm:size-[5.75rem] overflow-hidden rounded-full bg-jmle-cream shadow-sm ring-1 ring-orange-200/70 transition-[box-shadow,ring-color] duration-300 ease-boutique group-hover:shadow-md group-hover:ring-brand-orange/40"
-            : "relative aspect-square w-full max-w-[11rem] overflow-hidden rounded-2xl bg-jmle-cream shadow-md ring-1 ring-orange-200/70 transition-[box-shadow,ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:shadow-xl group-hover:ring-brand-orange/40"
-        }
-      >
-        <Image
-          src={originalImageSrc(category.image)}
-          alt={label}
-          fill
-          quality={SHOP_IMAGE_QUALITY}
-          className="object-cover transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
-          sizes={isSub ? "96px" : "(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 280px"}
-        />
-      </div>
+      {isSub ? (
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-orange-100/80 transition-[box-shadow,ring-color,transform] duration-300 ease-boutique group-hover:shadow-lg group-hover:ring-brand-orange/35 sm:h-20 sm:w-20">
+          <div className="relative h-8 w-8 sm:h-10 sm:w-10">
+            <Image
+              src={originalImageSrc(category.image)}
+              alt={label}
+              fill
+              quality={SHOP_IMAGE_QUALITY}
+              className="object-contain object-center transition-transform duration-300 ease-boutique group-hover:scale-105"
+              sizes="40px"
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="relative aspect-square w-full max-w-[11rem] overflow-hidden rounded-2xl bg-jmle-cream shadow-md ring-1 ring-orange-200/70 transition-[box-shadow,ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:shadow-xl group-hover:ring-brand-orange/40">
+          <Image
+            src={originalImageSrc(category.image)}
+            alt={label}
+            fill
+            quality={SHOP_IMAGE_QUALITY}
+            className="object-cover transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
+            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 280px"
+          />
+        </div>
+      )}
       <span
         className={
           isSub
-            ? "font-ui text-[11px] sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.4em]"
+            ? "font-ui text-[10px] sm:text-[11px] font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.2em]"
             : "font-ui text-xs sm:text-sm font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-1 min-h-[2.5em]"
         }
       >
@@ -98,7 +107,7 @@ export default function CategoryGrid({
       <div
         className={
           isSub
-            ? "mx-auto flex max-w-5xl flex-wrap justify-center gap-x-3 gap-y-4 sm:gap-x-4 sm:gap-y-5"
+            ? "mx-auto grid max-w-5xl grid-cols-4 gap-3 md:grid-cols-6 lg:grid-cols-8"
             : "mx-auto grid max-w-6xl grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-6 lg:grid-cols-6"
         }
       >
