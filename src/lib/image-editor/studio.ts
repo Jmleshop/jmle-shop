@@ -210,12 +210,12 @@ export function consistencyVerdict(
   };
 }
 
-/** Tight box around the product. White and transparent margins are not part of it. */
+/** Box around the product with optional safety pad (default protects soft edges). */
 export function smartBounds(
   data: Uint8ClampedArray,
   width: number,
   height: number,
-  padRatio = 0
+  padRatio = 0.12
 ): NormRect | null {
   const box = trimWhiteEdges(data, width, height, 4);
   if (!box) return null;

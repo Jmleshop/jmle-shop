@@ -10,7 +10,7 @@ export type OptimizeResult = {
   reframed: boolean;
 };
 
-const MAX_EDGE = 1600;
+const MAX_EDGE = 2000;
 
 /**
  * Server-Pipeline: Freisteller (optional) → Trim → 1:1-Zentrierung mit 10 % Padding.
@@ -128,7 +128,9 @@ function sniffMime(buf: Buffer): string {
 }
 
 /**
- * Trim (weiß/transparent) + exakte 1:1-Zentrierung mit PRODUCT_FILL (10 % Padding).
+ * Trim (weiß/transparent) + 1:1-Zentrierung mit PRODUCT_FILL (~12 % Padding).
+ * Nach Sharp-Trim wird ein Sicherheitsrand wieder hinzugefügt, damit
+ * weiche Kanten / Verpackungsränder nicht verloren gehen.
  */
 export async function frameSquareCentered(
   input: Buffer,
@@ -158,15 +160,33 @@ export async function frameSquareCentered(
         .toBuffer({ resolveWithObject: true });
     }
   } catch {
-    // Kein Trim möglich — volles Bild nutzen
     trimmed = {
       data: await base.png().toBuffer(),
       info: { width: beforeW, height: beforeH },
     };
   }
 
-  const tw = trimmed.info.width;
-  const th = trimmed.info.height;
+  // Sicherheitsrand: ~4 % der getrimmten Kante wiederherstellen
+  const padX = Math.max(2, Math.round(trimmed.info.width * 0.04));
+  const padY = Math.max(2, Math.round(trimmed.info.height * 0.04));
+  const paddedW = trimmed.info.width + padX * 2;
+  const paddedH = trimmed.info.height + padY * 2;
+  const padded = await sharp({
+    create: {
+      width: paddedW,
+      height: paddedH,
+      channels: 4,
+      background: hasAlpha
+        ? { r: 0, g: 0, b: 0, alpha: 0 }
+        : { r: 255, g: 255, b: 255, alpha: 1 },
+    },
+  })
+    .composite([{ input: trimmed.data, left: padX, top: padY }])
+    .png()
+    .toBuffer({ resolveWithObject: true });
+
+  const tw = padded.info.width;
+  const th = padded.info.height;
   if (!options?.force) {
     const removedW = beforeW - tw;
     const removedH = beforeH - th;
@@ -174,7 +194,6 @@ export async function frameSquareCentered(
     const alreadyTight =
       removedW < beforeW * 0.04 && removedH < beforeH * 0.04 && alreadySquare;
     if (alreadyTight) {
-      // Trotzdem auf 10%-Padding normieren wenn Fill abweicht
       const longest = Math.max(tw, th, 1);
       const fillRatio = longest / Math.max(beforeW, beforeH);
       if (fillRatio >= PRODUCT_FILL - 0.03 && fillRatio <= PRODUCT_FILL + 0.03) {
@@ -186,7 +205,7 @@ export async function frameSquareCentered(
   const longest = Math.max(tw, th, 1);
   const size = Math.min(MAX_EDGE, Math.max(longest, Math.round(longest / PRODUCT_FILL)));
   const place = productFrame(tw, th, size);
-  const resized = await sharp(trimmed.data)
+  const resized = await sharp(padded.data)
     .resize(place.dw, place.dh, { fit: "fill", kernel: "lanczos3" })
     .toBuffer();
 
@@ -197,7 +216,7 @@ export async function frameSquareCentered(
       channels: 4,
       background: hasAlpha
         ? { r: 0, g: 0, b: 0, alpha: 0 }
-        : { r: 255, g: 247, b: 237, alpha: 1 }, // jmle-cream falls kein Alpha
+        : { r: 255, g: 247, b: 237, alpha: 1 },
     },
   })
     .composite([{ input: resized, left: place.dx, top: place.dy }])

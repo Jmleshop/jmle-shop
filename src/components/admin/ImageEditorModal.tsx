@@ -46,7 +46,6 @@ import {
   DEFAULT_ADJUSTMENTS,
   DEFAULT_EXPORT_QUALITY,
   FULL_FRAME,
-  MIN_SOURCE_EDGE,
   clampExportQuality,
   resolveExportEdge,
   type Adjustments,
@@ -178,9 +177,10 @@ export default function ImageEditorModal({
   const [bulkApply, setBulkApply] = useState(false);
   const [consistency, setConsistency] = useState("");
   const [filterTick, setFilterTick] = useState(0);
-  const [lowRes, setLowRes] = useState<"pending" | "ask" | "ok">("pending");
+  // Qualitäts-Dialoge entfernt — immer fortfahren, HD-Export automatisch
+  const [lowRes, setLowRes] = useState<"pending" | "ask" | "ok">("ok");
   const [exportQuality, setExportQuality] = useState(DEFAULT_EXPORT_QUALITY);
-  const [upscale, setUpscale] = useState<UpscaleTarget>(0);
+  const [upscale, setUpscale] = useState<UpscaleTarget>(2000);
   const [sizeBytes, setSizeBytes] = useState<number | null>(null);
 
   const bitmapRef = useRef<ImageBitmap | null>(null);
@@ -337,13 +337,14 @@ export default function ImageEditorModal({
           const ctx = preview.getContext("2d", { willReadFrequently: true });
           if (ctx) {
             const pixels = ctx.getImageData(0, 0, preview.width, preview.height);
-            const bounds = smartBounds(pixels.data, preview.width, preview.height, 0.06);
+            const bounds = smartBounds(pixels.data, preview.width, preview.height, 0.12);
             if (bounds) setCrop(bounds);
           }
         } catch {
           /* full frame stays */
         }
-        setLowRes(Math.min(next.width, next.height) < MIN_SOURCE_EDGE ? "ask" : "ok");
+        // Keine Qualitäts-Warnung — immer HD-Pipeline
+        setLowRes("ok");
         setPhase("ready");
       } catch {
         if (!cancelled) {
@@ -579,14 +580,12 @@ export default function ImageEditorModal({
     }
   };
 
-  // Auto-Turbo beim Einfügen/Upload (einmal pro Bild)
+  // Auto-Turbo beim Einfügen/Upload (einmal pro Bild) — ohne Qualitäts-Dialog
   useEffect(() => {
     if (
       !autoRemoveBackground ||
       autoExport ||
       phase !== "ready" ||
-      lowRes === "ask" ||
-      lowRes === "pending" ||
       bgRemoved ||
       busy ||
       autoRemoveOnce.current
@@ -596,7 +595,7 @@ export default function ImageEditorModal({
     autoRemoveOnce.current = true;
     void onRemoveBackground();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, lowRes, autoRemoveBackground, autoExport, bgRemoved, busy]);
+  }, [phase, autoRemoveBackground, autoExport, bgRemoved, busy]);
 
   const applySettings = (settings: RenderSettings) => {
     applyingHist.current = true;
@@ -760,10 +759,10 @@ export default function ImageEditorModal({
 
   const autoOnce = useRef(false);
   useEffect(() => {
-    if (phase !== "ready" || lowRes !== "ok" || !autoExport || autoOnce.current || busy) return;
+    if (phase !== "ready" || !autoExport || autoOnce.current || busy) return;
     autoOnce.current = true;
     void onSave();
-  }, [phase, autoExport, busy, lowRes]);
+  }, [phase, autoExport, busy]);
 
   const onWhiteBalance = () => {
     if (!bitmap) return;
@@ -1331,7 +1330,7 @@ export default function ImageEditorModal({
             type="button"
             size="sm"
             variant="outline"
-            disabled={phase !== "ready" || busy !== null || lowRes === "ask"}
+            disabled={phase !== "ready" || busy !== null}
             leadingIcon={
               busy === "download" ? (
                 <Loader2 className="animate-spin" size={14} />
@@ -1346,7 +1345,7 @@ export default function ImageEditorModal({
           <Button
             type="button"
             size="sm"
-            disabled={phase !== "ready" || busy !== null || lowRes === "ask"}
+            disabled={phase !== "ready" || busy !== null}
             leadingIcon={
               busy === "save" ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />
             }
@@ -1355,22 +1354,6 @@ export default function ImageEditorModal({
             {busy === "save" ? copy.applying : copy.apply}
           </Button>
         </footer>
-        {lowRes === "ask" && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center overflow-hidden bg-black/50 p-4">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-              <p className="text-sm font-semibold text-gray-900">{copy.lowResTitle}</p>
-              <p className="mt-2 text-xs leading-relaxed text-gray-600">{copy.lowResBody}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button type="button" size="sm" onClick={() => setLowRes("ok")}>
-                  {copy.lowResContinue}
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-                  {copy.lowResCancel}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

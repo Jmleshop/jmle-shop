@@ -105,14 +105,18 @@ export default function ImageUpload({
   folder = "products",
   multiple = false,
   enableCrop = false,
-  enableEditor = false,
+  /** Global: Turbo-Pipeline (Freisteller + Zentrierung) für alle Admin-Uploads */
+  enableEditor = true,
   label,
 }: {
   value: string | string[];
   onChange: (urls: string | string[]) => void;
   folder?: string;
   multiple?: boolean;
-  /** Öffnet den Bildeditor (Freisteller, Filter, Zuschnitt) vor dem Upload. */
+  /**
+   * Zero-Click Turbo-Pipeline (Standard: an).
+   * Freisteller + Trim + Zentrierung bei Upload/Paste.
+   */
   enableEditor?: boolean;
   /** @deprecated Alias für enableEditor */
   enableCrop?: boolean;
@@ -175,7 +179,10 @@ export default function ImageUpload({
       setTurboProgress({
         phase: "process",
         ratio: 0.02,
-        label: "⚡ Entferne Hintergrund mit KI (Turbo-Modus)…",
+        label:
+          lang === "de"
+            ? "⚡ Entferne Hintergrund mit KI (Turbo-Modus)…"
+            : "⚡ إزالة الخلفية بالذكاء الاصطناعي (وضع التوربو)…",
         total: list.length,
         index: 1,
       });
@@ -192,7 +199,11 @@ export default function ImageUpload({
         else publish(uploaded[0] ? [uploaded[0]] : []);
       } catch (cause) {
         setError(
-          cause instanceof Error ? cause.message : "Auto-Optimierung fehlgeschlagen"
+          cause instanceof Error
+            ? cause.message
+            : lang === "de"
+              ? "Auto-Optimierung fehlgeschlagen"
+              : "فشل التحسين التلقائي"
         );
       } finally {
         setUploading(false);

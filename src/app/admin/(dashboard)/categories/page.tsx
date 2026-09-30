@@ -640,7 +640,14 @@ export default function AdminCategoriesPage() {
                 </select>
               </div>
             )}
-            <ImageUpload value={form.image} onChange={(v) => setForm({ ...form, image: Array.isArray(v) ? v[0] ?? "" : v })} folder="categories" />
+            <ImageUpload
+              value={form.image}
+              onChange={(v) =>
+                setForm({ ...form, image: Array.isArray(v) ? v[0] ?? "" : v })
+              }
+              folder="categories"
+              enableEditor
+            />
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button className="btn-primary w-full">{t("save")}</button>
           </form>

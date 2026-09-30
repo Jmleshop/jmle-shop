@@ -34,7 +34,7 @@ export function CategoryTile({ category }: CategoryTileProps) {
           fill
           quality={SHOP_IMAGE_QUALITY}
           className="object-cover transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
-          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 176px"
+          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, (max-width: 1920px) 280px, 360px"
         />
       </div>
       <span className="font-ui text-xs sm:text-sm font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-1 min-h-[2.5em]">

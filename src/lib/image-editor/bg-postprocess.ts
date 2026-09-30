@@ -1,10 +1,15 @@
 /**
  * Post-Processing nach Freistellung:
- * Transparenz prüfen, transparente Ränder trimmen, 1:1 zentrieren (10 % Padding).
+ * Transparenz prüfen, Motiv-Box mit Sicherheitsrand, 1:1 zentrieren.
+ * Motiv darf niemals abgeschnitten werden — nur störender Hintergrund.
  */
 
-export const CUTOUT_PADDING = 0.1; // 10 % Innenabstand → 80 % Produktfläche
+import { BOUNDS_EXPAND_RATIO, expandPixelBox } from "./product-bounds";
+
+/** 12 % Innenabstand → ~76 % Motivfläche (Schutz vor Kanten-Clipping). */
+export const CUTOUT_PADDING = 0.12;
 export const CUTOUT_FILL = 1 - CUTOUT_PADDING * 2;
+export const HD_MAX_EDGE = 2000;
 
 export type AlphaStats = {
   width: number;
@@ -43,7 +48,6 @@ export function analyzeAlpha(data: Uint8ClampedArray, width: number, height: num
   const total = Math.max(1, width * height);
   const nonOpaque = transparent + translucent;
   const solid = opaque + translucent;
-  // Mindestens ~2 % Freisteller-Fläche und etwas deckendes Produkt (≥0.2 %)
   const hasCutout = nonOpaque / total >= 0.02 && solid / total >= 0.002;
   return { width, height, opaque, translucent, transparent, hasCutout };
 }
@@ -61,12 +65,16 @@ export async function blobHasTransparency(blob: Blob): Promise<boolean> {
 
 export type PixelBox = { x: number; y: number; w: number; h: number };
 
-/** Bounding-Box aller nicht-transparenten Pixel */
+/**
+ * Bounding-Box aller sichtbaren Pixel inkl. weicher Kanten.
+ * alphaCut niedrig + Expand → kein Abschneiden von AA/Feather.
+ */
 export function alphaBounds(
   data: Uint8ClampedArray,
   width: number,
   height: number,
-  alphaCut = 16
+  alphaCut = 8,
+  expand = true
 ): PixelBox | null {
   let minX = width;
   let minY = height;
@@ -84,19 +92,20 @@ export function alphaBounds(
     }
   }
   if (maxX < minX || maxY < minY) return null;
-  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  const tight = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  return expand ? expandPixelBox(tight, width, height, BOUNDS_EXPAND_RATIO) : tight;
 }
 
 /**
- * Trimmt transparente Ränder und zentriert das Objekt auf einem 1:1-Canvas
- * mit elegantem 10 %-Innenabstand.
+ * Trimmt transparente Ränder (mit Sicherheitsrand) und zentriert das
+ * gesamte Motiv auf einem HD-1:1-Canvas — ohne Motivteile abzuschneiden.
  */
 export async function trimAndCenterCutout(
   blob: Blob,
   options?: { padding?: number; maxEdge?: number }
 ): Promise<Blob> {
   const padding = options?.padding ?? CUTOUT_PADDING;
-  const maxEdge = options?.maxEdge ?? 1600;
+  const maxEdge = options?.maxEdge ?? HD_MAX_EDGE;
   const fill = Math.max(0.5, Math.min(0.95, 1 - padding * 2));
 
   const bitmap = await createImageBitmap(blob);
@@ -105,7 +114,6 @@ export async function trimAndCenterCutout(
     const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const box = alphaBounds(pixels.data, canvas.width, canvas.height);
     if (!box) {
-      // Nichts Sichtbares — Original zurück
       return blob;
     }
 
@@ -126,6 +134,7 @@ export async function trimAndCenterCutout(
     outCtx.clearRect(0, 0, side, side);
     outCtx.imageSmoothingEnabled = true;
     outCtx.imageSmoothingQuality = "high";
+    // Gesamtes Motiv inkl. Expand-Rand zeichnen — nie enger croppen
     outCtx.drawImage(canvas, box.x, box.y, box.w, box.h, dx, dy, dw, dh);
 
     const result = await new Promise<Blob | null>((resolve) =>

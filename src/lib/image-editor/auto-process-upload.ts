@@ -22,7 +22,7 @@ export async function autoProcessProductFile(
   onProgress?.({
     phase: "process",
     ratio: 0.05,
-    label: "⚡ Entferne Hintergrund mit KI (Turbo-Modus)…",
+    label: "⚡ إزالة الخلفية بالذكاء الاصطناعي (وضع التوربو)…",
     fileName: file.name,
   });
 
@@ -38,7 +38,7 @@ export async function autoProcessProductFile(
     onProgress?.({
       phase: "finalize",
       ratio: 1,
-      label: "Fertig — zentriert & transparent",
+      label: "جاهز — شفاف ومركّز",
       engine: detailed.engine,
       fileName: file.name,
     });
@@ -50,7 +50,7 @@ export async function autoProcessProductFile(
     onProgress?.({
       phase: "fallback",
       ratio: 0.2,
-      label: "⚡ Server-Turbo-Optimierung…",
+      label: "⚡ تحسين توربو على الخادم…",
       engine: "server",
       fileName: file.name,
     });
@@ -65,14 +65,14 @@ export async function autoProcessProductFile(
     if (!res.ok) {
       throw clientErr instanceof Error
         ? clientErr
-        : new Error("Auto-Optimierung fehlgeschlagen");
+        : new Error("فشل التحسين التلقائي");
     }
     const blob = await res.blob();
     const ext = blob.type.includes("png") ? "png" : "webp";
     onProgress?.({
       phase: "finalize",
       ratio: 1,
-      label: "Fertig — Server-Optimierung",
+      label: "جاهز — تحسين الخادم",
       engine: "server",
       fileName: file.name,
     });

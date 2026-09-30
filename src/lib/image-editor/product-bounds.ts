@@ -1,27 +1,47 @@
 import { squarePlacement } from "./geometry";
 
 /**
- * The product's longest side fills this share of the square.
- * 10 % padding on every side → fill = 0.80.
+ * Längste Motiv-Seite füllt diesen Anteil des Quadrats.
+ * 12 % Padding pro Seite → fill = 0.76 (Schutz vor Kanten-Clipping).
  */
-export const PRODUCT_FILL = 0.8;
+export const PRODUCT_FILL = 0.76;
 
-/** Matches Sharp trim threshold 12 against white. */
-export const TRIM_THRESHOLD = 12;
+/** Konservativer Sharp/Canvas-Trim: nur fast reines Weiß / Alpha. */
+export const TRIM_THRESHOLD = 6;
 
-/** Near-white and transparent pixels are empty studio background, not the product. */
+/** Extra Rand um die Bounding-Box, damit weiche Kanten/AA nicht abgeschnitten werden. */
+export const BOUNDS_EXPAND_RATIO = 0.04;
+
+/** Near-white studio backdrop — cream/logo-Pixel bleiben Vordergrund. */
 export function isBackdropPixel(r: number, g: number, b: number, a: number): boolean {
-  if (a < 24) return true;
+  if (a < 8) return true;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  return min >= 242 && max - min <= 16;
+  // Nur sehr helles, fast farbloses Studio-Weiß
+  return min >= 252 && max - min <= 8;
 }
 
 export type PixelBox = { x: number; y: number; w: number; h: number };
 
+/** Expandiert eine Box um ratio der Bildkanten, geklemmt an Canvas. */
+export function expandPixelBox(
+  box: PixelBox,
+  width: number,
+  height: number,
+  ratio = BOUNDS_EXPAND_RATIO
+): PixelBox {
+  const padX = Math.max(2, Math.round(width * ratio));
+  const padY = Math.max(2, Math.round(height * ratio));
+  const x = Math.max(0, box.x - padX);
+  const y = Math.max(0, box.y - padY);
+  const right = Math.min(width, box.x + box.w + padX);
+  const bottom = Math.min(height, box.y + box.h + padY);
+  return { x, y, w: Math.max(1, right - x), h: Math.max(1, bottom - y) };
+}
+
 function pixelIsWhite(data: ArrayLike<number>, index: number, channels: number): boolean {
   const alpha = channels >= 4 ? data[index + 3] : 255;
-  if (alpha < 24) return true;
+  if (alpha < 8) return true;
   return (
     Math.abs(data[index] - 255) <= TRIM_THRESHOLD &&
     Math.abs(data[index + 1] - 255) <= TRIM_THRESHOLD &&
@@ -29,7 +49,7 @@ function pixelIsWhite(data: ArrayLike<number>, index: number, channels: number):
   );
 }
 
-/** Edge trim, same idea as Sharp `.trim({ background: white, threshold: 12 })`. */
+/** Edge trim gegen reines Weiß / Transparenz. */
 export function trimWhiteEdges(
   data: ArrayLike<number>,
   width: number,
@@ -59,7 +79,8 @@ export function trimWhiteEdges(
   while (left < width && colEmpty(left, top, bottom)) left += 1;
   let right = width - 1;
   while (right > left && colEmpty(right, top, bottom)) right -= 1;
-  return { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
+  const tight = { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
+  return expandPixelBox(tight, width, height);
 }
 
 export function productPixelBounds(
@@ -85,20 +106,29 @@ export function productPixelBounds(
     }
   }
   if (maxX < minX || maxY < minY) return null;
-  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  return expandPixelBox(
+    { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 },
+    width,
+    height
+  );
 }
 
-/** True when the file is already a centered square with the product at ~88 %. */
+/** True when already a centered square near PRODUCT_FILL. */
 export function alreadyFramed(box: PixelBox, width: number, height: number): boolean {
   const side = Math.max(width, height, 1);
   if (Math.abs(width - height) / side > 0.04) return false;
   const longest = Math.max(box.w, box.h) / side;
   const cx = (box.x + box.w / 2) / width;
   const cy = (box.y + box.h / 2) / height;
-  return longest >= 0.84 && longest <= 0.93 && Math.abs(cx - 0.5) < 0.04 && Math.abs(cy - 0.5) < 0.04;
+  return (
+    longest >= PRODUCT_FILL - 0.04 &&
+    longest <= PRODUCT_FILL + 0.06 &&
+    Math.abs(cx - 0.5) < 0.04 &&
+    Math.abs(cy - 0.5) < 0.04
+  );
 }
 
-/** Reframe only when a real empty margin remains. Full-bleed photos stay untouched. */
+/** Reframe only when a real empty margin remains. */
 export function shouldReframe(box: PixelBox, width: number, height: number): boolean {
   if (alreadyFramed(box, width, height)) return false;
   const empty = Math.max(
@@ -116,7 +146,7 @@ export function frameSquareSize(boxW: number, boxH: number): number {
   return Math.min(2000, Math.max(1500, needed));
 }
 
-/** Draw rect that centers the product and leaves a 6 % margin inside the square. */
+/** Zentriert das Motiv mit PRODUCT_FILL-Innenabstand im Quadrat. */
 export function productFrame(boxW: number, boxH: number, canvas: number) {
   const inner = Math.max(1, Math.round(canvas * PRODUCT_FILL));
   const origin = Math.round((canvas - inner) / 2);

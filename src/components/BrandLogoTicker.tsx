@@ -21,10 +21,9 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
         src={originalImageSrc(logo.image)}
         alt={logo.name || "Brand"}
         fill
-        unoptimized
         quality={SHOP_IMAGE_QUALITY}
         className="object-contain"
-        sizes="144px"
+        sizes="(max-width: 768px) 120px, (max-width: 1920px) 160px, 200px"
       />
     </div>
   );

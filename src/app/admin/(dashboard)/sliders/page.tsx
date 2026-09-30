@@ -693,6 +693,7 @@ export default function AdminSlidersPage() {
                         }))
                       }
                       folder="banners"
+                      enableEditor
                     />
                     <select
                       className="input-field"
@@ -939,6 +940,7 @@ export default function AdminSlidersPage() {
                         }))
                       }
                       folder="brands"
+                      enableEditor
                     />
                     <input
                       className="input-field"

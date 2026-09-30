@@ -102,7 +102,7 @@ export function preloadBackgroundRemoval(
     onProgress?.({
       phase: "preload",
       ratio: 0,
-      label: "⚡ KI-Modell wird vorbereitet…",
+      label: "⚡ جاري تجهيز نموذج الذكاء الاصطناعي…",
       engine: prefersGpu() ? "webgpu" : "wasm",
     });
     const imgly = await loadImgly();
@@ -121,7 +121,7 @@ export function preloadBackgroundRemoval(
     onProgress?.({
       phase: "preload",
       ratio: 1,
-      label: "KI bereit (Turbo)",
+      label: "الذكاء الاصطناعي جاهز (توربو)",
       engine: prefersGpu() ? "webgpu" : "wasm",
     });
   })().catch((err) => {
@@ -145,7 +145,7 @@ async function runClientRemoval(
     onProgress?.({
       phase: "process",
       ratio: 0.05,
-      label: "⚡ Entferne Hintergrund mit KI (Turbo-Modus)…",
+      label: "⚡ إزالة الخلفية بالذكاء الاصطناعي (وضع التوربو)…",
       engine: device === "gpu" ? "webgpu" : "wasm",
     });
     const result = await imgly.removeBackground(blob, baseConfig(onProgress, device));
@@ -173,7 +173,7 @@ async function runServerRemoval(
   onProgress?.({
     phase: "fallback",
     ratio: 0.1,
-    label: "⚡ Server-Turbo-Fallback…",
+    label: "⚡ احتياطي توربو على الخادم…",
     engine: "server",
   });
   const body = new FormData();
@@ -190,7 +190,7 @@ async function runServerRemoval(
   onProgress?.({
     phase: "fallback",
     ratio: 0.9,
-    label: "⚡ Server-Ergebnis wird finalisiert…",
+    label: "⚡ جاري إنهاء نتيجة الخادم…",
     engine: "server",
   });
   return res.blob();
@@ -277,11 +277,11 @@ export async function removeImageBackgroundDetailed(
   onProgress?.({
     phase: "finalize",
     ratio: 0.95,
-    label: "Zentriere Freisteller…",
+    label: "جاري توسيط القصاصة…",
     engine,
   });
 
-  const finalized = await trimAndCenterCutout(cutout, { padding: 0.1, maxEdge: 1600 });
+  const finalized = await trimAndCenterCutout(cutout, { padding: 0.12, maxEdge: 2000 });
   // Sicherheitsnetz: Final darf Transparenz nicht verlieren
   if (!(await blobHasTransparency(finalized))) {
     throw new Error("Freisteller verlor Transparenz bei der Finalisierung");
@@ -290,7 +290,7 @@ export async function removeImageBackgroundDetailed(
   onProgress?.({
     phase: "finalize",
     ratio: 1,
-    label: "Fertig",
+    label: "جاهز",
     engine,
   });
 
