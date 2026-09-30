@@ -18,9 +18,9 @@ interface CompactBannerSliderProps {
   single?: boolean;
 }
 
-/** Einheitliche Compact-Höhe für ALLE Banner */
+/** Volle Breite, begrenzte Höhe — Bild nie croppen (object-contain). */
 export const BANNER_HEIGHT_CLASS =
-  "h-[170px] sm:h-[200px] md:h-[280px] lg:h-[320px] max-h-[340px]";
+  "h-48 sm:h-56 md:h-64 lg:h-[300px] max-h-[300px]";
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;
@@ -52,7 +52,7 @@ function BannerSlideContent({
   const media =
     mediaType === "video" && slide.videoUrl ? (
       <video
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-contain"
         src={slide.videoUrl}
         poster={slide.image}
         autoPlay
@@ -68,8 +68,11 @@ function BannerSlideContent({
         fill
         quality={SHOP_IMAGE_QUALITY}
         priority={priority}
-        className={cn("object-cover", isParallax && "scale-110 will-change-transform")}
-        sizes="(max-width: 768px) 100vw, (max-width: 1920px) 100vw, 1920px"
+        className={cn(
+          "object-contain object-center",
+          isParallax && "will-change-transform"
+        )}
+        sizes="100vw"
         draggable={false}
       />
     );
@@ -155,7 +158,7 @@ export default function CompactBannerSlider({
   return (
     <section
       className={cn(
-        "relative w-full overflow-hidden bg-jmle-mahogany select-none touch-pan-y",
+        "relative w-full overflow-hidden bg-jmle-cream select-none touch-pan-y",
         BANNER_HEIGHT_CLASS,
         className
       )}

@@ -24,7 +24,7 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
   if (!slides.length) return null;
 
   return (
-    <section className="relative w-full h-[52vh] md:h-[72vh] overflow-hidden bg-jmle-mahogany">
+    <section className="relative w-full h-48 sm:h-56 md:h-64 lg:h-[300px] max-h-[300px] overflow-hidden bg-jmle-cream">
       {slides.map((slide, index) => (
         <div
           key={slide.id}
@@ -40,21 +40,26 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
             fill
             quality={SHOP_IMAGE_QUALITY}
             priority={index === 0}
-            className="object-cover scale-105"
+            className="object-contain object-center"
             sizes="100vw"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-jmle-mahogany/80 via-gold-dark/25 to-transparent" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-            <p className="font-ui text-jmle-yellow/90 text-xs md:text-sm tracking-[0.35em] uppercase mb-3">
-              jmle
-            </p>
-            <h2 className="font-display text-3xl md:text-5xl lg:text-6xl text-white mb-3 text-balance drop-shadow-sm">
-              {slide.title}
-            </h2>
-            <p className="font-ui text-base md:text-xl text-jmle-ocher/95 font-light max-w-xl">
-              {slide.subtitle}
-            </p>
-          </div>
+          {(slide.title || slide.subtitle) && (
+            <div className="absolute inset-0 bg-gradient-to-t from-jmle-mahogany/55 via-transparent to-transparent pointer-events-none" />
+          )}
+          {(slide.title || slide.subtitle) && (
+            <div className="absolute inset-x-0 bottom-0 p-4 md:p-6 text-center">
+              {slide.title ? (
+                <h2 className="font-display text-xl md:text-3xl text-white drop-shadow-sm text-balance">
+                  {slide.title}
+                </h2>
+              ) : null}
+              {slide.subtitle ? (
+                <p className="font-ui text-sm md:text-base text-white/95 mt-1 max-w-xl mx-auto line-clamp-2">
+                  {slide.subtitle}
+                </p>
+              ) : null}
+            </div>
+          )}
         </div>
       ))}
 

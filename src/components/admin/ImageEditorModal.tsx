@@ -132,6 +132,7 @@ export default function ImageEditorModal({
   seed,
   autoExport = false,
   autoRemoveBackground = false,
+  allowBackgroundRemoval = true,
   onRemember,
 }: {
   source: File | string;
@@ -142,8 +143,11 @@ export default function ImageEditorModal({
   autoExport?: boolean;
   /** Sofort nach dem Laden Turbo-Freisteller starten */
   autoRemoveBackground?: boolean;
+  /** Banner/Logos: Freisteller komplett aus */
+  allowBackgroundRemoval?: boolean;
   onRemember?: (settings: RenderSettings) => void;
 }) {
+  const canRemoveBg = allowBackgroundRemoval;
   const { lang } = useAdminI18n();
   const copy = copyFor(lang);
   const presetLabels = PRESET_LABELS[lang];
@@ -584,9 +588,10 @@ export default function ImageEditorModal({
     }
   };
 
-  // Auto-Turbo beim Einfügen/Upload (einmal pro Bild) — ohne Qualitäts-Dialog
+  // Auto-Turbo nur wenn explizit erlaubt (nie bei Bannern)
   useEffect(() => {
     if (
+      !canRemoveBg ||
       !autoRemoveBackground ||
       autoExport ||
       phase !== "ready" ||
@@ -599,7 +604,7 @@ export default function ImageEditorModal({
     autoRemoveOnce.current = true;
     void onRemoveBackground();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, autoRemoveBackground, autoExport, bgRemoved, busy]);
+  }, [phase, autoRemoveBackground, autoExport, bgRemoved, busy, canRemoveBg]);
 
   const applySettings = (settings: RenderSettings) => {
     applyingHist.current = true;
@@ -987,12 +992,21 @@ export default function ImageEditorModal({
 
               {tab === "ai" && (
                 <div className="space-y-3">
-                  <p className="text-[11px] leading-relaxed text-gray-500">{copy.bgHint}</p>
-                  {busy === "bg" && (
+                  {canRemoveBg ? (
+                    <p className="text-[11px] leading-relaxed text-gray-500">{copy.bgHint}</p>
+                  ) : (
+                    <p className="text-[11px] leading-relaxed text-gray-500">
+                      {lang === "de"
+                        ? "Banner bleiben unverändert — kein KI-Freisteller."
+                        : "البانرات تبقى كما هي — بدون إزالة خلفية بالذكاء الاصطناعي."}
+                    </p>
+                  )}
+                  {canRemoveBg && busy === "bg" && (
                     <p className="rounded-lg bg-orange-50 px-3 py-2 text-xs font-medium text-brand-orange">
                       {progress?.label || copy.bgTurbo}
                     </p>
                   )}
+                  {canRemoveBg && (
                   <Button
                     type="button"
                     size="sm"
@@ -1013,7 +1027,8 @@ export default function ImageEditorModal({
                         ? copy.removeBgAgain
                         : copy.removeBg}
                   </Button>
-                  {bgRemoved && (
+                  )}
+                  {canRemoveBg && bgRemoved && (
                     <Button
                       type="button"
                       size="sm"

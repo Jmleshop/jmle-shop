@@ -17,11 +17,13 @@ export function isLogoFolder(folder: string): boolean {
   return /^(brand|brands|logo|logos)$/.test(folder.trim().toLowerCase());
 }
 
+export function isBannerFolder(folder: string): boolean {
+  return /^(banners?|slides|hero)$/.test(folder.trim().toLowerCase());
+}
+
 export function maxEdgeForFolder(folder: string): number {
   const key = folder.trim().toLowerCase();
   if (isLogoFolder(key)) return MAX_EDGE_LOGO;
-  if (key === "banners" || key === "banner" || key === "slides" || key === "hero") {
-    return MAX_EDGE_BANNER;
-  }
+  if (isBannerFolder(key)) return MAX_EDGE_BANNER;
   return MAX_EDGE_PRODUCT;
 }

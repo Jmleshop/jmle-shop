@@ -320,6 +320,8 @@ export default function ImageUpload({
       ? "Drag & Drop hierher"
       : "اسحب وأفلت هنا";
   const isLogo = /^(brand|brands|logo|logos)$/.test(folder.trim().toLowerCase());
+  const isBanner = /^(banners?|slides|hero)$/.test(folder.trim().toLowerCase());
+  const allowBackgroundRemoval = !isBanner && !isLogo;
   const helperText = isLogo
     ? lang === "de"
       ? "Logo: Originalqualität ohne Kompression/Zentrierung/Freisteller. Drag & Drop oder Einfügen."
@@ -500,8 +502,8 @@ export default function ImageUpload({
                   }
                 : null
           }
-          // Nie Auto-Freisteller im Editor — manuell per Button (bes. Banner)
           autoRemoveBackground={false}
+          allowBackgroundRemoval={allowBackgroundRemoval}
           autoExport={false}
           onRemember={(settings) => {
             bulkRef.current = {

@@ -4,6 +4,7 @@ import {
   MAX_EDGE_BANNER,
   MAX_EDGE_LOGO,
   MAX_EDGE_PRODUCT,
+  isBannerFolder,
   isLogoFolder,
   maxEdgeForFolder,
 } from "./image-bounds";
@@ -13,6 +14,12 @@ describe("image-bounds", () => {
     assert.equal(isLogoFolder("brand"), true);
     assert.equal(isLogoFolder("logos"), true);
     assert.equal(isLogoFolder("products"), false);
+  });
+
+  it("detects banner folders (no cutout)", () => {
+    assert.equal(isBannerFolder("banners"), true);
+    assert.equal(isBannerFolder("slides"), true);
+    assert.equal(isBannerFolder("products"), false);
   });
 
   it("caps products tightly; logos sharper; banners bounded", () => {
