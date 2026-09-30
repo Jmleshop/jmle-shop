@@ -82,13 +82,18 @@ export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
       width: size,
       height: size,
       channels: 4,
-      background: hasAlpha
-        ? { r: 0, g: 0, b: 0, alpha: 0 }
-        : { r: 255, g: 247, b: 237, alpha: 1 },
+      // Immer transparent — keine feste Hintergrundfarbe
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite([{ input: resized, left: place.dx, top: place.dy }])
-    .webp({ quality: 95, alphaQuality: 100 })
+    .composite([
+      {
+        input: await sharp(resized).ensureAlpha().png().toBuffer(),
+        left: place.dx,
+        top: place.dy,
+      },
+    ])
+    .png()
     .toBuffer();
 }
 

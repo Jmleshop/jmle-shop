@@ -43,10 +43,8 @@ export async function compressImageFile(
       if (!ctx) return file;
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      if (!png) {
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, width, height);
-      }
+      // Niemals feste Hintergrundfarbe — Transparenz / Alpha erhalten
+      ctx.clearRect(0, 0, width, height);
       ctx.drawImage(bitmap, 0, 0, width, height);
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, mime, quality)

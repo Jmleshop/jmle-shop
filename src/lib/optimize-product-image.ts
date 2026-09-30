@@ -41,16 +41,17 @@ export async function optimizeProductImageBuffer(
   const meta = await sharp(buffer).metadata();
   const hasAlpha = Boolean(meta.hasAlpha) || removedBackground;
 
-  // Einheitliches HD-Exportformat
-  if (hasAlpha) {
+  // Nach Freisteller immer PNG mit Alpha — nie feste Hintergrundfarbe einbrennen.
+  // Ohne Freisteller: Originalqualität (kein Upscale, hohe PNG/WebP-Qualität).
+  if (hasAlpha || removedBackground) {
     const png = await sharp(buffer)
       .ensureAlpha()
       .resize(MAX_EDGE, MAX_EDGE, {
         fit: "inside",
-        withoutEnlargement: false,
+        withoutEnlargement: true,
         kernel: "lanczos3",
       })
-      .png({ compressionLevel: 9, adaptiveFiltering: true })
+      .png({ compressionLevel: 6, adaptiveFiltering: true, effort: 7 })
       .toBuffer({ resolveWithObject: true });
     return {
       buffer: png.data,
@@ -65,10 +66,10 @@ export async function optimizeProductImageBuffer(
   const webp = await sharp(buffer)
     .resize(MAX_EDGE, MAX_EDGE, {
       fit: "inside",
-      withoutEnlargement: false,
+      withoutEnlargement: true,
       kernel: "lanczos3",
     })
-    .webp({ quality: 95, alphaQuality: 100 })
+    .webp({ quality: 100, alphaQuality: 100, nearLossless: true })
     .toBuffer({ resolveWithObject: true });
 
   return {
@@ -88,7 +89,7 @@ async function removeBackgroundNode(input: Buffer): Promise<Buffer | null> {
   });
   const blob = await removeBackground(source, {
     model: "small",
-    output: { format: "image/png", quality: 0.92 },
+    output: { format: "image/png", quality: 1 },
   });
   const out = Buffer.from(await blob.arrayBuffer());
   // Sanity: muss Transparenz haben
@@ -171,17 +172,24 @@ export async function frameSquareCentered(
   const padY = Math.max(2, Math.round(trimmed.info.height * 0.04));
   const paddedW = trimmed.info.width + padX * 2;
   const paddedH = trimmed.info.height + padY * 2;
+  // Immer transparente Fläche — niemals Weiß/Creme einbrennen
   const padded = await sharp({
     create: {
       width: paddedW,
       height: paddedH,
       channels: 4,
-      background: hasAlpha
-        ? { r: 0, g: 0, b: 0, alpha: 0 }
-        : { r: 255, g: 255, b: 255, alpha: 1 },
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite([{ input: trimmed.data, left: padX, top: padY }])
+    .composite([
+      {
+        input: hasAlpha
+          ? trimmed.data
+          : await sharp(trimmed.data).ensureAlpha().png().toBuffer(),
+        left: padX,
+        top: padY,
+      },
+    ])
     .png()
     .toBuffer({ resolveWithObject: true });
 
@@ -214,12 +222,16 @@ export async function frameSquareCentered(
       width: size,
       height: size,
       channels: 4,
-      background: hasAlpha
-        ? { r: 0, g: 0, b: 0, alpha: 0 }
-        : { r: 255, g: 247, b: 237, alpha: 1 },
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite([{ input: resized, left: place.dx, top: place.dy }])
+    .composite([
+      {
+        input: await sharp(resized).ensureAlpha().png().toBuffer(),
+        left: place.dx,
+        top: place.dy,
+      },
+    ])
     .png()
     .toBuffer();
 

@@ -180,7 +180,8 @@ export default function ImageEditorModal({
   // Qualitäts-Dialoge entfernt — immer fortfahren, HD-Export automatisch
   const [lowRes, setLowRes] = useState<"pending" | "ask" | "ok">("ok");
   const [exportQuality, setExportQuality] = useState(DEFAULT_EXPORT_QUALITY);
-  const [upscale, setUpscale] = useState<UpscaleTarget>(2000);
+  // Originalauflösung behalten (kein erzwungenes Upscale / Qualitätsverlust)
+  const [upscale, setUpscale] = useState<UpscaleTarget>(0);
   const [sizeBytes, setSizeBytes] = useState<number | null>(null);
 
   const bitmapRef = useRef<ImageBitmap | null>(null);
@@ -515,7 +516,8 @@ export default function ImageEditorModal({
       setBgEngine(detailed.engine);
       setBgMs(detailed.durationMs);
       setBackground("transparent");
-      setBackgroundColor("#FFF7ED");
+      setStudio("none");
+      setShadow("none");
       setAspectId("square");
       setMargin(true);
       // Postprocess liefert bereits zentriertes 1:1 — Full-Frame Crop
@@ -524,8 +526,8 @@ export default function ImageEditorModal({
       setFlipH(false);
       setFlipV(false);
       setTab("ai");
-      // Zero-Click: nach Auto-Freisteller sofort exportieren & übernehmen
-      if (autoRemoveBackground) {
+      // Zero-Click Auto-Export nur wenn explizit gewünscht — immer transparentes PNG
+      if (autoRemoveBackground && autoExport) {
         setBusy("save");
         setProgress(null);
         try {
@@ -542,6 +544,8 @@ export default function ImageEditorModal({
             watermark: false,
             straighten: 0,
             heal: [],
+            upscale: 0,
+            exportQuality: 95,
           });
           onComplete(file);
           return;
@@ -665,7 +669,18 @@ export default function ImageEditorModal({
     setBusy("save");
     setError("");
     try {
-      const settings = currentSettings();
+      // Nach Freisteller: immer transparentes PNG, keine Studio-/Farbflächen
+      const settings: RenderSettings = bgRemoved
+        ? {
+            ...currentSettings(),
+            background: "transparent",
+            studio: "none",
+            shadow: "none",
+            watermark: false,
+            upscale: 0,
+            exportQuality: 95,
+          }
+        : currentSettings();
       if (bulkApply) onRemember?.(settings);
       let file = await exportProductImage(bitmap, settings);
       try {
@@ -674,7 +689,9 @@ export default function ImageEditorModal({
         const framed = await fetch("/api/admin/frame-product-image", { method: "POST", body });
         if (framed.ok && framed.headers.get("X-Frame-Changed") === "1") {
           const blob = await framed.blob();
-          file = new File([blob], "product.webp", { type: "image/webp" });
+          const type = blob.type || "image/png";
+          const ext = type.includes("png") ? "png" : "webp";
+          file = new File([blob], `product.${ext}`, { type });
         }
       } catch {
         /* keep the editor file when the trim service is unreachable */
@@ -984,7 +1001,11 @@ export default function ImageEditorModal({
                     }
                     onClick={() => void onRemoveBackground()}
                   >
-                    {busy === "bg" ? copy.bgTurbo : copy.removeBg}
+                    {busy === "bg"
+                      ? copy.bgTurbo
+                      : bgRemoved
+                        ? copy.removeBgAgain
+                        : copy.removeBg}
                   </Button>
                   {bgRemoved && (
                     <Button

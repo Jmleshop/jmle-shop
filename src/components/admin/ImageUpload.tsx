@@ -488,7 +488,9 @@ export default function ImageUpload({
                   }
                 : null
           }
-          autoRemoveBackground
+          // Upload-Pfad entfernt den Hintergrund bereits automatisch.
+          // Im Editor: manuell erneut auslösen („Hintergrund erneut entfernen“).
+          autoRemoveBackground={false}
           autoExport={false}
           onRemember={(settings) => {
             bulkRef.current = {

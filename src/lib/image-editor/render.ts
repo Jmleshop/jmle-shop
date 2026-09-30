@@ -248,14 +248,22 @@ export async function exportProductImage(
 ): Promise<File> {
   const longest = Math.max(bitmap.width, bitmap.height, 1);
   const target = resolveExportEdge(longest, settings.upscale);
+  // Kein Upscale über die Quellauflösung hinaus — Qualität bleibt erhalten
   const native = Math.min(target, longest);
   const filtered = renderFilteredCanvas(bitmap, settings, native);
   let square = renderSquareCanvas(filtered, settings, native);
-  if (square.width < target || square.height < target) square = stepUpscale(square, target);
-  const quality = clampExportQuality(settings.exportQuality) / 100;
+  if (
+    settings.upscale &&
+    (square.width < target || square.height < target) &&
+    longest >= target
+  ) {
+    square = stepUpscale(square, target);
+  }
   const transparent =
     settings.background === "transparent" && (settings.studio ?? "none") === "none";
+  // Transparenter Freisteller immer als verlustfreies PNG
   const mime = transparent ? "image/png" : "image/webp";
+  const quality = transparent ? 1 : clampExportQuality(settings.exportQuality) / 100;
   const blob = await new Promise<Blob | null>((resolve) => {
     square.toBlob(resolve, mime, quality);
   });

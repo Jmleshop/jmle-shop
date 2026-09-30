@@ -62,7 +62,7 @@ function baseConfig(
     model: "isnet_fp16",
     output: {
       format: "image/png",
-      quality: 0.92,
+      quality: 1,
       type: "foreground",
     },
     progress: (key: string, current: number, total: number) => {
