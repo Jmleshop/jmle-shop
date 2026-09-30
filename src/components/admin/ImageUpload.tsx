@@ -106,6 +106,7 @@ export default function ImageUpload({
   multiple = false,
   enableCrop = false,
   enableEditor = false,
+  label,
 }: {
   value: string | string[];
   onChange: (urls: string | string[]) => void;
@@ -115,9 +116,12 @@ export default function ImageUpload({
   enableEditor?: boolean;
   /** @deprecated Alias für enableEditor */
   enableCrop?: boolean;
+  /** Optionaler UI-Label (sonst t("images")) */
+  label?: string;
 }) {
   const { lang, t } = useAdminI18n();
   const copy = copyFor(lang);
+  const fieldLabel = label || t("images");
   const editorEnabled = enableEditor || enableCrop;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -306,6 +310,18 @@ export default function ImageUpload({
     lang === "de"
       ? "Strg+V / Cmd+V zum Einfügen aus der Zwischenablage"
       : "Ctrl+V / Cmd+V للصق من الحافظة";
+  const helperText = editorEnabled
+    ? lang === "de"
+      ? "Zero-Click: Freisteller + Auto-Zentrierung starten sofort bei Upload/Einfügen. Stift = optional nachbearbeiten."
+      : "Zero-Click: إزالة الخلفية والمحاذاة تلقائياً عند الرفع/اللصق. القلم = تعديل اختياري."
+    : lang === "de"
+      ? "Automatische WebP-Kompression. Bei mehreren Bildern: Stern = Hauptbild (Cover)."
+      : "ضغط WebP تلقائي. عند عدة صور: النجمة = الصورة الرئيسية.";
+  const dropLabel = editorEnabled
+    ? lang === "de"
+      ? "Bild einfügen — Turbo-Freisteller startet automatisch"
+      : "أدرج صورة — يبدأ القص التلقائي فوراً"
+    : fieldLabel;
 
   return (
     <div
@@ -316,12 +332,9 @@ export default function ImageUpload({
       }`}
       aria-label={pasteLabel}
     >
-      <label className="mb-1 block text-sm">{t("images")}</label>
+      <label className="mb-1 block text-sm">{fieldLabel}</label>
       <p className="mb-2 text-[11px] text-gray-500">
-        {editorEnabled
-          ? "Zero-Click: Freisteller + Auto-Zentrierung starten sofort bei Upload/Einfügen. Stift = optional nachbearbeiten."
-          : "Automatische WebP-Kompression. Bei mehreren Bildern: Stern = Hauptbild (Cover)."}{" "}
-        · {pasteLabel}
+        {helperText} · {pasteLabel}
       </p>
       {turboProgress && (
         <div className="mb-3 rounded-xl border border-orange-200 bg-orange-50/90 px-3 py-3">
@@ -422,11 +435,7 @@ export default function ImageUpload({
           ) : (
             <Upload size={16} />
           )}
-          {uploading
-            ? turboProgress?.label || t("saving")
-            : editorEnabled
-              ? "Bild einfügen — Turbo-Freisteller startet automatisch"
-              : t("images")}
+          {uploading ? turboProgress?.label || t("saving") : dropLabel}
           <input
             type="file"
             accept="image/*"

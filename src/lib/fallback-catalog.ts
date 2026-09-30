@@ -38,14 +38,14 @@ function product(p: Partial<Product> & { id: string; name: string; price: number
 }
 
 const IMG = {
-  spices: "https://images.unsplash.com/photo-1596040033229-a0b517a33173?w=600&q=80",
+  spices: "https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=600&q=80",
   turmeric: "https://images.unsplash.com/photo-1615485290381-4418754e774e?w=600&q=80",
   basmati: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&q=80",
   egyptrice: "https://images.unsplash.com/photo-1536304997881-876e53ea1e0a?w=600&q=80",
   olive: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&q=80",
   sesameoil: "https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=600&q=80",
   labneh: "https://images.unsplash.com/photo-1488477181941-6428a0291777?w=600&q=80",
-  lentils: "https://images.unsplash.com/photo-1515543900108-63f1658a8c74?w=600&q=80",
+  lentils: "https://images.unsplash.com/photo-1516684669134-de6f7c473a2a?w=600&q=80",
   baklava: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&q=80",
   tahini: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&q=80",
 };

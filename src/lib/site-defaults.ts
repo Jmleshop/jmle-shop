@@ -26,7 +26,7 @@ export const DEFAULT_HERO_SLIDES: Slide[] = [
   {
     id: "slide-1",
     image:
-      "https://images.unsplash.com/photo-1596040033229-a0b517a33173?w=1600&q=80",
+      "https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=1600&q=80",
     title: "بهارات وتوابل أصيلة",
     subtitle: "نكهات من المطبخ العربي مباشرة إلى منزلك",
     titleAr: "بهارات وتوابل أصيلة",

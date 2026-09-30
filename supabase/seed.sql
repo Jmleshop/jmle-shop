@@ -2,11 +2,11 @@
 -- Mirrors data/products.json so the storefront renders content out of the box.
 
 INSERT INTO public.categories (id, name_ar, name_de, image, sort_order) VALUES
-  ('spices',    'بهارات',   'Gewürze',      'https://images.unsplash.com/photo-1596040033229-a0b517a33173?w=400&q=80', 1),
+  ('spices',    'بهارات',   'Gewürze',      'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=400&q=80', 1),
   ('rice',      'أرز',      'Reis',         'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&q=80', 2),
   ('oils',      'زيوت',     'Öle',          'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&q=80', 3),
   ('dairy',     'ألبان',    'Milchprodukte','https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400&q=80', 4),
-  ('legumes',   'بقوليات',  'Hülsenfrüchte','https://images.unsplash.com/photo-1515543900108-63f1658a8c74?w=400&q=80', 5),
+  ('legumes',   'بقوليات',  'Hülsenfrüchte','https://images.unsplash.com/photo-1516684669134-de6f7c473a2a?w=400&q=80', 5),
   ('sweets',    'حلويات',   'Süßigkeiten',  'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80', 6),
   ('canned',    'معلبات',   'Konserven',    'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&q=80', 7),
   ('beverages', 'مشروبات',  'Getränke',     'https://images.unsplash.com/photo-1546173159-315724a31696?w=400&q=80', 8)

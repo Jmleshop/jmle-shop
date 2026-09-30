@@ -167,6 +167,7 @@ export default function AdminSiteSettingsPage() {
             onChange={(url) => setLogo(typeof url === "string" ? url : url[0] ?? "")}
             folder="brand"
             multiple={false}
+            label={t("siteLogo")}
           />
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
