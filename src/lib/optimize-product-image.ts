@@ -23,7 +23,8 @@ export async function optimizeProductImageBuffer(
   options?: { removeBackground?: boolean; force?: boolean; maxEdge?: number }
 ): Promise<OptimizeResult> {
   const maxEdge = options?.maxEdge ?? MAX_EDGE_PRODUCT;
-  const wantBg = options?.removeBackground !== false;
+  // Default: KEIN Auto-Freisteller — nur explizit per removeBackground: true
+  const wantBg = options?.removeBackground === true;
   let working = input;
   let removedBackground = false;
 

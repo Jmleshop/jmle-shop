@@ -3,17 +3,12 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Upload, X, Star, Pencil, Download, Loader2, Sparkles } from "lucide-react";
+import { Upload, X, Star, Pencil, Download, Loader2 } from "lucide-react";
 import { uploadProductImage } from "@/lib/compress-image";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { copyFor } from "@/lib/image-editor/copy";
-import {
-  autoProcessProductFile,
-  type AutoProcessProgress,
-} from "@/lib/image-editor/auto-process-upload";
 import { preloadBackgroundRemoval } from "@/lib/image-editor/remove-background";
 import type { RenderSettings } from "@/lib/image-editor/types";
-import { maxEdgeForFolder } from "@/lib/image-bounds";
 
 const ImageEditorModal = dynamic(() => import("@/components/admin/ImageEditorModal"), {
   ssr: false,
@@ -118,8 +113,8 @@ export default function ImageUpload({
   folder?: string;
   multiple?: boolean;
   /**
-   * Zero-Click Turbo-Pipeline (Standard: an).
-   * Freisteller + Trim + Zentrierung bei Upload/Paste.
+   * Bild-Editor verfügbar (Standard: an).
+   * Freisteller läuft NIEMALS automatisch beim Upload — nur manuell im Editor.
    */
   enableEditor?: boolean;
   /** @deprecated Alias für enableEditor */
@@ -134,17 +129,14 @@ export default function ImageUpload({
   const copy = copyFor(lang);
   const fieldLabel = label || t("images");
   const editorEnabled = enableEditor || enableCrop;
-  /** Banner: kein Auto-Freisteller beim Upload — nur manuell im Editor */
-  const isBannerFolder = /^(banners?|slides|hero)$/i.test(folder.trim());
-  const autoBgOnUpload = editorEnabled && !isBannerFolder;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [pasteHint, setPasteHint] = useState(false);
-  const [turboProgress, setTurboProgress] = useState<AutoProcessProgress | null>(null);
   const [session, setSession] = useState<EditorSession | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const autoOpenHandledRef = useRef<string | null>(null);
 
+  // Modell nur vorladen wenn Editor offen werden kann — kein Auto-Run
   useEffect(() => {
     if (editorEnabled) void preloadBackgroundRemoval();
   }, [editorEnabled]);
@@ -205,54 +197,8 @@ export default function ImageUpload({
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (!list.length) return;
 
-    // Produkte/Kategorien/Logos: Turbo-Freisteller beim Upload
-    // Banner: Original behalten (nur WebP q90) — Freisteller nur manuell im Editor
-    if (autoBgOnUpload) {
-      setUploading(true);
-      setTurboProgress({
-        phase: "process",
-        ratio: 0.02,
-        label:
-          lang === "de"
-            ? "⚡ Entferne Hintergrund mit KI (Turbo-Modus)…"
-            : "⚡ إزالة الخلفية بالذكاء الاصطناعي (وضع التوربو)…",
-        total: list.length,
-        index: 1,
-      });
-      try {
-        const uploaded: string[] = [];
-        for (let i = 0; i < list.length; i++) {
-          const file = list[i];
-          const processed = await autoProcessProductFile(
-            file,
-            (p) =>
-              setTurboProgress({
-                ...p,
-                index: i + 1,
-                total: list.length,
-                fileName: file.name,
-              }),
-            { maxEdge: maxEdgeForFolder(folder) }
-          );
-          uploaded.push(await uploadProductImage(processed, folder));
-        }
-        if (multiple) publish([...urlsRef.current, ...uploaded]);
-        else publish(uploaded[0] ? [uploaded[0]] : []);
-      } catch (cause) {
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : lang === "de"
-              ? "Auto-Optimierung fehlgeschlagen"
-              : "فشل التحسين التلقائي"
-        );
-      } finally {
-        setUploading(false);
-        setTurboProgress(null);
-      }
-      return;
-    }
-
+    // Original bleibt zu 100 % erhalten (nur WebP q90 + Bounds).
+    // Kein Auto-Freisteller — Freisteller ausschließlich manuell im Editor.
     setUploading(true);
     try {
       const uploaded: string[] = [];
@@ -293,7 +239,7 @@ export default function ImageUpload({
     },
     // handleFiles closes over latest editor/upload state via refs
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editorEnabled, folder, multiple, autoBgOnUpload]
+    [editorEnabled, folder, multiple]
   );
 
   useEffect(() => {
@@ -368,26 +314,12 @@ export default function ImageUpload({
     lang === "de"
       ? "Strg+V / Cmd+V zum Einfügen aus der Zwischenablage"
       : "Ctrl+V / Cmd+V للصق من الحافظة";
-  const helperText = isBannerFolder
-    ? lang === "de"
-      ? "Banner: Original bleibt erhalten (WebP q90). Klick aufs Bild öffnet den Editor — Freisteller nur manuell."
-      : "البانر: تبقى الصورة الأصلية (WebP q90). انقر على الصورة لفتح المحرر — إزالة الخلفية يدوياً فقط."
-    : autoBgOnUpload
-      ? lang === "de"
-        ? "Klick aufs Bild öffnet den Editor. Upload: Turbo-Freisteller + WebP q90. Stift = nachbearbeiten."
-        : "انقر على الصورة لفتح المحرر. الرفع: قص توربو + WebP q90. القلم = تعديل لاحق."
-      : lang === "de"
-        ? "Automatische WebP-Kompression. Klick aufs Bild öffnet den Editor."
-        : "ضغط WebP تلقائي. انقر على الصورة لفتح المحرر.";
-  const dropLabel = autoBgOnUpload
-    ? lang === "de"
-      ? "Bild einfügen — Turbo-Freisteller startet automatisch"
-      : "أدرج صورة — يبدأ القص التلقائي فوراً"
-    : isBannerFolder
-      ? lang === "de"
-        ? "Banner hochladen (ohne Auto-Freisteller)"
-        : "رفع بانر (بدون إزالة خلفية تلقائية)"
-      : fieldLabel;
+  const helperText =
+    lang === "de"
+      ? "Original bleibt erhalten (WebP q90). Kein Auto-Freisteller. Klick öffnet den Editor — Freisteller nur per Button."
+      : "تبقى الصورة الأصلية (WebP q90). لا قص تلقائي. انقر لفتح المحرر — إزالة الخلفية يدوياً فقط.";
+  const dropLabel =
+    lang === "de" ? "Bild hochladen (Original)" : "رفع صورة (الأصلية)";
 
   return (
     <div
@@ -402,25 +334,6 @@ export default function ImageUpload({
       <p className="mb-2 text-[11px] text-gray-500">
         {helperText} · {pasteLabel}
       </p>
-      {turboProgress && (
-        <div className="mb-3 rounded-xl border border-orange-200 bg-orange-50/90 px-3 py-3">
-          <p className="flex items-center gap-2 text-xs font-semibold text-brand-orange">
-            <Loader2 size={14} className="animate-spin" />
-            {turboProgress.label}
-            {turboProgress.total && turboProgress.total > 1
-              ? ` (${turboProgress.index}/${turboProgress.total})`
-              : ""}
-          </p>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-orange-100">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-brand-orange to-gold transition-all duration-200"
-              style={{
-                width: `${Math.round(Math.max(0.05, turboProgress.ratio) * 100)}%`,
-              }}
-            />
-          </div>
-        </div>
-      )}
       <div className="flex flex-wrap gap-2">
         {urls.map((url, index) => (
           <div
@@ -502,12 +415,10 @@ export default function ImageUpload({
         <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-gold/40 py-3 text-sm text-gray-600 hover:bg-jmle-warm">
           {uploading ? (
             <Loader2 size={16} className="animate-spin text-brand-orange" />
-          ) : editorEnabled ? (
-            <Sparkles size={16} className="text-brand-orange" />
           ) : (
             <Upload size={16} />
           )}
-          {uploading ? turboProgress?.label || t("saving") : dropLabel}
+          {uploading ? t("saving") : dropLabel}
           <input
             type="file"
             accept="image/*"

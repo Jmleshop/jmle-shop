@@ -131,7 +131,7 @@ export default function ImageEditorModal({
   onCancel,
   seed,
   autoExport = false,
-  autoRemoveBackground = true,
+  autoRemoveBackground = false,
   onRemember,
 }: {
   source: File | string;
@@ -683,18 +683,24 @@ export default function ImageEditorModal({
         : { ...currentSettings(), exportQuality: 90, upscale: 0 };
       if (bulkApply) onRemember?.(settings);
       let file = await exportProductImage(bitmap, settings);
-      try {
-        const body = new FormData();
-        body.append("file", file);
-        const framed = await fetch("/api/admin/frame-product-image", { method: "POST", body });
-        if (framed.ok && framed.headers.get("X-Frame-Changed") === "1") {
-          const blob = await framed.blob();
-          file = new File([blob], "product.webp", {
-            type: blob.type || "image/webp",
+      // Nach manuellem Freisteller: kein zweites Server-Trim (schneidet Ecken ab)
+      if (!bgRemoved) {
+        try {
+          const body = new FormData();
+          body.append("file", file);
+          const framed = await fetch("/api/admin/frame-product-image", {
+            method: "POST",
+            body,
           });
+          if (framed.ok && framed.headers.get("X-Frame-Changed") === "1") {
+            const blob = await framed.blob();
+            file = new File([blob], "product.webp", {
+              type: blob.type || "image/webp",
+            });
+          }
+        } catch {
+          /* keep the editor file when the trim service is unreachable */
         }
-      } catch {
-        /* keep the editor file when the trim service is unreachable */
       }
       try {
         sessionStorage.setItem("jmle-editor-peer-luma", consistency);

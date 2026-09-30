@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/** Zero-Click Server-Pipeline: Freisteller + Trim + 1:1-Zentrierung */
+/** Bild-Optimierung: WebP + Bounds. Freisteller nur bei removeBackground=1. */
 export async function POST(request: Request) {
   const auth = await requireStaff();
   if (isAuthError(auth)) {
@@ -24,7 +24,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Leere Datei" }, { status: 400 });
   }
 
-  const removeBackground = String(form.get("removeBackground") ?? "1") !== "0";
+  // Default AUS — Auto-Freisteller zerstört Motive; nur explizit anfordern
+  const removeBackground = String(form.get("removeBackground") ?? "0") === "1";
   const maxEdgeRaw = Number(form.get("maxEdge"));
   const maxEdge =
     Number.isFinite(maxEdgeRaw) && maxEdgeRaw >= 256 && maxEdgeRaw <= 4096
@@ -34,7 +35,8 @@ export async function POST(request: Request) {
   try {
     const result = await optimizeProductImageBuffer(input, {
       removeBackground,
-      force: true,
+      // Ohne Freisteller nicht aggressiv neu zuschneiden
+      force: removeBackground,
       maxEdge,
     });
     return new NextResponse(new Uint8Array(result.buffer), {
