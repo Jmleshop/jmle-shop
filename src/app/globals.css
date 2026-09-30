@@ -73,17 +73,29 @@
   }
 
   /**
-   * Produktbild-Rahmen: 1:1, helles Off-White.
-   * object-contain ohne Scale → nie abgeschnitten (Flaschen/Säcke vollständig).
+   * PRODUKT-REGEL (dauerhaft):
+   * 1:1-Container, transparent, flex-zentriert, object-contain.
+   * ~10 % Innenabstand, nie cover/crop, Seitenfarbe scheint durch.
    */
   .product-image-frame {
-    @apply relative aspect-square overflow-hidden bg-[#FAF7F2] flex items-center justify-center p-2 sm:p-3;
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: transparent !important;
+    padding: 10%;
   }
 
   .product-image-media {
-    @apply object-contain object-center;
-    /* Kein Scale — sonst Clipping an Flaschen/Säcken */
+    object-fit: contain !important;
+    object-position: center !important;
+    width: 100% !important;
+    height: 100% !important;
     transform: none !important;
+    /* Fallback: Studio-Weiß optisch ausblenden */
+    mix-blend-mode: multiply;
   }
 
   .section-title {
@@ -122,20 +134,20 @@
   }
 }
 
-/* Header-Logo: h-10 mobil / h-14 desktop, w-auto, zentriert, Originalqualität */
+/* Header-Logo: mobil ≥48–56px, Desktop ≥64–80px, contain, zentriert */
 .brand-mark-frame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 2.5rem; /* h-10 */
+  height: 3.25rem; /* 52px */
   width: auto;
-  max-width: min(14rem, 70vw);
+  max-width: min(16rem, 72vw);
   overflow: visible;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: 3.5rem; /* h-14 */
-    max-width: 18rem;
+    height: 4.5rem; /* 72px */
+    max-width: 20rem;
   }
 }
 /* Footer/Hero-Mark über dem Slogan — groß & markant */
@@ -161,7 +173,7 @@
 }
 .brand-mark-img {
   display: block;
-  height: 100%; /* folgt Frame: h-10 / h-14 */
+  height: 100%;
   width: auto;
   max-width: 100%;
   object-fit: contain;
@@ -169,13 +181,13 @@
   image-rendering: auto;
 }
 .brand-mark-text {
-  font-size: 1.75rem !important; /* ~h-10 */
+  font-size: 2rem !important;
   line-height: 1 !important;
   letter-spacing: 0.08em;
 }
 @media (min-width: 1024px) {
   .brand-mark-text {
-    font-size: 2.25rem !important; /* ~h-14 */
+    font-size: 2.75rem !important;
   }
 }
 

@@ -79,7 +79,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <article
-      className={`group relative card-boutique overflow-hidden transition-all duration-300 ease-boutique hover:-translate-y-0.5 hover:shadow-gold hover:border-orange-200/80 sm:hover:-translate-y-1 ${
+      className={`group relative overflow-hidden rounded-2xl border border-orange-100/80 bg-transparent transition-all duration-300 ease-boutique hover:-translate-y-0.5 hover:shadow-gold hover:border-orange-200/80 sm:hover:-translate-y-1 ${
         out ? "opacity-60" : ""
       }`}
     >
@@ -93,7 +93,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             alt={product.nameDe ? `${title} – ${product.name}` : title}
             fill
             quality={SHOP_IMAGE_QUALITY}
-            className="product-image-media transition-transform duration-500 ease-boutique"
+            className="product-image-media"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 320px"
           />
           <div className="absolute inset-x-0 top-0 p-1 sm:p-2 flex gap-1 justify-between items-start pointer-events-none">
@@ -124,7 +124,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             ))}
           </div>
         </div>
-        <div className="p-1.5 sm:p-3 text-center">
+        <div className="bg-white/95 p-1.5 sm:p-3 text-center">
           <h3 className="font-ui text-[11px] sm:text-sm font-medium text-luxury-ink mb-0.5 line-clamp-2 min-h-[2.2em] sm:min-h-[2.5rem] leading-snug">
             {title}
             {product.weightValue != null && (
@@ -137,7 +137,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <ProductPrice product={product} />
         </div>
       </Link>
-      <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3">
+      <div className="bg-white/95 px-1.5 pb-1.5 sm:px-3 sm:pb-3">
         {out ? (
           <p className="w-full py-1.5 sm:py-2.5 text-center text-[10px] sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg sm:rounded-xl min-h-9 sm:min-h-11 flex items-center justify-center">
             {t("outOfStock")}

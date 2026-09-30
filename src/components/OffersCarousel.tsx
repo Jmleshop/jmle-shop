@@ -30,21 +30,21 @@ function OfferCard({ product }: { product: Product }) {
         <WishlistButton productId={product.id} size="sm" />
       </div>
       <Link href={`/products/${product.id}`} className="block" aria-label={title}>
-        <div className="card-boutique overflow-hidden transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
+        <div className="overflow-hidden rounded-2xl border border-orange-100/80 bg-transparent transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
           <div className="product-image-frame">
             <Image
               src={originalImageSrc(product.image)}
               alt={title}
               fill
               quality={SHOP_IMAGE_QUALITY}
-              className="product-image-media transition-transform duration-500 ease-boutique"
+              className="product-image-media"
               sizes="(max-width: 640px) 70vw, (max-width: 1024px) 31vw, 240px"
             />
             <div className="absolute top-2 start-2">
               <DiscountBadge percent={product.discountPercent} />
             </div>
           </div>
-          <div className="p-3 text-center">
+          <div className="bg-white/95 p-3 text-center">
             <h3 className="font-ui text-sm font-medium text-luxury-ink line-clamp-1">
               {title}
             </h3>

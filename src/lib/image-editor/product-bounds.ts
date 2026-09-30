@@ -3,9 +3,9 @@ import { squarePlacement } from "./geometry";
 
 /**
  * Längste Motiv-Seite füllt diesen Anteil des Quadrats.
- * ~6 % Padding pro Seite → nah/groß auf Karten, ohne Clipping.
+ * ~10 % Padding pro Seite → vollständig sichtbar, zentriert.
  */
-export const PRODUCT_FILL = 0.88;
+export const PRODUCT_FILL = 0.8;
 
 /** Trim: Alpha/Near-transparent + helles Studio-Weiß. */
 export const TRIM_THRESHOLD = 12;
