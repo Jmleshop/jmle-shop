@@ -27,17 +27,15 @@ export function CategoryTile({ category }: CategoryTileProps) {
       href={`/categories/${category.id}`}
       className="group flex flex-col items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 rounded-2xl"
     >
-      <div className="relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36">
-        <div
-          className="relative w-full h-full rounded-2xl overflow-hidden bg-white shadow-[0_10px_28px_-10px_rgba(127,29,29,0.35)] ring-1 ring-orange-100/80 transition-all duration-300 ease-boutique group-hover:scale-[1.06] group-hover:-translate-y-1.5 group-hover:shadow-[0_18px_36px_-12px_rgba(255,107,0,0.45)]"
-        >
+      <div className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-44 md:h-44">
+        <div className="relative w-full h-full rounded-2xl overflow-hidden bg-jmle-cream shadow-lg ring-1 ring-orange-200/70 transition-all duration-300 ease-boutique group-hover:scale-[1.05] group-hover:-translate-y-1.5 group-hover:shadow-xl group-hover:ring-brand-orange/40">
           <Image
             src={originalImageSrc(category.image)}
             alt={label}
             fill
             quality={SHOP_IMAGE_QUALITY}
             className="object-cover"
-            sizes="144px"
+            sizes="176px"
           />
         </div>
       </div>

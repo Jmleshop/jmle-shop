@@ -9,6 +9,7 @@ import {
   DEFAULT_HERO_SLIDES,
   DEFAULT_SITE_CONFIG,
 } from "@/lib/site-defaults";
+import { normalizeHomepageSections } from "@/lib/homepage-sections";
 import {
   ALL_CATEGORY,
   SALE_CATEGORY,
@@ -24,6 +25,7 @@ import { originalImageSrc } from "@/lib/sharp-image";
 import type {
   BrandLogo,
   Category,
+  HomepageSection,
   Product,
   SiteConfig,
   Slide,
@@ -161,8 +163,8 @@ function mapCategory(row: CategoryRow): Category {
 }
 
 function mapSliderZone(raw?: string | null): SliderZone {
-  if (raw === "banner2" || raw === "banner3") return raw;
-  return "banner1";
+  const zone = String(raw ?? "").trim();
+  return zone || "banner1";
 }
 
 function mapMediaType(raw?: string | null): SlideMediaType {
@@ -374,6 +376,12 @@ async function fetchSiteConfig(): Promise<SiteConfig> {
   }
 
   const v = data.value as Partial<SiteConfig>;
+  const homepageSections = normalizeHomepageSections(v.homepageSections, {
+    brands: v.brandsSectionTitle,
+    banner2: v.banner2SectionTitle,
+    banner3: v.banner3SectionTitle,
+    categories: v.categoriesSectionTitle,
+  });
   return {
     ...DEFAULT_SITE_CONFIG,
     ...v,
@@ -386,6 +394,7 @@ async function fetchSiteConfig(): Promise<SiteConfig> {
       ...DEFAULT_SITE_CONFIG.zoneLabels,
       ...(v.zoneLabels ?? {}),
     },
+    homepageSections,
   };
 }
 
@@ -472,7 +481,7 @@ const getCategoriesCached = unstable_cache(
 
 const getSiteConfigCached = unstable_cache(
   fetchSiteConfig,
-  ["catalog-site-v2"],
+  ["catalog-site-v3"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "site"] }
 );
 
@@ -491,6 +500,12 @@ const getBanner2Cached = unstable_cache(
 const getBanner3Cached = unstable_cache(
   () => fetchHeroSlides("banner3"),
   ["catalog-slides-banner3-v1"],
+  { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides"] }
+);
+
+const getAllSlidesCached = unstable_cache(
+  () => fetchHeroSlides(),
+  ["catalog-slides-all-v1"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides"] }
 );
 
@@ -550,6 +565,21 @@ export const getSiteConfigAsync = cache(async (): Promise<SiteConfig> => {
   return getSiteConfigCached();
 });
 
+export const getHomepageSectionsAsync = cache(
+  async (): Promise<HomepageSection[]> => {
+    const site = await getSiteConfigCached();
+    return (
+      site.homepageSections ??
+      normalizeHomepageSections(null, {
+        brands: site.brandsSectionTitle,
+        banner2: site.banner2SectionTitle,
+        banner3: site.banner3SectionTitle,
+        categories: site.categoriesSectionTitle,
+      })
+    );
+  }
+);
+
 export const getSlidesAsync = cache(async (): Promise<Slide[]> => {
   return getSlidesCached();
 });
@@ -563,6 +593,22 @@ export const getBanner2SlidesAsync = cache(async (): Promise<Slide[]> => {
 export const getBanner3SlidesAsync = cache(async (): Promise<Slide[]> => {
   return getBanner3Cached();
 });
+
+/** Alle aktiven Slides gruppiert nach freier Zone-ID */
+export const getSlidesByZoneAsync = cache(
+  async (): Promise<Record<string, Slide[]>> => {
+    const all = await getAllSlidesCached();
+    const byZone: Record<string, Slide[]> = {};
+    for (const slide of all) {
+      const zone = slide.sliderZone || "banner1";
+      (byZone[zone] ??= []).push(slide);
+    }
+    if (!byZone.banner1?.length) {
+      byZone.banner1 = DEFAULT_HERO_SLIDES;
+    }
+    return byZone;
+  }
+);
 
 export const getBrandLogosAsync = cache(async (): Promise<BrandLogo[]> => {
   return getBrandLogosCached();

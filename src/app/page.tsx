@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import {
-  getBanner2SlidesAsync,
-  getBanner3SlidesAsync,
-  getBrandLogosAsync,
   getBestsellersAsync,
+  getBrandLogosAsync,
   getHomepageCategoriesAsync,
+  getHomepageSectionsAsync,
   getOffersAsync,
+  getProductsAsync,
   getSiteConfigAsync,
   getSlidesAsync,
+  getSlidesByZoneAsync,
 } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
-import BrandLogoTicker from "@/components/BrandLogoTicker";
-import OffersCarousel from "@/components/OffersCarousel";
-import CategoryGrid from "@/components/CategoryGrid";
-import { BannerSection } from "@/components/HomeSections";
+import { HomepageSectionsRenderer } from "@/components/HomeSections";
 
 export const dynamic = "force-dynamic";
 
@@ -52,32 +50,26 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [banner1, brands, banner2, banner3, categories, offers, bestsellers, site] =
+  const [sections, slidesByZone, brands, categories, offers, bestsellers, allProducts] =
     await Promise.all([
-      getSlidesAsync(),
+      getHomepageSectionsAsync(),
+      getSlidesByZoneAsync(),
       getBrandLogosAsync(),
-      getBanner2SlidesAsync(),
-      getBanner3SlidesAsync(),
       getHomepageCategoriesAsync(),
       getOffersAsync(),
       getBestsellersAsync(),
-      getSiteConfigAsync(),
+      getProductsAsync(),
     ]);
 
   return (
-    <>
-      <div className="flex flex-col">
-        <BannerSection slides={banner1} size="hero" />
-        <BrandLogoTicker logos={brands} title={site.brandsSectionTitle} />
-        <BannerSection slides={banner2} title={site.banner2SectionTitle} />
-        <BannerSection slides={banner3} title={site.banner3SectionTitle} />
-      </div>
-      <CategoryGrid
-        categories={categories}
-        title={site.categoriesSectionTitle}
-      />
-      <OffersCarousel products={offers} titleKey="homeOffers" />
-      <OffersCarousel products={bestsellers} titleKey="homeBestsellers" reverse />
-    </>
+    <HomepageSectionsRenderer
+      sections={sections}
+      slidesByZone={slidesByZone}
+      brands={brands}
+      categories={categories}
+      offers={offers}
+      bestsellers={bestsellers}
+      allProducts={allProducts}
+    />
   );
 }
