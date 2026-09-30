@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import { Archive, ArchiveRestore, Pencil, Plus, X, Trash2 } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { categoryDepth, categoryLabel, sortedCategories } from "@/lib/category-tree";
+import { uncategorizedLabel } from "@/lib/category-product-guard";
 import ImageUpload from "@/components/admin/ImageUpload";
 import SwipeToDeleteRow from "@/components/admin/SwipeToDeleteRow";
 import { softDeleteWithUndo } from "@/lib/admin-soft-delete";
@@ -327,7 +328,11 @@ export default function AdminProductsPage() {
       if (!showArchived && p.deleted_at) return false;
       const st = p.status ?? "published";
       if (listTab === "draft" ? st !== "draft" : st === "draft") return false;
-      if (categoryFilter && p.category_id !== categoryFilter) return false;
+      if (categoryFilter === "__none__") {
+        if (p.category_id) return false;
+      } else if (categoryFilter && p.category_id !== categoryFilter) {
+        return false;
+      }
       const stock = Number(p.stock_quantity ?? 0);
       if (stockFilter === "low" && !(stock > 0 && stock < 5)) return false;
       if (stockFilter === "out" && stock !== 0) return false;
@@ -510,6 +515,7 @@ export default function AdminProductsPage() {
         </select>
         <select className="input-field" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="">Alle Kategorien</option>
+          <option value="__none__">{uncategorizedLabel(lang === "ar" ? "ar" : "de")}</option>
           {sortedCategories(categories).map((c) => (
             <option key={c.id} value={c.id}>{categoryLabel(c)}</option>
           ))}
@@ -996,6 +1002,12 @@ export default function AdminProductsPage() {
                       {p.status === "draft" && (
                         <span className="text-[11px] uppercase tracking-wide text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
                           {t("drafts")}
+                        </span>
+                      )}
+                      {(!p.category_id ||
+                        !categories.some((c) => c.id === p.category_id && !c.deleted_at)) && (
+                        <span className="text-[11px] uppercase tracking-wide text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
+                          {uncategorizedLabel(lang === "ar" ? "ar" : "de")}
                         </span>
                       )}
                       <span className="sm:hidden text-xs text-gray-500">

@@ -86,7 +86,7 @@ export default function AdminTrashPage() {
 
   const purgeCategory = async (id: string, name: string) => {
     const ok = confirm(
-      `Möchtest du die Kategorie „${name}“ wirklich unwiderruflich löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden.`
+      `Möchtest du die Kategorie „${name}“ wirklich unwiderruflich löschen?\n\nProdukte bleiben erhalten und werden „ohne Kategorie“.\nDieser Vorgang kann nicht rückgängig gemacht werden.`
     );
     if (!ok) return;
     setBusyId(id);
@@ -95,8 +95,15 @@ export default function AdminTrashPage() {
     setBusyId(null);
     if (!res.ok) {
       setError(data.error || "Löschen fehlgeschlagen");
+      toast.error(data.error || "Löschen fehlgeschlagen");
       return;
     }
+    const detached = Number(data.productsDetached ?? 0);
+    toast.success(
+      detached > 0
+        ? `Kategorie gelöscht — ${detached} Produkt(e) behalten (ohne Kategorie).`
+        : "Kategorie gelöscht. Produkte blieben unberührt."
+    );
     load();
   };
 

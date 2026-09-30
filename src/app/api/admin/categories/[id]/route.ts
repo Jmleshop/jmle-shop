@@ -6,6 +6,7 @@ import {
   productArchiveSchema,
 } from "@/lib/validations/product";
 import { parseJsonBody } from "@/lib/validations";
+import { detachProductsFromCategory } from "@/lib/category-product-guard";
 import { z } from "zod";
 
 interface RouteParams {
@@ -121,6 +122,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
+  // Beim Archivieren: Produkte behalten, nur Zuordnung lösen → „ohne Kategorie“
+  let productsDetached = 0;
+  if (parsed.data.archived) {
+    const detached = await detachProductsFromCategory(auth.supabase, id);
+    if (detached.error) {
+      return NextResponse.json({ error: detached.error }, { status: 500 });
+    }
+    productsDetached = detached.detached;
+  }
+
   const { data, error } = await auth.supabase
     .from("categories")
     .update({
@@ -133,12 +144,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   bustCatalogCache();
-  return NextResponse.json({ category: data });
+  return NextResponse.json({ category: data, productsDetached });
 }
 
 /**
  * Endgültiges Löschen — nur aus dem Papierkorb.
- * Blockiert bei vorhandenen Produkten oder Unterkategorien.
+ * Produkte werden NIEMALS mitgelöscht: category_id → NULL (FK ON DELETE SET NULL).
+ * Blockiert nur bei vorhandenen Unterkategorien.
  */
 export async function DELETE(_request: Request, { params }: RouteParams) {
   const auth = await requireStaff();
@@ -185,27 +197,27 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     );
   }
 
-  const { count: productCount } = await auth.supabase
-    .from("products")
-    .select("id", { count: "exact", head: true })
-    .eq("category_id", id);
-
-  if ((productCount ?? 0) > 0) {
-    return NextResponse.json(
-      {
-        error:
-          "Es gibt noch Produkte in dieser Kategorie. Bitte zuerst die Produkte in den Papierkorb legen oder verschieben.",
-      },
-      { status: 400 }
-    );
+  // Produktschutz: Zuordnung lösen, Bestand bleibt vollständig erhalten
+  const detached = await detachProductsFromCategory(auth.supabase, id);
+  if (detached.error) {
+    return NextResponse.json({ error: detached.error }, { status: 500 });
   }
 
   const { error } = await auth.supabase.from("categories").delete().eq("id", id);
 
   if (error) {
+    // Falls FK noch CASCADE/RESTRICT wäre: Produkte bleiben dank vorherigem Detach
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   bustCatalogCache();
-  return NextResponse.json({ success: true, id });
+  return NextResponse.json({
+    success: true,
+    id,
+    productsDetached: detached.detached,
+    message:
+      detached.detached > 0
+        ? `${detached.detached} Produkt(e) behalten — jetzt ohne Kategorie.`
+        : "Kategorie gelöscht.",
+  });
 }
