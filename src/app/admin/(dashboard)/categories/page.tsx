@@ -338,6 +338,7 @@ export default function AdminCategoriesPage() {
       body: JSON.stringify({
         ...form,
         parent_id: form.kind === "sub" ? form.parent_id : "",
+        show_on_homepage: form.kind === "main" ? form.show_on_homepage : false,
       }),
     });
     const data = await res.json();
@@ -584,13 +585,19 @@ export default function AdminCategoriesPage() {
             <label className="flex items-center gap-2 text-sm font-medium min-h-11">
               <input
                 type="checkbox"
-                checked={form.show_on_homepage}
+                checked={form.kind === "main" && form.show_on_homepage}
+                disabled={form.kind !== "main"}
                 onChange={(e) =>
                   setForm({ ...form, show_on_homepage: e.target.checked })
                 }
                 className="w-4 h-4 accent-brand-orange"
               />
               {t("showOnHomepage")}
+              {form.kind !== "main" ? (
+                <span className="text-xs text-gray-400 font-normal">
+                  (nur Hauptkategorien)
+                </span>
+              ) : null}
             </label>
             <div className="space-y-2">
               <p className="text-sm font-medium">{t("category")}</p>

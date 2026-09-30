@@ -1,5 +1,7 @@
 -- Manuell im Supabase SQL Editor ausführen, falls Migrations nicht auto-laufen.
 -- Siehe auch: supabase/migrations/20240930000001_homepage_sliders.sql
+--             supabase/migrations/20240930120000_banner3_ui_fixes.sql
+-- Empfohlen: supabase/feature-banner3-ui-fixes.sql ausführen.
 
 ALTER TABLE public.hero_slides
   ADD COLUMN IF NOT EXISTS link_url TEXT,
@@ -18,13 +20,14 @@ WHERE title_ar IS NULL OR title_ar = '';
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'hero_slides_slider_zone_check'
   ) THEN
-    ALTER TABLE public.hero_slides
-      ADD CONSTRAINT hero_slides_slider_zone_check
-      CHECK (slider_zone IN ('banner1', 'banner2'));
+    ALTER TABLE public.hero_slides DROP CONSTRAINT hero_slides_slider_zone_check;
   END IF;
+  ALTER TABLE public.hero_slides
+    ADD CONSTRAINT hero_slides_slider_zone_check
+    CHECK (slider_zone IN ('banner1', 'banner2', 'banner3'));
 END $$;
 
 CREATE INDEX IF NOT EXISTS hero_slides_zone_sort_idx

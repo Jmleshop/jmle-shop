@@ -67,11 +67,22 @@ const config: Config = {
           "35%": { transform: "scale(1.22)" },
           "60%": { transform: "scale(0.94)" },
         },
+        "cart-glow": {
+          "0%, 100%": {
+            boxShadow: "0 0 0 0 rgba(220, 38, 38, 0.55)",
+            transform: "scale(1)",
+          },
+          "40%": {
+            boxShadow: "0 0 0 8px rgba(220, 38, 38, 0)",
+            transform: "scale(1.28)",
+          },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.45s ease-out both",
         shimmer: "shimmer 1.4s infinite",
-        "cart-bump": "cart-bump 0.5s ease-boutique",
+        "cart-bump": "cart-bump 0.55s ease-boutique",
+        "cart-glow": "cart-glow 0.7s ease-out",
       },
       transitionTimingFunction: {
         boutique: "cubic-bezier(0.22, 1, 0.36, 1)",

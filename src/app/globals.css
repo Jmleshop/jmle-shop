@@ -154,24 +154,53 @@
 @keyframes jmle-fly-to-cart {
   0% {
     opacity: 1;
-    transform: translate(0, 0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1) rotate(-4deg);
+    filter: drop-shadow(0 8px 16px rgba(255, 107, 0, 0.35));
+  }
+  35% {
+    opacity: 1;
+    transform: translate3d(
+        calc(var(--fly-x) * 0.35),
+        calc(var(--fly-y) * 0.25 - 56px),
+        0
+      )
+      scale(0.92) rotate(6deg);
   }
   70% {
-    opacity: 1;
-    transform: translate(
-        calc(var(--fly-x) * 0.85),
-        calc(var(--fly-y) * 0.55 - 40px)
+    opacity: 0.95;
+    transform: translate3d(
+        calc(var(--fly-x) * 0.82),
+        calc(var(--fly-y) * 0.7 - 12px),
+        0
       )
-      scale(0.65);
+      scale(0.55) rotate(-2deg);
   }
   100% {
-    opacity: 0.2;
-    transform: translate(var(--fly-x), var(--fly-y)) scale(0.25);
+    opacity: 0;
+    transform: translate3d(var(--fly-x), var(--fly-y), 0) scale(0.18)
+      rotate(0deg);
+    filter: drop-shadow(0 0 0 transparent);
   }
 }
 
+@keyframes jmle-cart-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55);
+    transform: scale(1);
+  }
+  40% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+    transform: scale(1.28);
+  }
+}
+
+.animate-cart-glow {
+  animation: jmle-cart-glow 0.7s ease-out;
+}
+
 .header-smart {
-  transition: padding 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+  transition: box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 .header-smart-compact .header-smart-full {

@@ -10,11 +10,13 @@ import { cn } from "@/lib/cn";
 interface BrandLogoTickerProps {
   logos: BrandLogo[];
   className?: string;
+  /** Optionale Überschrift — leer = kein Abstand/kein Titel */
+  title?: string;
 }
 
 function LogoItem({ logo }: { logo: BrandLogo }) {
   const img = (
-    <div className="relative h-10 sm:h-12 md:h-14 w-28 sm:w-32 md:w-36 shrink-0 grayscale hover:grayscale-0 opacity-80 hover:opacity-100 transition-all duration-300">
+    <div className="relative h-10 sm:h-12 md:h-14 w-28 sm:w-32 md:w-36 shrink-0">
       <Image
         src={originalImageSrc(logo.image)}
         alt={logo.name || "Brand"}
@@ -43,23 +45,30 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
   return <div className="px-4 sm:px-6">{img}</div>;
 }
 
-export default function BrandLogoTicker({ logos, className }: BrandLogoTickerProps) {
+export default function BrandLogoTicker({
+  logos,
+  className,
+  title,
+}: BrandLogoTickerProps) {
   const { t } = useShopLocale();
   if (!logos.length) return null;
 
+  const heading = (title ?? "").trim();
   const loop = logos.length === 1 ? logos : [...logos, ...logos];
   const duration = Math.max(18, logos.length * 4);
 
   return (
     <section
-      className={cn(
-        "py-3 sm:py-4 border-y border-orange-100/80 bg-white/70",
-        className
-      )}
-      aria-label={t("brandPartners")}
+      className={cn(heading ? "pt-4 sm:pt-5 pb-3 sm:pb-4" : "py-3 sm:py-4", className)}
+      aria-label={heading || t("brandPartners")}
     >
+      {heading ? (
+        <div className="text-center mb-3 sm:mb-4 px-4">
+          <h2 className="section-title text-lg sm:text-xl">{heading}</h2>
+        </div>
+      ) : null}
       <div
-        className="jmle-marquee overflow-hidden"
+        className="jmle-marquee overflow-hidden bg-transparent"
         style={{ ["--marquee-duration" as string]: `${duration}s` }}
       >
         <div className="jmle-marquee-track items-center gap-2">

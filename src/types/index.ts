@@ -1,14 +1,26 @@
+export type SliderZone = "banner1" | "banner2" | "banner3";
+export type SlideMediaType = "image" | "video" | "parallax" | "product_card";
+
+export interface SliderZoneLabels {
+  banner1?: string;
+  brands?: string;
+  banner2?: string;
+  banner3?: string;
+}
+
 export interface SiteConfig {
   name: string;
   tagline: string;
   currency: string;
   locale: string;
   categoriesSectionTitle?: string;
+  brandsSectionTitle?: string;
+  banner2SectionTitle?: string;
+  banner3SectionTitle?: string;
+  zoneLabels?: SliderZoneLabels;
   description?: string;
   ogImage?: string;
 }
-
-export type SliderZone = "banner1" | "banner2";
 
 export interface Slide {
   id: string;
@@ -24,6 +36,10 @@ export interface Slide {
   sliderZone?: SliderZone;
   sortOrder?: number;
   active?: boolean;
+  mediaType?: SlideMediaType;
+  videoUrl?: string | null;
+  productId?: string | null;
+  interactiveStyle?: string | null;
 }
 
 export interface BrandLogo {

@@ -21,13 +21,25 @@ import {
   productIsOnSale,
 } from "@/lib/category-special";
 import { originalImageSrc } from "@/lib/sharp-image";
-import type { BrandLogo, Category, Product, SiteConfig, Slide, SliderZone } from "@/types";
+import type {
+  BrandLogo,
+  Category,
+  Product,
+  SiteConfig,
+  Slide,
+  SlideMediaType,
+  SliderZone,
+} from "@/types";
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
 const REVALIDATE_SECONDS = 60;
 
 const PUBLIC_SELECT =
   "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
+
+/** Fallback ohne Spalten, die in älteren products_public Views fehlen können */
+const PUBLIC_SELECT_BASIC =
+  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
 
 type PublicRow = {
   id: string;
@@ -79,6 +91,10 @@ type HeroSlideRow = {
   slider_zone?: string | null;
   sort_order?: number | null;
   active?: boolean | null;
+  media_type?: string | null;
+  video_url?: string | null;
+  product_id?: string | null;
+  interactive_style?: string | null;
 };
 
 type BrandLogoRow = {
@@ -144,13 +160,27 @@ function mapCategory(row: CategoryRow): Category {
   };
 }
 
+function mapSliderZone(raw?: string | null): SliderZone {
+  if (raw === "banner2" || raw === "banner3") return raw;
+  return "banner1";
+}
+
+function mapMediaType(raw?: string | null): SlideMediaType {
+  if (
+    raw === "video" ||
+    raw === "parallax" ||
+    raw === "product_card"
+  ) {
+    return raw;
+  }
+  return "image";
+}
+
 function mapHeroSlide(row: HeroSlideRow): Slide {
   const titleAr = String(row.title_ar || row.title || "");
   const titleDe = String(row.title_de || "");
   const subtitleAr = String(row.subtitle_ar || row.subtitle || "");
   const subtitleDe = String(row.subtitle_de || "");
-  const zone: SliderZone =
-    row.slider_zone === "banner2" ? "banner2" : "banner1";
   return {
     id: String(row.id),
     image: String(row.image || PLACEHOLDER_IMAGE),
@@ -162,9 +192,13 @@ function mapHeroSlide(row: HeroSlideRow): Slide {
     subtitleDe,
     linkUrl: row.link_url || null,
     linkCategoryId: row.link_category_id || null,
-    sliderZone: zone,
+    sliderZone: mapSliderZone(row.slider_zone),
     sortOrder: row.sort_order ?? 0,
     active: row.active !== false,
+    mediaType: mapMediaType(row.media_type),
+    videoUrl: row.video_url || null,
+    productId: row.product_id || null,
+    interactiveStyle: row.interactive_style || null,
   };
 }
 
@@ -210,10 +244,21 @@ export function nestCategories(flat: Category[]): Category[] {
  */
 async function fetchAllPublicProducts(): Promise<Product[]> {
   const supabase = createPublicClient();
-  const { data, error } = await supabase
+
+  // Volle Spaltenauswahl; bei Schema-Drift (fehlende Spalten) Basis-Select.
+  let { data, error } = await supabase
     .from("products_public")
     .select(PUBLIC_SELECT)
     .order("created_at", { ascending: false });
+
+  if (error && /column|42703/i.test(error.message)) {
+    const basic = await supabase
+      .from("products_public")
+      .select(PUBLIC_SELECT_BASIC)
+      .order("created_at", { ascending: false });
+    data = basic.data as typeof data;
+    error = basic.error;
+  }
 
   if (!error && data && data.length > 0) {
     return (data as PublicRow[]).map(mapPublicProduct);
@@ -334,12 +379,21 @@ async function fetchSiteConfig(): Promise<SiteConfig> {
     ...v,
     name: v.name || DEFAULT_SITE_CONFIG.name,
     tagline: v.tagline || DEFAULT_SITE_CONFIG.tagline,
+    brandsSectionTitle: v.brandsSectionTitle ?? DEFAULT_SITE_CONFIG.brandsSectionTitle,
+    banner2SectionTitle: v.banner2SectionTitle ?? DEFAULT_SITE_CONFIG.banner2SectionTitle,
+    banner3SectionTitle: v.banner3SectionTitle ?? DEFAULT_SITE_CONFIG.banner3SectionTitle,
+    zoneLabels: {
+      ...DEFAULT_SITE_CONFIG.zoneLabels,
+      ...(v.zoneLabels ?? {}),
+    },
   };
 }
 
 async function fetchHeroSlides(zone?: SliderZone): Promise<Slide[]> {
   const supabase = createPublicClient();
   const selectFull =
+    "id, image, title, subtitle, title_ar, title_de, subtitle_ar, subtitle_de, link_url, link_category_id, slider_zone, sort_order, active, media_type, video_url, product_id, interactive_style";
+  const selectMid =
     "id, image, title, subtitle, title_ar, title_de, subtitle_ar, subtitle_de, link_url, link_category_id, slider_zone, sort_order, active";
   const selectBasic = "id, image, title, subtitle, sort_order, active";
 
@@ -355,6 +409,21 @@ async function fetchHeroSlides(zone?: SliderZone): Promise<Slide[]> {
 
   let { data, error } = await query;
 
+  if (error && /media_type|video_url|product_id|interactive_style/i.test(error.message)) {
+    const mid = await supabase
+      .from("hero_slides")
+      .select(selectMid)
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
+    data = mid.data as typeof data;
+    error = mid.error;
+    if (!error && zone) {
+      data = ((data as HeroSlideRow[] | null) ?? []).filter(
+        (row) => mapSliderZone(row.slider_zone) === zone
+      ) as typeof data;
+    }
+  }
+
   if (error && /column|slider_zone|link_url|title_ar/i.test(error.message)) {
     const basic = await supabase
       .from("hero_slides")
@@ -364,14 +433,14 @@ async function fetchHeroSlides(zone?: SliderZone): Promise<Slide[]> {
     data = basic.data as typeof data;
     error = basic.error;
     // Ohne Zone-Spalte: nur banner1 bekommt Defaults/Legacy-Daten
-    if (!error && zone === "banner2") return [];
+    if (!error && zone && zone !== "banner1") return [];
   }
 
   if (error || !data?.length) {
     if (error && !/relation|does not exist|42P01/i.test(error.message)) {
       console.error("[catalog] hero_slides:", error.message);
     }
-    if (zone === "banner2") return [];
+    if (zone && zone !== "banner1") return [];
     return DEFAULT_HERO_SLIDES;
   }
 
@@ -397,13 +466,13 @@ async function fetchBrandLogos(): Promise<BrandLogo[]> {
 
 const getCategoriesCached = unstable_cache(
   fetchAllCategories,
-  ["catalog-categories-v3"],
+  ["catalog-categories-v4"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "categories"] }
 );
 
 const getSiteConfigCached = unstable_cache(
   fetchSiteConfig,
-  ["catalog-site-v1"],
+  ["catalog-site-v2"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "site"] }
 );
 
@@ -416,6 +485,12 @@ const getSlidesCached = unstable_cache(
 const getBanner2Cached = unstable_cache(
   () => fetchHeroSlides("banner2"),
   ["catalog-slides-banner2-v1"],
+  { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides"] }
+);
+
+const getBanner3Cached = unstable_cache(
+  () => fetchHeroSlides("banner3"),
+  ["catalog-slides-banner3-v1"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides"] }
 );
 
@@ -462,18 +537,13 @@ export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
   return [all, sale, ...tree];
 });
 
-/** Nur Kategorien, die auf der Startseite erscheinen sollen (ohne virtuelle). */
+/** Nur Hauptkategorien (Oberkategorien) auf der Startseite — keine Unterkategorien. */
 export const getHomepageCategoriesAsync = cache(async (): Promise<Category[]> => {
   const tree = await getCategoriesCached();
   const source = tree.length ? tree : FALLBACK_CATEGORIES;
-  const filterVisible = (nodes: Category[]): Category[] =>
-    nodes
-      .filter((c) => c.showOnHomepage !== false)
-      .map((c) => ({
-        ...c,
-        children: c.children?.length ? filterVisible(c.children) : [],
-      }));
-  return filterVisible(source);
+  return source
+    .filter((c) => !c.parentId && c.showOnHomepage !== false)
+    .map((c) => ({ ...c, children: [] }));
 });
 
 export const getSiteConfigAsync = cache(async (): Promise<SiteConfig> => {
@@ -488,6 +558,10 @@ export const getBanner1SlidesAsync = getSlidesAsync;
 
 export const getBanner2SlidesAsync = cache(async (): Promise<Slide[]> => {
   return getBanner2Cached();
+});
+
+export const getBanner3SlidesAsync = cache(async (): Promise<Slide[]> => {
+  return getBanner3Cached();
 });
 
 export const getBrandLogosAsync = cache(async (): Promise<BrandLogo[]> => {
@@ -509,7 +583,9 @@ export const getFlatCategoriesAsync = cache(async (): Promise<Category[]> => {
 
 export const getCategoryByIdAsync = cache(
   async (id: string): Promise<Category | undefined> => {
-    if (isAllCategoryId(id)) {
+    const rawId = decodeURIComponent(String(id || "")).trim();
+
+    if (isAllCategoryId(rawId)) {
       return {
         id: ALL_CATEGORY.id,
         name: ALL_CATEGORY.name,
@@ -521,7 +597,7 @@ export const getCategoryByIdAsync = cache(
       };
     }
 
-    if (isSaleCategoryId(id)) {
+    if (isSaleCategoryId(rawId)) {
       return {
         id: SALE_CATEGORY.id,
         name: SALE_CATEGORY.name,
@@ -534,7 +610,14 @@ export const getCategoryByIdAsync = cache(
     }
 
     const all = await getFlatCategoriesAsync();
-    const hit = all.find((c) => c.id === id);
+    const hit =
+      all.find((c) => c.id === rawId) ||
+      all.find(
+        (c) =>
+          c.id.toLowerCase() === rawId.toLowerCase() ||
+          c.name === rawId ||
+          c.nameEn === rawId
+      );
     if (hit) return hit;
 
     // DB-Kategorie „Sale“/العروض (aus dem Baum ausgeblendet) → virtuelle Sale
@@ -542,7 +625,7 @@ export const getCategoryByIdAsync = cache(
     const { data } = await supabase
       .from("categories")
       .select("id, name_ar, name_de, image, parent_id, sort_order")
-      .eq("id", id)
+      .eq("id", rawId)
       .is("deleted_at", null)
       .maybeSingle();
 
@@ -559,6 +642,10 @@ export const getCategoryByIdAsync = cache(
         sortOrder: SALE_CATEGORY.sortOrder,
         children: [],
       };
+    }
+
+    if (data) {
+      return mapCategory(data as CategoryRow);
     }
 
     return undefined;
@@ -623,18 +710,28 @@ export const getProductByIdAsync = cache(
 export const getProductsByCategoryAsync = cache(
   async (categoryId: string): Promise<Product[]> => {
     const products = await getProductsAsync();
+    const rawId = decodeURIComponent(String(categoryId || "")).trim();
 
     // Sammelkategorie „Alle Produkte": ausnahmslos ALLE Produkte, kategorieübergreifend.
-    if (isAllCategoryId(categoryId)) {
+    if (isAllCategoryId(rawId)) {
       return products;
     }
     // products_public: nur deleted_at IS NULL & published
 
     const flat = await getFlatCategoriesAsync();
-    const cat = flat.find((c) => c.id === categoryId);
+    const cat =
+      flat.find((c) => c.id === rawId) ||
+      flat.find(
+        (c) =>
+          c.id.toLowerCase() === rawId.toLowerCase() ||
+          c.name === rawId ||
+          c.nameEn === rawId
+      );
+
+    const resolvedId = cat?.id ?? rawId;
 
     let treatAsSale =
-      isSaleCategoryId(categoryId) || (cat != null && isSaleCategory(cat));
+      isSaleCategoryId(resolvedId) || (cat != null && isSaleCategory(cat));
 
     // Gefilterte DB-Sale-Kategorie (UUID) erkennen
     if (!treatAsSale && !cat) {
@@ -642,7 +739,7 @@ export const getProductsByCategoryAsync = cache(
       const { data } = await supabase
         .from("categories")
         .select("name_ar, name_de")
-        .eq("id", categoryId)
+        .eq("id", rawId)
         .is("deleted_at", null)
         .maybeSingle();
       if (data && isSaleCategoryName(data.name_ar, data.name_de)) {
@@ -657,14 +754,15 @@ export const getProductsByCategoryAsync = cache(
     }
 
     const realFlat = flat.filter((c) => !isSaleCategory(c) && !isAllCategory(c));
-    const ids = collectCategoryAndDescendantIds(categoryId, realFlat);
+    const ids = collectCategoryAndDescendantIds(resolvedId, realFlat);
 
+    // Auch wenn die Kategorie nur als Unterknoten bekannt ist: Baum nachziehen
     if (ids.size <= 1) {
       const tree = await getCategoriesAsync();
       const walk = (nodes: Category[], capturing: boolean) => {
         for (const n of nodes) {
-          if (isSaleCategory(n)) continue;
-          const cap = capturing || n.id === categoryId;
+          if (isSaleCategory(n) || isAllCategory(n)) continue;
+          const cap = capturing || n.id === resolvedId;
           if (cap) ids.add(n.id);
           if (n.children?.length) walk(n.children, cap);
         }
@@ -672,7 +770,42 @@ export const getProductsByCategoryAsync = cache(
       walk(tree, false);
     }
 
-    return products.filter((p) => p.categoryId && ids.has(p.categoryId));
+    // Direkte DB-Abfrage als zusätzlicher Fallback (falls Cache/Mapping hinkt)
+    const matched = products.filter(
+      (p) => p.categoryId && ids.has(p.categoryId)
+    );
+    if (matched.length > 0) return matched;
+
+    // Letzter Versuch: exakter category_id Match (auch wenn Kategorie nicht im Baum)
+    const direct = products.filter((p) => p.categoryId === resolvedId);
+    if (direct.length > 0) return direct;
+
+    // Live-Query gegen products_public / products
+    try {
+      const supabase = createPublicClient();
+      const idList = [...ids];
+      let query = supabase
+        .from("products_public")
+        .select(PUBLIC_SELECT_BASIC)
+        .in("category_id", idList.length ? idList : [resolvedId]);
+      let { data, error } = await query;
+      if (error) {
+        const retry = await supabase
+          .from("products")
+          .select(PUBLIC_SELECT_BASIC)
+          .is("deleted_at", null)
+          .in("category_id", idList.length ? idList : [resolvedId]);
+        data = retry.data as typeof data;
+        error = retry.error;
+      }
+      if (!error && data?.length) {
+        return (data as PublicRow[]).map(mapPublicProduct);
+      }
+    } catch (e) {
+      console.error("[catalog] getProductsByCategoryAsync live query:", e);
+    }
+
+    return matched;
   }
 );
 
