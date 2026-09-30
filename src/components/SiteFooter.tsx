@@ -5,23 +5,24 @@ import { useShopLocale } from "@/components/ShopLocale";
 import BrandMark from "@/components/BrandMark";
 
 export default function SiteFooter({
-  logoUrl = "",
+  logoUrl: _logoUrl = "",
   siteName = "jmle",
 }: {
   logoUrl?: string;
   siteName?: string;
 }) {
+  void _logoUrl;
   const { t } = useShopLocale();
   return (
     <footer className="relative bg-gradient-to-b from-gold-dark via-jmle-orange-dark to-jmle-mahogany text-white py-14 px-4 md:px-8 mt-auto border-t border-amber-200/20">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-10 flex flex-col items-center gap-3">
+        <div className="text-center mb-10 flex flex-col items-center gap-2">
+          {/* Bildlogo nur im Header — Footer: Textname + Slogan */}
           <BrandMark
-            logoUrl={logoUrl}
+            logoUrl=""
             name={siteName}
             className="justify-center mx-auto"
-            heightClassName="brand-mark-frame--footer"
-            textClassName="text-jmle-yellow hover:text-white !text-5xl md:!text-6xl"
+            textClassName="text-jmle-yellow hover:text-white !text-4xl md:!text-5xl"
           />
           <p className="text-jmle-ocher/90 text-sm md:text-base font-ui font-light max-w-md">
             {t("tagline")}

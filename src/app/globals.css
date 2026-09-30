@@ -82,11 +82,8 @@
 
   .product-image-media {
     @apply object-contain object-center;
-    transform: none;
-  }
-
-  .group:hover .product-image-media {
-    transform: scale(1.02);
+    /* Kein Scale — sonst Clipping an Flaschen/Säcken */
+    transform: none !important;
   }
 
   .section-title {
@@ -125,19 +122,19 @@
   }
 }
 
-/* Header-Logo: groß & scharf; Aspekt unangetastet (kein Stretch/Crop) */
+/* Header-Logo: groß, zentriert, gestochen scharf — nie Briefmarke */
 .brand-mark-frame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 64px;
-  max-width: min(18rem, 70vw);
+  height: 72px;
+  max-width: min(20rem, 78vw);
   overflow: visible;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: 80px;
-    max-width: 22rem;
+    height: 96px;
+    max-width: 26rem;
   }
 }
 /* Footer/Hero-Mark über dem Slogan — groß & markant */

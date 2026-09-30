@@ -198,9 +198,9 @@ export default function ImageUpload({
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (!list.length) return;
 
-    // Produkte: Editor sofort öffnen (Auto-Freisteller, Fenster bleibt offen).
+    // Produkte: Editor sofort öffnen — Auto-Freisteller, Fenster bleibt offen (kein Auto-Export).
     // Banner/Logos: direkt speichern, kein Freisteller.
-    if (editorEnabled && allowBackgroundRemoval) {
+    if (editorEnabled && allowBackgroundRemoval && !session) {
       openBatch(list, 0);
       return;
     }

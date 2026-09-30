@@ -18,8 +18,8 @@ interface CompactBannerSliderProps {
   single?: boolean;
 }
 
-/** Global: volle Breite, feste Breakpoint-Höhen, object-cover (flächendeckend). */
-export const BANNER_HEIGHT_CLASS = "h-48 md:h-80";
+/** Global für alle Banner: kontrollierte Höhe, vollflächig via object-cover. */
+export const BANNER_HEIGHT_CLASS = "h-40 md:h-64";
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;

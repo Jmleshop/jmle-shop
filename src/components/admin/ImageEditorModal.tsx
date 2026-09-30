@@ -530,8 +530,8 @@ export default function ImageEditorModal({
       setFlipH(false);
       setFlipV(false);
       setTab("ai");
-      // Zero-Click Auto-Export nur wenn explizit gewünscht — immer transparentes PNG
-      if (autoRemoveBackground && autoExport) {
+      // Nie automatisch schließen — Auto-Export nur bei explizitem autoExport=true
+      if (autoRemoveBackground && autoExport === true) {
         setBusy("save");
         setProgress(null);
         try {
