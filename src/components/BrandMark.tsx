@@ -9,23 +9,25 @@ type BrandMarkProps = {
   logoUrl?: string | null;
   name?: string;
   className?: string;
-  /** Text-Fallback-Klassen wenn kein Logo */
+  /** Text-Fallback-Klassen wenn kein Logo (Farbe o. Ä.) */
   textClassName?: string;
-  /** Bildhöhe in px (CSS) */
+  /**
+   * Optionaler Höhen-Override. Standard: 44px Mobile / 50px Desktop
+   * via `.brand-mark-frame` — nie Briefmarken-Größe.
+   */
   heightClassName?: string;
   priority?: boolean;
 };
 
 /**
- * Markenlogo als Home-Link. Ohne Logo-URL: Text-Marke.
+ * Markenlogo als Home-Link. Ohne Logo-URL: Text-Marke in voller Header-Größe.
  */
 export default function BrandMark({
   logoUrl,
   name = "jmle",
   className,
   textClassName,
-  /** Desktop ~48–50px, Mobile ~44px — nie Briefmarken-Größe */
-  heightClassName = "h-11 lg:h-12",
+  heightClassName,
   priority,
 }: BrandMarkProps) {
   const src = originalImageSrc(logoUrl || "");
@@ -40,7 +42,7 @@ export default function BrandMark({
       aria-label={`${name} – Home`}
     >
       {src ? (
-        <span className={cn("relative block w-auto max-w-[14rem] sm:max-w-[16rem] lg:max-w-[18rem]", heightClassName)}>
+        <span className={cn("brand-mark-frame relative", heightClassName)}>
           <Image
             src={src}
             alt={name}
@@ -49,14 +51,14 @@ export default function BrandMark({
             priority={priority}
             unoptimized
             quality={100}
-            className={cn("h-full w-auto max-h-full object-contain object-center")}
+            className="brand-mark-img"
             sizes="(max-width: 640px) 220px, (max-width: 1024px) 260px, 320px"
           />
         </span>
       ) : (
         <span
           className={cn(
-            "font-display tracking-[0.08em] leading-none transition-colors text-[2.5rem] lg:text-[3rem]",
+            "font-display brand-mark-text transition-colors",
             textClassName || "text-brand-orange hover:text-brand-red"
           )}
         >

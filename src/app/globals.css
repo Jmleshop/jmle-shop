@@ -113,14 +113,46 @@
   }
 }
 
-/* Responsive Feinschliff: arabische Lesbarkeit auf schmalen Screens */
+/* Responsive Feinschliff: arabische Lesbarkeit auf schmalen Screens.
+   Brand-Mark / Header-Logo NICHT clampen — sonst winzige Briefmarken-Logos. */
 @media (max-width: 639px) {
-  .font-display {
+  .font-display:not(.brand-mark-text) {
     font-size: clamp(1.35rem, 5.5vw, 1.75rem);
   }
 
   .section-title {
     font-size: clamp(1.35rem, 5vw, 1.75rem);
+  }
+}
+
+/* Header-/Footer-Logo: feste, gut lesbare Größe (40–50px), Seitenverhältnis erhalten */
+.brand-mark-frame {
+  display: block;
+  width: auto;
+  height: 44px;
+  max-width: min(18rem, 70vw);
+}
+@media (min-width: 1024px) {
+  .brand-mark-frame {
+    height: 50px;
+    max-width: 18rem;
+  }
+}
+.brand-mark-img {
+  height: 100%;
+  width: auto;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+.brand-mark-text {
+  font-size: 2.5rem !important;
+  line-height: 1 !important;
+  letter-spacing: 0.08em;
+}
+@media (min-width: 1024px) {
+  .brand-mark-text {
+    font-size: 3rem !important;
   }
 }
 
