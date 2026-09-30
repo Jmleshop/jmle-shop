@@ -20,6 +20,7 @@ export default function SiteFooter({
             logoUrl={logoUrl}
             name={siteName}
             className="justify-center mx-auto"
+            heightClassName="brand-mark-frame--footer"
             textClassName="text-jmle-yellow hover:text-white"
           />
           <p className="text-jmle-ocher/80 text-sm mt-2 font-ui font-light">

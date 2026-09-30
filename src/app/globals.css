@@ -125,19 +125,29 @@
   }
 }
 
-/* Header-/Footer-Logo: klar lesbar, Aspekt unangetastet (kein Stretch) */
+/* Header-Logo: groß & scharf; Aspekt unangetastet (kein Stretch/Crop) */
 .brand-mark-frame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 48px;
-  max-width: min(15rem, 58vw);
-  overflow: hidden;
+  height: 64px;
+  max-width: min(18rem, 70vw);
+  overflow: visible;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: 56px;
-    max-width: 17rem;
+    height: 80px;
+    max-width: 22rem;
+  }
+}
+.brand-mark-frame--footer {
+  height: 44px !important;
+  max-width: min(12rem, 50vw) !important;
+}
+@media (min-width: 1024px) {
+  .brand-mark-frame--footer {
+    height: 52px !important;
+    max-width: 14rem !important;
   }
 }
 .brand-mark-img {
@@ -150,13 +160,13 @@
   image-rendering: auto;
 }
 .brand-mark-text {
-  font-size: 2.5rem !important;
+  font-size: 2.75rem !important;
   line-height: 1 !important;
   letter-spacing: 0.08em;
 }
 @media (min-width: 1024px) {
   .brand-mark-text {
-    font-size: 3rem !important;
+    font-size: 3.25rem !important;
   }
 }
 

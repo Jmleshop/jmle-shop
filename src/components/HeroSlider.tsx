@@ -24,7 +24,7 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
   if (!slides.length) return null;
 
   return (
-    <section className="relative w-full h-48 sm:h-56 md:h-64 lg:h-[300px] max-h-[300px] overflow-hidden bg-jmle-cream">
+    <section className="relative w-full h-48 md:h-80 overflow-hidden bg-jmle-mahogany">
       {slides.map((slide, index) => (
         <div
           key={slide.id}
@@ -40,7 +40,7 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
             fill
             quality={SHOP_IMAGE_QUALITY}
             priority={index === 0}
-            className="object-contain object-center"
+            className="object-cover object-center"
             sizes="100vw"
           />
           {(slide.title || slide.subtitle) && (

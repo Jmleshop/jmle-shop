@@ -18,9 +18,8 @@ interface CompactBannerSliderProps {
   single?: boolean;
 }
 
-/** Volle Breite, begrenzte Höhe — Bild nie croppen (object-contain). */
-export const BANNER_HEIGHT_CLASS =
-  "h-48 sm:h-56 md:h-64 lg:h-[300px] max-h-[300px]";
+/** Global: volle Breite, feste Breakpoint-Höhen, object-cover (flächendeckend). */
+export const BANNER_HEIGHT_CLASS = "h-48 md:h-80";
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;
@@ -52,7 +51,7 @@ function BannerSlideContent({
   const media =
     mediaType === "video" && slide.videoUrl ? (
       <video
-        className="absolute inset-0 h-full w-full object-contain"
+        className="absolute inset-0 h-full w-full object-cover object-center"
         src={slide.videoUrl}
         poster={slide.image}
         autoPlay
@@ -69,7 +68,7 @@ function BannerSlideContent({
         quality={SHOP_IMAGE_QUALITY}
         priority={priority}
         className={cn(
-          "object-contain object-center",
+          "object-cover object-center",
           isParallax && "will-change-transform"
         )}
         sizes="100vw"
@@ -158,7 +157,7 @@ export default function CompactBannerSlider({
   return (
     <section
       className={cn(
-        "relative w-full overflow-hidden bg-jmle-cream select-none touch-pan-y",
+        "relative w-full overflow-hidden bg-jmle-mahogany select-none touch-pan-y",
         BANNER_HEIGHT_CLASS,
         className
       )}
