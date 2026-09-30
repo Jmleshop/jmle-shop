@@ -4,6 +4,10 @@ import { isAuthError, requireStaff } from "@/lib/admin-server";
 import { DEFAULT_SITE_CONFIG } from "@/lib/site-defaults";
 import { normalizeHomepageSections } from "@/lib/homepage-sections";
 import { readSiteLogo, writeSiteLogo } from "@/lib/site-logo";
+import {
+  friendlySiteSettingsError,
+  upsertSiteSetting,
+} from "@/lib/site-settings";
 
 function bust() {
   try {
@@ -116,21 +120,18 @@ export async function PUT(request: Request) {
     ),
   };
 
-  const { data, error } = await auth.supabase
-    .from("site_settings")
-    .upsert({
-      key: "site",
-      value: next,
-      updated_at: new Date().toISOString(),
-    })
-    .select("value")
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const saved = await upsertSiteSetting(auth.supabase, "site", next);
+  if (saved.error) {
+    return NextResponse.json(
+      { error: friendlySiteSettingsError(saved.error) },
+      { status: 500 }
+    );
   }
 
   bust();
-  const site = { ...(data?.value as Record<string, unknown>), logo: logoUrl || "" };
+  const site = {
+    ...((saved.data?.value as Record<string, unknown> | undefined) ?? next),
+    logo: logoUrl || "",
+  };
   return NextResponse.json({ site, logo: logoUrl || "" });
 }

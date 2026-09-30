@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { Button } from "@/components/ui";
@@ -101,27 +102,53 @@ export default function AdminSiteSettingsPage() {
       ordered.find((s) => s.zone === "banner3" || s.id === "sec-banner3")?.title ||
       "";
 
-    const res = await fetch("/api/admin/site", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        logo,
-        name,
-        tagline,
-        homepageSections: ordered,
-        categoriesSectionTitle: categoriesTitle,
-        brandsSectionTitle: brandsTitle,
-        banner2SectionTitle: banner2Title,
-        banner3SectionTitle: banner3Title,
-      }),
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (!res.ok) {
-      setError(data.error || "خطأ في الحفظ");
-      return;
+    try {
+      const res = await fetch("/api/admin/site", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          logo,
+          name,
+          tagline,
+          homepageSections: ordered,
+          categoriesSectionTitle: categoriesTitle,
+          brandsSectionTitle: brandsTitle,
+          banner2SectionTitle: banner2Title,
+          banner3SectionTitle: banner3Title,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setSaving(false);
+      if (!res.ok) {
+        const message =
+          typeof data.error === "string" && data.error.trim()
+            ? data.error
+            : lang === "de"
+              ? "Site-Einstellungen konnten nicht gespeichert werden."
+              : "تعذّر حفظ إعدادات الموقع.";
+        // Keine rohen SQL-Fehler in der UI
+        const clean = /violates not-null|null value in column|PGRST|SQL/i.test(
+          message
+        )
+          ? lang === "de"
+            ? "Speichern fehlgeschlagen. Bitte erneut versuchen."
+            : "فشل الحفظ. يرجى المحاولة مرة أخرى."
+          : message;
+        setError(clean);
+        toast.error(clean);
+        return;
+      }
+      setLogo(String(data.logo || data.site?.logo || logo));
+      toast.success(lang === "de" ? "Gespeichert" : "تم الحفظ");
+    } catch {
+      setSaving(false);
+      const clean =
+        lang === "de"
+          ? "Netzwerkfehler beim Speichern."
+          : "خطأ في الشبكة أثناء الحفظ.";
+      setError(clean);
+      toast.error(clean);
     }
-    setLogo(String(data.logo || data.site?.logo || logo));
   };
 
   const updateSectionTitle = (id: string, titleAr: string) => {

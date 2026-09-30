@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { upsertSiteSetting } from "@/lib/site-settings";
 
 export const SITE_LOGO_KEY = "site_logo";
 
@@ -29,10 +30,6 @@ export async function writeSiteLogo(
   logoUrl: string
 ): Promise<{ error?: string }> {
   const url = logoUrl.trim();
-  const { error } = await supabase.from("site_settings").upsert({
-    key: SITE_LOGO_KEY,
-    value: { url },
-    updated_at: new Date().toISOString(),
-  });
-  return error ? { error: error.message } : {};
+  const result = await upsertSiteSetting(supabase, SITE_LOGO_KEY, { url });
+  return result.error ? { error: result.error } : {};
 }
