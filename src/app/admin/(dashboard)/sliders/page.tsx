@@ -1,12 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Plus, Trash2, Images, Building2, PanelsTopLeft } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Plus,
+  Trash2,
+  Images,
+  Building2,
+  PanelsTopLeft,
+  LayoutTemplate,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { Button } from "@/components/ui";
 
-type Tab = "banner1" | "brands" | "banner2";
+type Tab = "banner1" | "brands" | "banner2" | "banner3" | "settings";
 
 type SlideRow = {
   id: string;
@@ -22,6 +33,10 @@ type SlideRow = {
   slider_zone?: string;
   sort_order?: number;
   active?: boolean;
+  media_type?: string | null;
+  video_url?: string | null;
+  product_id?: string | null;
+  interactive_style?: string | null;
 };
 
 type BrandRow = {
@@ -35,6 +50,19 @@ type BrandRow = {
 
 type CatOption = { id: string; name_de: string; name_ar: string };
 
+type SiteForm = {
+  brandsSectionTitle: string;
+  banner2SectionTitle: string;
+  banner3SectionTitle: string;
+  categoriesSectionTitle: string;
+  zoneLabels: {
+    banner1: string;
+    brands: string;
+    banner2: string;
+    banner3: string;
+  };
+};
+
 const emptySlide = (): Omit<SlideRow, "id"> & { id?: string } => ({
   image: "",
   title_ar: "",
@@ -45,6 +73,23 @@ const emptySlide = (): Omit<SlideRow, "id"> & { id?: string } => ({
   link_category_id: "",
   sort_order: 0,
   active: true,
+  media_type: "image",
+  video_url: "",
+  product_id: "",
+  interactive_style: "",
+});
+
+const defaultSite = (): SiteForm => ({
+  brandsSectionTitle: "",
+  banner2SectionTitle: "",
+  banner3SectionTitle: "",
+  categoriesSectionTitle: "",
+  zoneLabels: {
+    banner1: "Hero Banner 1",
+    brands: "Marken-Logos",
+    banner2: "Banner 2",
+    banner3: "Banner 3",
+  },
 });
 
 export default function AdminSlidersPage() {
@@ -62,9 +107,21 @@ export default function AdminSlidersPage() {
     name: "",
     image: "",
     link_url: "",
+    active: true,
   });
+  const [site, setSite] = useState<SiteForm>(defaultSite());
 
-  const loadSlides = useCallback(async (zone: "banner1" | "banner2") => {
+  const zoneLabel = (key: keyof SiteForm["zoneLabels"]) =>
+    site.zoneLabels[key]?.trim() ||
+    (key === "banner1"
+      ? t("sliderBanner1")
+      : key === "brands"
+        ? t("sliderBrands")
+        : key === "banner2"
+          ? t("sliderBanner2")
+          : t("sliderBanner3"));
+
+  const loadSlides = useCallback(async (zone: "banner1" | "banner2" | "banner3") => {
     const res = await fetch(`/api/admin/slides?zone=${zone}`);
     const data = await res.json();
     if (!res.ok) {
@@ -97,21 +154,59 @@ export default function AdminSlidersPage() {
     }
   }, []);
 
+  const loadSite = useCallback(async () => {
+    const res = await fetch("/api/admin/site");
+    const data = await res.json();
+    if (!res.ok) return;
+    const s = data.site ?? {};
+    setSite({
+      brandsSectionTitle: s.brandsSectionTitle ?? "",
+      banner2SectionTitle: s.banner2SectionTitle ?? "",
+      banner3SectionTitle: s.banner3SectionTitle ?? "",
+      categoriesSectionTitle: s.categoriesSectionTitle ?? "",
+      zoneLabels: {
+        banner1: s.zoneLabels?.banner1 || "Hero Banner 1",
+        brands: s.zoneLabels?.brands || "Marken-Logos",
+        banner2: s.zoneLabels?.banner2 || "Banner 2",
+        banner3: s.zoneLabels?.banner3 || "Banner 3",
+      },
+    });
+  }, []);
+
   useEffect(() => {
     setError("");
     setForm(emptySlide());
     setEditingId(null);
-    setBrandForm({ id: "", name: "", image: "", link_url: "" });
-    if (tab === "brands") void loadLogos();
-    else void loadSlides(tab);
+    setBrandForm({ id: "", name: "", image: "", link_url: "", active: true });
+    void loadSite();
     void loadCategories();
-  }, [tab, loadLogos, loadSlides, loadCategories]);
+    if (tab === "brands") void loadLogos();
+    else if (tab === "settings") return;
+    else void loadSlides(tab);
+  }, [tab, loadLogos, loadSlides, loadCategories, loadSite]);
+
+  const saveSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const res = await fetch("/api/admin/site", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(site),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error || "Fehler");
+      return;
+    }
+  };
 
   const saveSlide = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError("");
-    const zone = tab === "banner2" ? "banner2" : "banner1";
+    const zone = tab === "banner2" || tab === "banner3" ? tab : "banner1";
     const res = await fetch("/api/admin/slides", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -119,9 +214,7 @@ export default function AdminSlidersPage() {
         ...form,
         id: editingId || form.id,
         slider_zone: zone,
-        sort_order: editingId
-          ? form.sort_order
-          : slides.length,
+        sort_order: editingId ? form.sort_order : slides.length,
       }),
     });
     const data = await res.json();
@@ -148,7 +241,27 @@ export default function AdminSlidersPage() {
       link_category_id: s.link_category_id || "",
       sort_order: s.sort_order ?? 0,
       active: s.active !== false,
+      media_type: s.media_type || "image",
+      video_url: s.video_url || "",
+      product_id: s.product_id || "",
+      interactive_style: s.interactive_style || "",
     });
+  };
+
+  const toggleSlideActive = async (s: SlideRow) => {
+    await fetch("/api/admin/slides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...s,
+        active: s.active === false,
+        title_ar: s.title_ar || s.title || "",
+        title_de: s.title_de || "",
+      }),
+    });
+    if (tab === "banner1" || tab === "banner2" || tab === "banner3") {
+      await loadSlides(tab);
+    }
   };
 
   const deleteSlide = async (id: string) => {
@@ -156,7 +269,9 @@ export default function AdminSlidersPage() {
     await fetch(`/api/admin/slides?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
-    await loadSlides(tab === "banner2" ? "banner2" : "banner1");
+    if (tab === "banner1" || tab === "banner2" || tab === "banner3") {
+      await loadSlides(tab);
+    }
   };
 
   const moveSlide = async (id: string, dir: -1 | 1) => {
@@ -198,7 +313,7 @@ export default function AdminSlidersPage() {
       setError(data.error || data.hint || "Fehler");
       return;
     }
-    setBrandForm({ id: "", name: "", image: "", link_url: "" });
+    setBrandForm({ id: "", name: "", image: "", link_url: "", active: true });
     await loadLogos();
   };
 
@@ -211,9 +326,15 @@ export default function AdminSlidersPage() {
   };
 
   const tabs: { id: Tab; icon: typeof Images; label: string }[] = [
-    { id: "banner1", icon: PanelsTopLeft, label: t("sliderBanner1") },
-    { id: "brands", icon: Building2, label: t("sliderBrands") },
-    { id: "banner2", icon: Images, label: t("sliderBanner2") },
+    { id: "banner1", icon: PanelsTopLeft, label: zoneLabel("banner1") },
+    { id: "brands", icon: Building2, label: zoneLabel("brands") },
+    { id: "banner2", icon: Images, label: zoneLabel("banner2") },
+    { id: "banner3", icon: LayoutTemplate, label: zoneLabel("banner3") },
+    {
+      id: "settings",
+      icon: PanelsTopLeft,
+      label: lang === "de" ? "Titel & Namen" : "العناوين والأسماء",
+    },
   ];
 
   return (
@@ -222,8 +343,8 @@ export default function AdminSlidersPage() {
         <h1 className="text-2xl font-semibold text-luxury-ink">{t("sliders")}</h1>
         <p className="text-sm text-gray-500 mt-1">
           {lang === "de"
-            ? "Banner 1, Marken-Logos und Banner 2 für die Startseite verwalten."
-            : "إدارة اللافتات وشعارات العلامات على الصفحة الرئيسية."}
+            ? "Hero Banner 1, Marken-Logos, Banner 2 & Banner 3 — aktivieren, sortieren, verlinken und benennen."
+            : "إدارة اللافتات وشعارات العلامات: تفعيل، ترتيب، ربط وإعادة تسمية."}
         </p>
       </div>
 
@@ -251,7 +372,68 @@ export default function AdminSlidersPage() {
         </p>
       )}
 
-      {tab !== "brands" ? (
+      {tab === "settings" ? (
+        <form onSubmit={saveSite} className="card-boutique p-4 sm:p-5 space-y-4 max-w-2xl">
+          <h2 className="font-medium text-luxury-ink">{t("zoneRename")}</h2>
+          {(
+            [
+              ["banner1", "banner1"],
+              ["brands", "brands"],
+              ["banner2", "banner2"],
+              ["banner3", "banner3"],
+            ] as const
+          ).map(([key]) => (
+            <div key={key}>
+              <label className="block text-xs text-gray-500 mb-1">{key}</label>
+              <input
+                className="input-field"
+                value={site.zoneLabels[key]}
+                onChange={(e) =>
+                  setSite((s) => ({
+                    ...s,
+                    zoneLabels: { ...s.zoneLabels, [key]: e.target.value },
+                  }))
+                }
+              />
+            </div>
+          ))}
+          <h2 className="font-medium text-luxury-ink pt-2">{t("sectionTitle")}</h2>
+          <p className="text-xs text-gray-500">
+            {lang === "de"
+              ? "Leer lassen = keine Überschrift und kein Extra-Abstand auf der Startseite."
+              : "اتركه فارغاً = بدون عنوان وبدون مسافة إضافية."}
+          </p>
+          <input
+            className="input-field"
+            placeholder={zoneLabel("brands")}
+            value={site.brandsSectionTitle}
+            onChange={(e) => setSite({ ...site, brandsSectionTitle: e.target.value })}
+          />
+          <input
+            className="input-field"
+            placeholder={zoneLabel("banner2")}
+            value={site.banner2SectionTitle}
+            onChange={(e) => setSite({ ...site, banner2SectionTitle: e.target.value })}
+          />
+          <input
+            className="input-field"
+            placeholder={zoneLabel("banner3")}
+            value={site.banner3SectionTitle}
+            onChange={(e) => setSite({ ...site, banner3SectionTitle: e.target.value })}
+          />
+          <input
+            className="input-field"
+            placeholder={t("categoriesSectionTitle")}
+            value={site.categoriesSectionTitle}
+            onChange={(e) =>
+              setSite({ ...site, categoriesSectionTitle: e.target.value })
+            }
+          />
+          <Button type="submit" disabled={saving}>
+            {saving ? t("saving") : t("save")}
+          </Button>
+        </form>
+      ) : tab !== "brands" ? (
         <div className="grid lg:grid-cols-2 gap-6">
           <form onSubmit={saveSlide} className="card-boutique p-4 sm:p-5 space-y-3">
             <h2 className="font-medium text-luxury-ink">
@@ -270,6 +452,26 @@ export default function AdminSlidersPage() {
               }
               folder="banners"
             />
+            <select
+              className="input-field"
+              value={form.media_type || "image"}
+              onChange={(e) => setForm({ ...form, media_type: e.target.value })}
+            >
+              <option value="image">{lang === "de" ? "Bild" : "صورة"}</option>
+              <option value="video">{lang === "de" ? "Produkt-Video / Reel" : "فيديو / ريل"}</option>
+              <option value="parallax">{lang === "de" ? "Parallax-Banner" : "بانر متوازي"}</option>
+              <option value="product_card">
+                {lang === "de" ? "Animierte Produkt-Karte" : "بطاقة منتج متحركة"}
+              </option>
+            </select>
+            {(form.media_type === "video" || form.media_type === "product_card") && (
+              <input
+                className="input-field"
+                placeholder={t("videoUrl")}
+                value={form.video_url || ""}
+                onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+              />
+            )}
             <input
               className="input-field"
               dir="rtl"
@@ -318,6 +520,15 @@ export default function AdminSlidersPage() {
                 </option>
               ))}
             </select>
+            <label className="flex items-center gap-2 text-sm min-h-11">
+              <input
+                type="checkbox"
+                checked={form.active !== false}
+                onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                className="w-4 h-4 accent-brand-orange"
+              />
+              {t("active")}
+            </label>
             <div className="flex gap-2">
               <Button type="submit" disabled={saving || !form.image}>
                 <Plus size={16} />
@@ -360,9 +571,13 @@ export default function AdminSlidersPage() {
                     {s.title_de || s.title_ar || s.title || s.id}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
+                    {s.media_type && s.media_type !== "image"
+                      ? `${s.media_type} · `
+                      : ""}
                     {s.link_category_id
                       ? `→ /categories/${s.link_category_id}`
                       : s.link_url || "—"}
+                    {s.active === false ? ` · ${t("inactive")}` : ""}
                   </p>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -383,6 +598,14 @@ export default function AdminSlidersPage() {
                     <ArrowDown size={16} />
                   </button>
                 </div>
+                <button
+                  type="button"
+                  className="p-2 text-gray-500 hover:text-brand-orange"
+                  onClick={() => void toggleSlideActive(s)}
+                  title={s.active === false ? t("active") : t("inactive")}
+                >
+                  {s.active === false ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
                 <button
                   type="button"
                   className="text-sm text-brand-orange px-2"
@@ -415,8 +638,8 @@ export default function AdminSlidersPage() {
             </h2>
             <p className="text-xs text-gray-500">
               {lang === "de"
-                ? "PNG mit transparentem Hintergrund empfohlen."
-                : "يُفضّل PNG بخلفية شفافة."}
+                ? "PNG mit transparentem Hintergrund empfohlen. Logos erscheinen in Originalfarben."
+                : "يُفضّل PNG بخلفية شفافة. تظهر الشعارات بألوانها الأصلية."}
             </p>
             <ImageUpload
               value={brandForm.image}
@@ -463,7 +686,7 @@ export default function AdminSlidersPage() {
                 <img
                   src={l.image}
                   alt={l.name}
-                  className="w-20 h-12 object-contain rounded-lg bg-white"
+                  className="w-20 h-12 object-contain rounded-lg bg-transparent"
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{l.name || l.id}</p>
@@ -477,6 +700,7 @@ export default function AdminSlidersPage() {
                       name: l.name,
                       image: l.image,
                       link_url: l.link_url || "",
+                      active: l.active !== false,
                     })
                   }
                 >

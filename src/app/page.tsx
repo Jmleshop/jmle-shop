@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {
   getBanner2SlidesAsync,
+  getBanner3SlidesAsync,
   getBrandLogosAsync,
   getBestsellersAsync,
   getHomepageCategoriesAsync,
@@ -9,10 +10,10 @@ import {
   getSlidesAsync,
 } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
-import CompactBannerSlider from "@/components/CompactBannerSlider";
 import BrandLogoTicker from "@/components/BrandLogoTicker";
 import OffersCarousel from "@/components/OffersCarousel";
 import CategoryGrid from "@/components/CategoryGrid";
+import { BannerSection } from "@/components/HomeSections";
 
 export const dynamic = "force-dynamic";
 
@@ -51,24 +52,30 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [banner1, brands, banner2, categories, offers, bestsellers] =
+  const [banner1, brands, banner2, banner3, categories, offers, bestsellers, site] =
     await Promise.all([
       getSlidesAsync(),
       getBrandLogosAsync(),
       getBanner2SlidesAsync(),
+      getBanner3SlidesAsync(),
       getHomepageCategoriesAsync(),
       getOffersAsync(),
       getBestsellersAsync(),
+      getSiteConfigAsync(),
     ]);
 
   return (
     <>
-      <div className="flex flex-col gap-2 sm:gap-3">
-        <CompactBannerSlider slides={banner1} />
-        <BrandLogoTicker logos={brands} />
-        <CompactBannerSlider slides={banner2} />
+      <div className="flex flex-col">
+        <BannerSection slides={banner1} size="hero" />
+        <BrandLogoTicker logos={brands} title={site.brandsSectionTitle} />
+        <BannerSection slides={banner2} title={site.banner2SectionTitle} />
+        <BannerSection slides={banner3} title={site.banner3SectionTitle} />
       </div>
-      <CategoryGrid categories={categories} titleKey="shopByCategory" />
+      <CategoryGrid
+        categories={categories}
+        title={site.categoriesSectionTitle}
+      />
       <OffersCarousel products={offers} titleKey="homeOffers" />
       <OffersCarousel products={bestsellers} titleKey="homeBestsellers" reverse />
     </>

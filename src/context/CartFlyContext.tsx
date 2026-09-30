@@ -60,7 +60,7 @@ export function CartFlyProvider({ children }: { children: ReactNode }) {
 
   const bumpCart = useCallback(() => {
     setCartBumping(true);
-    window.setTimeout(() => setCartBumping(false), 520);
+    window.setTimeout(() => setCartBumping(false), 720);
   }, []);
 
   const flyToCart = useCallback(
@@ -71,10 +71,11 @@ export function CartFlyProvider({ children }: { children: ReactNode }) {
         return;
       }
       const id = ++idRef.current;
-      const startX = fromRect.left + fromRect.width / 2 - 20;
-      const startY = fromRect.top + fromRect.height / 2 - 20;
-      const endX = target.left + target.width / 2 - 20;
-      const endY = target.top + target.height / 2 - 20;
+      const size = 48;
+      const startX = fromRect.left + fromRect.width / 2 - size / 2;
+      const startY = fromRect.top + fromRect.height / 2 - size / 2;
+      const endX = target.left + target.width / 2 - size / 2;
+      const endY = target.top + target.height / 2 - size / 2;
 
       setFlying((prev) => [
         ...prev,
@@ -84,7 +85,7 @@ export function CartFlyProvider({ children }: { children: ReactNode }) {
       window.setTimeout(() => {
         setFlying((prev) => prev.filter((f) => f.id !== id));
         bumpCart();
-      }, 700);
+      }, 900);
     },
     [bumpCart]
   );
@@ -100,13 +101,14 @@ export function CartFlyProvider({ children }: { children: ReactNode }) {
             {flying.map((f) => (
               <div
                 key={f.id}
-                className="pointer-events-none fixed z-[200] h-10 w-10 rounded-xl overflow-hidden shadow-lg border-2 border-white"
+                className="pointer-events-none fixed z-[200] h-12 w-12 rounded-2xl overflow-hidden shadow-[0_12px_32px_-8px_rgba(255,107,0,0.55)] border-2 border-white ring-2 ring-brand-orange/40"
                 style={{
                   left: f.x,
                   top: f.y,
                   ["--fly-x" as string]: `${f.tx - f.x}px`,
                   ["--fly-y" as string]: `${f.ty - f.y}px`,
-                  animation: "jmle-fly-to-cart 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+                  animation:
+                    "jmle-fly-to-cart 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards",
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}

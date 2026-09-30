@@ -9,6 +9,7 @@ import { getAppUrl } from "@/lib/site-defaults";
 import { ProductGrid } from "@/components/ProductCard";
 import CategoryGrid from "@/components/CategoryGrid";
 import { CategoryHeading } from "@/components/ShopText";
+import { EmptyCategoryNotice } from "@/components/HomeSections";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,9 @@ export async function generateMetadata({
   params,
 }: CategoryPageProps): Promise<Metadata> {
   const { id } = await params;
+  const decoded = decodeURIComponent(id);
   const [category, site] = await Promise.all([
-    getCategoryByIdAsync(id),
+    getCategoryByIdAsync(decoded),
     getSiteConfigAsync(),
   ]);
 
@@ -62,9 +64,10 @@ export async function generateMetadata({
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { id } = await params;
+  const decoded = decodeURIComponent(id);
   const [category, products] = await Promise.all([
-    getCategoryByIdAsync(id),
-    getProductsByCategoryAsync(id),
+    getCategoryByIdAsync(decoded),
+    getProductsByCategoryAsync(decoded),
   ]);
 
   if (!category) {
@@ -82,7 +85,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       {category.children && category.children.length > 0 && (
         <CategoryGrid categories={category.children} titleKey="subcategories" />
       )}
-      <ProductGrid products={products} />
+      {products.length > 0 ? (
+        <ProductGrid products={products} />
+      ) : (
+        <EmptyCategoryNotice />
+      )}
     </div>
   );
 }

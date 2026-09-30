@@ -1,9 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Upload, X, Star, Crop, Pencil } from "lucide-react";
+import { Upload, X, Star, Crop, Pencil, Download } from "lucide-react";
 import { uploadProductImage } from "@/lib/compress-image";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { copyFor } from "@/lib/image-editor/copy";
@@ -22,6 +22,33 @@ type EditorSession = {
 
 function fileKey(file: File, index: number) {
   return `${index}-${file.name}-${file.size}-${file.lastModified}`;
+}
+
+async function downloadImageUrl(url: string, filename = "bild") {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) throw new Error("download failed");
+    const blob = await res.blob();
+    const ext =
+      blob.type.includes("png")
+        ? "png"
+        : blob.type.includes("webp")
+          ? "webp"
+          : blob.type.includes("jpeg") || blob.type.includes("jpg")
+            ? "jpg"
+            : "img";
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = `${filename}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    // Fallback: neues Tab öffnen
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
 }
 
 export default function ImageUpload({
@@ -46,7 +73,9 @@ export default function ImageUpload({
   const editorEnabled = enableEditor || enableCrop;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [pasteHint, setPasteHint] = useState(false);
   const [session, setSession] = useState<EditorSession | null>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
   const urls = Array.isArray(value) ? value : value ? [value] : [];
   const urlsKey = urls.join("\n");
   const urlsKeyRef = useRef(urlsKey);
@@ -78,7 +107,7 @@ export default function ImageUpload({
     });
   };
 
-  const handleFiles = async (files: FileList) => {
+  const handleFiles = async (files: FileList | File[]) => {
     setError("");
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (!list.length) return;
@@ -102,6 +131,55 @@ export default function ImageUpload({
       setUploading(false);
     }
   };
+
+  const onPaste = useCallback(
+    (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items?.length) return;
+      const files: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      if (!files.length) return;
+      event.preventDefault();
+      setPasteHint(true);
+      window.setTimeout(() => setPasteHint(false), 1200);
+      void handleFiles(files);
+    },
+    // handleFiles closes over latest editor/upload state via refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editorEnabled, folder, multiple]
+  );
+
+  useEffect(() => {
+    const el = dropRef.current;
+    if (!el) return;
+    const listener = (e: ClipboardEvent) => onPaste(e);
+    el.addEventListener("paste", listener);
+    // Auch global, wenn Fokus im Upload-Bereich liegt
+    const onDocPaste = (e: ClipboardEvent) => {
+      if (!el.contains(document.activeElement) && document.activeElement !== el) {
+        // Erlaube Paste, wenn der Bereich fokussiert ist oder nichts anderes fokussiert ist
+        const active = document.activeElement;
+        const isTyping =
+          active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          (active as HTMLElement | null)?.isContentEditable;
+        if (isTyping && active !== el) return;
+      }
+      if (el.contains(document.activeElement) || document.activeElement === el || el.matches(":focus-within")) {
+        onPaste(e);
+      }
+    };
+    document.addEventListener("paste", onDocPaste);
+    return () => {
+      el.removeEventListener("paste", listener);
+      document.removeEventListener("paste", onDocPaste);
+    };
+  }, [onPaste]);
 
   const onEditorDone = async (file: File) => {
     const current = session;
@@ -143,13 +221,27 @@ export default function ImageUpload({
     publish([url, ...urls.filter((item) => item !== url)]);
   };
 
+  const downloadLabel = lang === "de" ? "Bild herunterladen" : "تحميل الصورة";
+  const pasteLabel =
+    lang === "de"
+      ? "Strg+V / Cmd+V zum Einfügen aus der Zwischenablage"
+      : "Ctrl+V / Cmd+V للصق من الحافظة";
+
   return (
-    <div className="space-y-2">
+    <div
+      ref={dropRef}
+      tabIndex={0}
+      className={`space-y-2 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40 ${
+        pasteHint ? "ring-2 ring-brand-orange/50" : ""
+      }`}
+      aria-label={pasteLabel}
+    >
       <label className="mb-1 block text-sm">{t("images")}</label>
       <p className="mb-2 text-[11px] text-gray-500">
         {editorEnabled
           ? copy.editHint
-          : "Automatische WebP-Kompression. Bei mehreren Bildern: Stern = Hauptbild (Cover)."}
+          : "Automatische WebP-Kompression. Bei mehreren Bildern: Stern = Hauptbild (Cover)."}{" "}
+        · {pasteLabel}
       </p>
       <div className="flex flex-wrap gap-2">
         {urls.map((url, index) => (
@@ -191,6 +283,15 @@ export default function ImageUpload({
               >
                 <X size={12} />
               </button>
+              <button
+                type="button"
+                onClick={() => void downloadImageUrl(url, `jmle-${folder}-${index + 1}`)}
+                className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-white/90 p-1.5 text-brand-orange"
+                title={downloadLabel}
+                aria-label={downloadLabel}
+              >
+                <Download size={12} />
+              </button>
               {multiple && index !== 0 && (
                 <button
                   type="button"
@@ -206,21 +307,33 @@ export default function ImageUpload({
           </div>
         ))}
       </div>
-      <label className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-gold/40 py-3 text-sm text-gray-600 hover:bg-jmle-warm">
-        {editorEnabled ? <Crop size={16} /> : <Upload size={16} />}
-        {uploading ? t("saving") : editorEnabled ? copy.choose : t("images")}
-        <input
-          type="file"
-          accept="image/*"
-          multiple={multiple}
-          className="hidden"
-          disabled={uploading || session !== null}
-          onChange={(event) => {
-            if (event.target.files?.length) void handleFiles(event.target.files);
-            event.target.value = "";
-          }}
-        />
-      </label>
+      <div className="flex flex-wrap gap-2">
+        <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-gold/40 py-3 text-sm text-gray-600 hover:bg-jmle-warm">
+          {editorEnabled ? <Crop size={16} /> : <Upload size={16} />}
+          {uploading ? t("saving") : editorEnabled ? copy.choose : t("images")}
+          <input
+            type="file"
+            accept="image/*"
+            multiple={multiple}
+            className="hidden"
+            disabled={uploading || session !== null}
+            onChange={(event) => {
+              if (event.target.files?.length) void handleFiles(event.target.files);
+              event.target.value = "";
+            }}
+          />
+        </label>
+        {urls[0] ? (
+          <button
+            type="button"
+            onClick={() => void downloadImageUrl(urls[0], `jmle-${folder}`)}
+            className="inline-flex min-h-12 items-center gap-2 rounded-xl border border-orange-200 bg-white px-3 text-sm text-luxury-charcoal hover:border-brand-orange hover:text-brand-orange"
+          >
+            <Download size={16} />
+            {downloadLabel}
+          </button>
+        ) : null}
+      </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       {session && (

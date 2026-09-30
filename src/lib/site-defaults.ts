@@ -7,6 +7,15 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   currency: "EUR",
   locale: "ar",
   categoriesSectionTitle: "تسوق على حسب الفئة",
+  brandsSectionTitle: "",
+  banner2SectionTitle: "",
+  banner3SectionTitle: "",
+  zoneLabels: {
+    banner1: "Hero Banner 1",
+    brands: "Marken-Logos",
+    banner2: "Banner 2",
+    banner3: "Banner 3",
+  },
   description:
     "متجر jmle للمواد الغذائية العربية الأصيلة — بهارات، أرز، زيوت والمزيد",
 };

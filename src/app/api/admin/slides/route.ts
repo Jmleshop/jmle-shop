@@ -13,6 +13,11 @@ function bust() {
   }
 }
 
+function parseZone(raw: unknown): SliderZone {
+  if (raw === "banner2" || raw === "banner3") return raw;
+  return "banner1";
+}
+
 export async function GET(request: Request) {
   const auth = await requireStaff();
   if (isAuthError(auth)) {
@@ -20,14 +25,18 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const zone = searchParams.get("zone") as SliderZone | null;
+  const zoneParam = searchParams.get("zone");
+  const zone =
+    zoneParam === "banner1" || zoneParam === "banner2" || zoneParam === "banner3"
+      ? zoneParam
+      : null;
 
   let query = auth.supabase
     .from("hero_slides")
     .select("*")
     .order("sort_order", { ascending: true });
 
-  if (zone === "banner1" || zone === "banner2") {
+  if (zone) {
     query = query.eq("slider_zone", zone);
   }
 
@@ -42,7 +51,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: basic.error.message }, { status: 500 });
     }
     let rows = basic.data ?? [];
-    if (zone === "banner2") rows = [];
+    if (zone && zone !== "banner1") {
+      rows = rows.filter((r) => (r as { slider_zone?: string }).slider_zone === zone);
+    }
     return NextResponse.json({ slides: rows });
   }
 
@@ -67,8 +78,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bild ist Pflicht" }, { status: 400 });
   }
 
-  const zone: SliderZone =
-    body.slider_zone === "banner2" ? "banner2" : "banner1";
+  const zone = parseZone(body.slider_zone);
   const id =
     String(body.id ?? "").trim() ||
     `slide-${zone}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -77,6 +87,10 @@ export async function POST(request: Request) {
   const titleDe = String(body.title_de ?? "").trim();
   const subtitleAr = String(body.subtitle_ar ?? body.subtitle ?? "").trim();
   const subtitleDe = String(body.subtitle_de ?? "").trim();
+  const mediaTypeRaw = String(body.media_type ?? "image").trim();
+  const media_type = ["image", "video", "parallax", "product_card"].includes(mediaTypeRaw)
+    ? mediaTypeRaw
+    : "image";
 
   const payload = {
     id,
@@ -92,6 +106,10 @@ export async function POST(request: Request) {
     slider_zone: zone,
     sort_order: Number(body.sort_order ?? 0) || 0,
     active: body.active !== false,
+    media_type,
+    video_url: String(body.video_url ?? "").trim() || null,
+    product_id: String(body.product_id ?? "").trim() || null,
+    interactive_style: String(body.interactive_style ?? "").trim() || null,
   };
 
   const { data, error } = await auth.supabase
@@ -101,6 +119,22 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
+    // Ohne Media-Spalten
+    const withoutMedia = { ...payload } as Record<string, unknown>;
+    delete withoutMedia.media_type;
+    delete withoutMedia.video_url;
+    delete withoutMedia.product_id;
+    delete withoutMedia.interactive_style;
+    const retryMid = await auth.supabase
+      .from("hero_slides")
+      .upsert(withoutMedia)
+      .select()
+      .single();
+    if (!retryMid.error) {
+      bust();
+      return NextResponse.json({ slide: retryMid.data });
+    }
+
     // Minimal-Payload für ältere Schemas
     const legacy = {
       id,
