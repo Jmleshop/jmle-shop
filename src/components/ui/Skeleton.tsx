@@ -34,7 +34,7 @@ export function ProductCardSkeleton() {
 export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 max-w-7xl mx-auto"
+      className="grid grid-cols-3 gap-2 sm:gap-4 md:grid-cols-4 max-w-7xl mx-auto"
       role="status"
       aria-label="جاري التحميل"
     >

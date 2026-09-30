@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ShoppingBag, Minus, Plus, Check } from "lucide-react";
@@ -9,6 +9,7 @@ import { useCartFly } from "@/context/CartFlyContext";
 import type { Product } from "@/types";
 import { ProductPrice, StockBadge } from "@/components/ProductPrice";
 import WishlistButton from "@/components/WishlistButton";
+import ProductPagination from "@/components/ProductPagination";
 import { useShopLocale } from "@/components/ShopLocale";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
@@ -20,6 +21,9 @@ import {
   OriginBadge,
   SealBadge,
 } from "@/components/ui";
+
+/** Max. Produkte pro Seite (Kategorie / Alle / Suche). */
+export const PRODUCTS_PAGE_SIZE = 30;
 
 function detectSeals(product: Product): Array<"halal" | "organic"> {
   const hay =
@@ -75,11 +79,11 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <article
-      className={`group relative card-boutique overflow-hidden transition-all duration-300 ease-boutique hover:-translate-y-1 hover:shadow-gold hover:border-orange-200/80 ${
+      className={`group relative card-boutique overflow-hidden transition-all duration-300 ease-boutique hover:-translate-y-0.5 hover:shadow-gold hover:border-orange-200/80 sm:hover:-translate-y-1 ${
         out ? "opacity-60" : ""
       }`}
     >
-      <div className="absolute top-2 end-2 z-30">
+      <div className="absolute top-1 end-1 z-30 sm:top-2 sm:end-2">
         <WishlistButton productId={product.id} size="sm" />
       </div>
       <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40">
@@ -90,14 +94,14 @@ export default function ProductCard({ product }: ProductCardProps) {
             fill
             quality={SHOP_IMAGE_QUALITY}
             className="product-image-media transition-transform duration-500 ease-boutique"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1920px) 480px, 640px"
+            sizes="(max-width: 640px) 33vw, (max-width: 1024px) 25vw, 320px"
           />
-          <div className="absolute inset-x-0 top-0 p-2 flex gap-1.5 justify-between items-start pointer-events-none">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="absolute inset-x-0 top-0 p-1 sm:p-2 flex gap-1 justify-between items-start pointer-events-none">
+            <div className="flex flex-wrap gap-1">
               <StockBadge stock={product.stock} />
               <DiscountBadge percent={product.discountPercent} />
             </div>
-            <div className="flex flex-col items-end gap-1.5 pe-12">
+            <div className="hidden sm:flex flex-col items-end gap-1.5 pe-12">
               {highlights.map((b) => (
                 <span
                   key={b.key}
@@ -113,18 +117,18 @@ export default function ProductCard({ product }: ProductCardProps) {
               )}
             </div>
           </div>
-          <div className="absolute inset-x-0 bottom-0 p-2 flex flex-wrap gap-1.5 justify-start">
+          <div className="absolute inset-x-0 bottom-0 hidden p-2 flex-wrap gap-1.5 justify-start sm:flex">
             <OriginBadge country={product.originCountry} />
             {seals.map((s) => (
               <SealBadge key={s} type={s} />
             ))}
           </div>
         </div>
-        <div className="p-3 text-center">
-          <h3 className="font-ui text-sm font-medium text-luxury-ink mb-0.5 line-clamp-2 min-h-[2.5rem] leading-snug">
+        <div className="p-1.5 sm:p-3 text-center">
+          <h3 className="font-ui text-[11px] sm:text-sm font-medium text-luxury-ink mb-0.5 line-clamp-2 min-h-[2.2em] sm:min-h-[2.5rem] leading-snug">
             {title}
             {product.weightValue != null && (
-              <span className="text-[11px] text-gray-500 font-normal">
+              <span className="hidden sm:inline text-[11px] text-gray-500 font-normal">
                 {" "}
                 · {product.weightValue} {product.weightUnit}
               </span>
@@ -133,15 +137,14 @@ export default function ProductCard({ product }: ProductCardProps) {
           <ProductPrice product={product} />
         </div>
       </Link>
-      <div className="px-3 pb-3">
+      <div className="px-1.5 pb-1.5 sm:px-3 sm:pb-3">
         {out ? (
-          <p className="w-full py-2.5 text-center text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-xl min-h-11 flex items-center justify-center">
+          <p className="w-full py-1.5 sm:py-2.5 text-center text-[10px] sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg sm:rounded-xl min-h-9 sm:min-h-11 flex items-center justify-center">
             {t("outOfStock")}
           </p>
         ) : (
-          <div className="flex items-stretch gap-2">
-            {/* Mengenauswahl direkt an der Karte */}
-            <div className="flex items-center rounded-xl border border-amber-200/80 bg-white shrink-0">
+          <div className="flex items-stretch gap-1 sm:gap-2">
+            <div className="hidden sm:flex items-center rounded-xl border border-amber-200/80 bg-white shrink-0">
               <button
                 type="button"
                 onClick={changeQty(-1)}
@@ -170,14 +173,16 @@ export default function ProductCard({ product }: ProductCardProps) {
             <Button
               fullWidth
               size="sm"
-              className={added ? "bg-emerald-600 hover:bg-emerald-600 text-white" : ""}
+              className={`min-h-9 sm:min-h-11 px-1.5 sm:px-3 ${
+                added ? "bg-emerald-600 hover:bg-emerald-600 text-white" : ""
+              }`}
               leadingIcon={
                 added ? <Check size={16} aria-hidden /> : <ShoppingBag size={16} aria-hidden />
               }
               onClick={handleAddToCart}
               aria-label={`${t("addToCart")} ${title}`}
             >
-              {added ? t("added") : t("addToCart")}
+              <span className="hidden sm:inline">{added ? t("added") : t("addToCart")}</span>
             </Button>
           </div>
         )}
@@ -190,26 +195,53 @@ interface ProductGridProps {
   products: Product[];
   title?: string;
   titleKey?: "homeFeatured" | "allProducts";
+  /** Produkte pro Seite (Standard 30). */
+  pageSize?: number;
 }
 
-export function ProductGrid({ products, title, titleKey }: ProductGridProps) {
+export function ProductGrid({
+  products,
+  title,
+  titleKey,
+  pageSize = PRODUCTS_PAGE_SIZE,
+}: ProductGridProps) {
   const { t } = useShopLocale();
+  const sectionRef = useRef<HTMLElement>(null);
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(products.length / pageSize));
+
+  useEffect(() => {
+    setPage(1);
+  }, [products]);
+
+  const pageItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return products.slice(start, start + pageSize);
+  }, [products, page, pageSize]);
+
+  const goPage = (next: number) => {
+    const clamped = Math.max(1, Math.min(pageCount, next));
+    setPage(clamped);
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   if (products.length === 0) return null;
   const heading = titleKey ? t(titleKey) : title;
 
   return (
-    <section className="py-10 md:py-14 px-4 md:px-8">
+    <section ref={sectionRef} className="py-8 md:py-14 px-2 sm:px-4 md:px-8">
       {heading && (
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <h2 className="section-title">{heading}</h2>
           <div className="gold-divider" aria-hidden />
         </div>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 max-w-7xl mx-auto">
-        {products.map((product) => (
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 md:grid-cols-4 max-w-7xl mx-auto">
+        {pageItems.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
+      <ProductPagination page={page} pageCount={pageCount} onChange={goPage} />
     </section>
   );
 }
