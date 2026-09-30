@@ -140,15 +140,26 @@
     max-width: 22rem;
   }
 }
+/* Footer/Hero-Mark über dem Slogan — groß & markant */
 .brand-mark-frame--footer {
-  height: 44px !important;
-  max-width: min(12rem, 50vw) !important;
+  width: 12rem !important; /* w-48 */
+  height: auto !important;
+  max-width: min(16rem, 80vw) !important;
+  min-height: 5.5rem;
 }
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .brand-mark-frame--footer {
-    height: 52px !important;
-    max-width: 14rem !important;
+    width: 16rem !important; /* md:w-64 */
+    max-width: 18rem !important;
+    min-height: 7rem;
   }
+}
+.brand-mark-frame--footer .brand-mark-img,
+.brand-mark-frame--footer > img {
+  width: 100%;
+  height: auto;
+  max-height: 9rem;
+  object-fit: contain;
 }
 .brand-mark-img {
   display: block;
