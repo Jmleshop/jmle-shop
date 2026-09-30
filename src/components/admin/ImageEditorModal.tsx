@@ -502,7 +502,7 @@ export default function ImageEditorModal({
 
   const onRemoveBackground = async () => {
     const blob = originalBlobRef.current;
-    if (!blob || busy) return;
+    if (!canRemoveBg || !blob || busy) return;
     setBusy("bg");
     setError("");
     setTab("ai");
