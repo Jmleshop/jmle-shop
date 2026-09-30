@@ -24,7 +24,8 @@ export default function BrandMark({
   name = "jmle",
   className,
   textClassName,
-  heightClassName = "h-9 sm:h-10",
+  /** Desktop ~48–50px, Mobile ~44px — nie Briefmarken-Größe */
+  heightClassName = "h-11 lg:h-12",
   priority,
 }: BrandMarkProps) {
   const src = originalImageSrc(logoUrl || "");
@@ -33,23 +34,23 @@ export default function BrandMark({
       href="/"
       prefetch
       className={cn(
-        "relative z-20 cursor-pointer inline-flex items-center justify-center shrink-0 transition-opacity hover:opacity-90 pointer-events-auto",
+        "relative z-20 cursor-pointer inline-flex items-center justify-center shrink-0 min-h-11 transition-opacity hover:opacity-90 pointer-events-auto",
         className
       )}
       aria-label={`${name} – Home`}
     >
       {src ? (
-        <span className={cn("relative block w-auto", heightClassName)}>
+        <span className={cn("relative block w-auto max-w-[14rem] sm:max-w-[16rem] lg:max-w-[18rem]", heightClassName)}>
           <Image
             src={src}
             alt={name}
-            width={360}
-            height={96}
+            width={480}
+            height={128}
             priority={priority}
             unoptimized
             quality={100}
-            className={cn("h-full w-auto max-w-[12rem] object-contain object-center")}
-            sizes="(max-width: 640px) 160px, 240px"
+            className={cn("h-full w-auto max-h-full object-contain object-center")}
+            sizes="(max-width: 640px) 220px, (max-width: 1024px) 260px, 320px"
           />
         </span>
       ) : (

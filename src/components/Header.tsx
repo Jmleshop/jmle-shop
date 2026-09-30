@@ -93,8 +93,8 @@ export default function Header({
           scrolled && "shadow-gold-sm bg-jmle-cream/98"
         )}
       >
-        {/* Mobile: Profil | Logo | Warenkorb + Menü */}
-        <div className="lg:hidden max-w-7xl mx-auto px-3 h-14 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        {/* Mobile: Profil | Logo | Warenkorb + Menü — Logo ~44px, Header etwas höher */}
+        <div className="lg:hidden max-w-7xl mx-auto px-3 h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <div className="flex justify-start">
             <Link
               href={user ? "/profile" : "/auth/login"}
@@ -108,7 +108,7 @@ export default function Header({
             logoUrl={logoUrl}
             name={siteName}
             priority
-            heightClassName="h-8"
+            heightClassName="h-11"
             textClassName="text-2xl"
           />
           <div className="flex items-center justify-end gap-0.5">
@@ -124,8 +124,8 @@ export default function Header({
           </div>
         </div>
 
-        {/* Desktop */}
-        <div className="hidden lg:grid max-w-7xl mx-auto px-4 h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-2">
+        {/* Desktop — Logo ~50px, klar lesbar */}
+        <div className="hidden lg:grid max-w-7xl mx-auto px-4 h-[76px] grid-cols-[1fr_auto_1fr] items-center gap-2">
           <nav
             className="flex items-center gap-1 justify-start"
             aria-label={t("mainNav")}
@@ -144,7 +144,7 @@ export default function Header({
             logoUrl={logoUrl}
             name={siteName}
             priority
-            heightClassName="h-10"
+            heightClassName="h-[50px]"
             textClassName="text-[1.85rem]"
           />
           <div className="flex items-center gap-0.5 justify-end">
@@ -200,7 +200,7 @@ export default function Header({
               <BrandMark
                 logoUrl={logoUrl}
                 name={siteName}
-                heightClassName="h-8"
+                heightClassName="h-11"
                 textClassName="text-xl tracking-[0.15em]"
               />
               <button

@@ -19,7 +19,7 @@ export default function SiteFooter({
           <BrandMark
             logoUrl={logoUrl}
             name={siteName}
-            heightClassName="h-10 mx-auto"
+            heightClassName="h-11 mx-auto"
             textClassName="text-3xl tracking-[0.28em] text-jmle-yellow hover:text-white"
             className="justify-center"
           />
