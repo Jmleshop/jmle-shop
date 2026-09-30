@@ -79,6 +79,8 @@ export default function AdminProductsPage() {
   >(null);
   const [frameProgress, setFrameProgress] = useState<string>("");
   const [editMode, setEditMode] = useState(false);
+  /** Listen-Klick auf Produktbild → Editor sofort nach Form-Open */
+  const [autoOpenImageUrl, setAutoOpenImageUrl] = useState<string | null>(null);
   const [csvPreview, setCsvPreview] = useState<{ changes: CsvChange[]; issues: CsvIssue[] } | null>(null);
   const [csvText, setCsvText] = useState("");
   const [csvBusy, setCsvBusy] = useState(false);
@@ -111,13 +113,15 @@ export default function AdminProductsPage() {
 
   const openCreate = () => {
     setEditingId(null);
+    setAutoOpenImageUrl(null);
     setForm({ ...emptyForm, category_id: categories[0]?.id ?? "" });
     setShowForm(true);
     setError("");
   };
 
-  const openEdit = (p: FoodProduct) => {
+  const openEdit = (p: FoodProduct, opts?: { openImageEditor?: boolean }) => {
     const preset = DISCOUNT_PRESETS.includes(Number(p.discount_percent));
+    const images = p.images?.length ? p.images : p.image ? [p.image] : [];
     setEditingId(p.id);
     setForm({
       name_ar: p.name_ar,
@@ -129,7 +133,7 @@ export default function AdminProductsPage() {
       discount_percent: String(p.discount_percent ?? 0),
       discount_custom: !preset,
       category_id: p.category_id ?? "",
-      images: p.images?.length ? p.images : p.image ? [p.image] : [],
+      images,
       ingredients: p.ingredients ?? "",
       allergens: p.allergens ?? "",
       origin_country: p.origin_country ?? "",
@@ -150,6 +154,9 @@ export default function AdminProductsPage() {
       badges: normalizeBadges(p.badges),
       custom_note: p.custom_note ?? "",
     });
+    setAutoOpenImageUrl(
+      opts?.openImageEditor ? images[0] || p.image || null : null
+    );
     setShowForm(true);
     setError("");
   };
@@ -687,6 +694,8 @@ export default function AdminProductsPage() {
                 enableEditor
                 folder="products"
                 value={form.images}
+                autoOpenUrl={autoOpenImageUrl}
+                onAutoOpenConsumed={() => setAutoOpenImageUrl(null)}
                 onChange={(v) =>
                   setForm({
                     ...form,
@@ -949,12 +958,31 @@ export default function AdminProductsPage() {
                         />
                       )}
                       {p.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={originalImageSrc(p.image)}
-                          alt=""
-                          className="h-12 w-12 shrink-0 rounded-lg border border-gray-100 bg-white object-contain"
-                        />
+                        <button
+                          type="button"
+                          className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-orange-200/80 bg-transparent ring-offset-2 hover:ring-2 hover:ring-brand-orange/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(p, { openImageEditor: true });
+                          }}
+                          title={
+                            lang === "de"
+                              ? "Bild-Editor öffnen"
+                              : "فتح محرر الصور"
+                          }
+                          aria-label={
+                            lang === "de"
+                              ? "Bild-Editor öffnen"
+                              : "فتح محرر الصور"
+                          }
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={originalImageSrc(p.image)}
+                            alt=""
+                            className="h-full w-full object-contain object-center"
+                          />
+                        </button>
                       ) : (
                         <span className="h-12 w-12 shrink-0 rounded-lg bg-gray-100" />
                       )}

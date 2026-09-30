@@ -94,6 +94,8 @@ export default function AdminSlidersPage() {
     link_url: "",
     active: true,
   });
+  /** Listen-Klick auf Banner-/Logo-Bild → Editor sofort */
+  const [autoOpenImageUrl, setAutoOpenImageUrl] = useState<string | null>(null);
 
   const selected = useMemo(
     () => sections.find((s) => s.id === selectedId) ?? null,
@@ -309,7 +311,7 @@ export default function AdminSlidersPage() {
     await loadSlides(zone);
   };
 
-  const editSlide = (s: SlideRow) => {
+  const editSlide = (s: SlideRow, opts?: { openImageEditor?: boolean }) => {
     setEditingId(s.id);
     setForm({
       id: s.id,
@@ -327,6 +329,7 @@ export default function AdminSlidersPage() {
       product_id: s.product_id || "",
       interactive_style: s.interactive_style || "",
     });
+    setAutoOpenImageUrl(opts?.openImageEditor && s.image ? s.image : null);
   };
 
   const toggleSlideActive = async (s: SlideRow) => {
@@ -694,6 +697,8 @@ export default function AdminSlidersPage() {
                       }
                       folder="banners"
                       enableEditor
+                      autoOpenUrl={autoOpenImageUrl}
+                      onAutoOpenConsumed={() => setAutoOpenImageUrl(null)}
                     />
                     <select
                       className="input-field"
@@ -838,12 +843,28 @@ export default function AdminSlidersPage() {
                         key={s.id}
                         className="card-boutique p-3 flex gap-3 items-center"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={s.image}
-                          alt=""
-                          className="w-24 h-14 object-cover rounded-lg bg-orange-50"
-                        />
+                        <button
+                          type="button"
+                          className="h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-transparent ring-offset-2 hover:ring-2 hover:ring-brand-orange/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
+                          onClick={() => editSlide(s, { openImageEditor: true })}
+                          title={
+                            lang === "de"
+                              ? "Bild-Editor öffnen"
+                              : "فتح محرر الصور"
+                          }
+                          aria-label={
+                            lang === "de"
+                              ? "Bild-Editor öffnen"
+                              : "فتح محرر الصور"
+                          }
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={s.image}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
                             {s.title_de || s.title_ar || s.title || s.id}
@@ -941,6 +962,8 @@ export default function AdminSlidersPage() {
                       }
                       folder="brands"
                       enableEditor
+                      autoOpenUrl={autoOpenImageUrl}
+                      onAutoOpenConsumed={() => setAutoOpenImageUrl(null)}
                     />
                     <input
                       className="input-field"
@@ -984,12 +1007,37 @@ export default function AdminSlidersPage() {
                         key={l.id}
                         className="card-boutique p-3 flex gap-3 items-center"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={l.image}
-                          alt={l.name}
-                          className="w-20 h-12 object-contain rounded-lg bg-transparent"
-                        />
+                        <button
+                          type="button"
+                          className="h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-transparent ring-offset-2 hover:ring-2 hover:ring-brand-orange/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
+                          onClick={() => {
+                            setBrandForm({
+                              id: l.id,
+                              name: l.name,
+                              image: l.image,
+                              link_url: l.link_url || "",
+                              active: l.active !== false,
+                            });
+                            setAutoOpenImageUrl(l.image || null);
+                          }}
+                          title={
+                            lang === "de"
+                              ? "Bild-Editor öffnen"
+                              : "فتح محرر الصور"
+                          }
+                          aria-label={
+                            lang === "de"
+                              ? "Bild-Editor öffnen"
+                              : "فتح محرر الصور"
+                          }
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={l.image}
+                            alt={l.name}
+                            className="h-full w-full object-contain"
+                          />
+                        </button>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
                             {l.name || l.id}
@@ -998,15 +1046,16 @@ export default function AdminSlidersPage() {
                         <button
                           type="button"
                           className="text-sm text-brand-orange px-2"
-                          onClick={() =>
+                          onClick={() => {
+                            setAutoOpenImageUrl(null);
                             setBrandForm({
                               id: l.id,
                               name: l.name,
                               image: l.image,
                               link_url: l.link_url || "",
                               active: l.active !== false,
-                            })
-                          }
+                            });
+                          }}
                         >
                           {t("edit")}
                         </button>

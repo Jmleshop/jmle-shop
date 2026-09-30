@@ -109,6 +109,9 @@ export default function ImageUpload({
   /** Global: Turbo-Pipeline (Freisteller + Zentrierung) für alle Admin-Uploads */
   enableEditor = true,
   label,
+  /** Sofort-Editor aus Listen/Vorschau: URL öffnen, sobald sie im Value liegt */
+  autoOpenUrl,
+  onAutoOpenConsumed,
 }: {
   value: string | string[];
   onChange: (urls: string | string[]) => void;
@@ -123,21 +126,34 @@ export default function ImageUpload({
   enableCrop?: boolean;
   /** Optionaler UI-Label (sonst t("images")) */
   label?: string;
+  /** Klick aus Produkt-/Banner-Liste → Editor sofort öffnen */
+  autoOpenUrl?: string | null;
+  onAutoOpenConsumed?: () => void;
 }) {
   const { lang, t } = useAdminI18n();
   const copy = copyFor(lang);
   const fieldLabel = label || t("images");
   const editorEnabled = enableEditor || enableCrop;
+  /** Banner: kein Auto-Freisteller beim Upload — nur manuell im Editor */
+  const isBannerFolder = /^(banners?|slides|hero)$/i.test(folder.trim());
+  const autoBgOnUpload = editorEnabled && !isBannerFolder;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [pasteHint, setPasteHint] = useState(false);
   const [turboProgress, setTurboProgress] = useState<AutoProcessProgress | null>(null);
   const [session, setSession] = useState<EditorSession | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+  const autoOpenHandledRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (editorEnabled) void preloadBackgroundRemoval();
   }, [editorEnabled]);
+
+  const openEditorForUrl = (url: string) => {
+    if (uploading || session) return;
+    batchRef.current = null;
+    setSession({ key: url, source: url, replaceUrl: url });
+  };
   const urls = Array.isArray(value) ? value : value ? [value] : [];
   const urlsKey = urls.join("\n");
   const urlsKeyRef = useRef(urlsKey);
@@ -149,6 +165,21 @@ export default function ImageUpload({
   const batchRef = useRef<File[] | null>(null);
   const batchIndexRef = useRef(0);
   const bulkRef = useRef<RenderSettings | null>(null);
+
+  // Listen-Klick: Form öffnet sich + Editor startet sofort für das Bild
+  useEffect(() => {
+    if (!editorEnabled || !autoOpenUrl || uploading || session) return;
+    if (autoOpenHandledRef.current === autoOpenUrl) return;
+    if (!urls.includes(autoOpenUrl)) return;
+    autoOpenHandledRef.current = autoOpenUrl;
+    batchRef.current = null;
+    setSession({ key: autoOpenUrl, source: autoOpenUrl, replaceUrl: autoOpenUrl });
+    onAutoOpenConsumed?.();
+  }, [autoOpenUrl, editorEnabled, uploading, session, urls, onAutoOpenConsumed]);
+
+  useEffect(() => {
+    if (!autoOpenUrl) autoOpenHandledRef.current = null;
+  }, [autoOpenUrl]);
 
   const publish = (next: string[]) => {
     urlsRef.current = next;
@@ -174,8 +205,9 @@ export default function ImageUpload({
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (!list.length) return;
 
-    // Zero-Click: Freisteller + Zentrierung automatisch, kein manueller Zuschnitt
-    if (editorEnabled) {
+    // Produkte/Kategorien/Logos: Turbo-Freisteller beim Upload
+    // Banner: Original behalten (nur WebP q90) — Freisteller nur manuell im Editor
+    if (autoBgOnUpload) {
       setUploading(true);
       setTurboProgress({
         phase: "process",
@@ -202,7 +234,6 @@ export default function ImageUpload({
               }),
             { maxEdge: maxEdgeForFolder(folder) }
           );
-          // WebP q90 + Bounds + EXIF-Strip — auch nach Turbo-Pipeline
           uploaded.push(await uploadProductImage(processed, folder));
         }
         if (multiple) publish([...urlsRef.current, ...uploaded]);
@@ -231,7 +262,13 @@ export default function ImageUpload({
       if (multiple) publish([...urlsRef.current, ...uploaded]);
       else publish(uploaded[0] ? [uploaded[0]] : []);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Upload fehlgeschlagen");
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : lang === "de"
+            ? "Upload fehlgeschlagen"
+            : "فشل الرفع"
+      );
     } finally {
       setUploading(false);
     }
@@ -256,7 +293,7 @@ export default function ImageUpload({
     },
     // handleFiles closes over latest editor/upload state via refs
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editorEnabled, folder, multiple]
+    [editorEnabled, folder, multiple, autoBgOnUpload]
   );
 
   useEffect(() => {
@@ -331,18 +368,26 @@ export default function ImageUpload({
     lang === "de"
       ? "Strg+V / Cmd+V zum Einfügen aus der Zwischenablage"
       : "Ctrl+V / Cmd+V للصق من الحافظة";
-  const helperText = editorEnabled
+  const helperText = isBannerFolder
     ? lang === "de"
-      ? "Zero-Click: Freisteller + Auto-Zentrierung starten sofort bei Upload/Einfügen. Stift = optional nachbearbeiten."
-      : "Zero-Click: إزالة الخلفية والمحاذاة تلقائياً عند الرفع/اللصق. القلم = تعديل اختياري."
-    : lang === "de"
-      ? "Automatische WebP-Kompression. Bei mehreren Bildern: Stern = Hauptbild (Cover)."
-      : "ضغط WebP تلقائي. عند عدة صور: النجمة = الصورة الرئيسية.";
-  const dropLabel = editorEnabled
+      ? "Banner: Original bleibt erhalten (WebP q90). Klick aufs Bild öffnet den Editor — Freisteller nur manuell."
+      : "البانر: تبقى الصورة الأصلية (WebP q90). انقر على الصورة لفتح المحرر — إزالة الخلفية يدوياً فقط."
+    : autoBgOnUpload
+      ? lang === "de"
+        ? "Klick aufs Bild öffnet den Editor. Upload: Turbo-Freisteller + WebP q90. Stift = nachbearbeiten."
+        : "انقر على الصورة لفتح المحرر. الرفع: قص توربو + WebP q90. القلم = تعديل لاحق."
+      : lang === "de"
+        ? "Automatische WebP-Kompression. Klick aufs Bild öffnet den Editor."
+        : "ضغط WebP تلقائي. انقر على الصورة لفتح المحرر.";
+  const dropLabel = autoBgOnUpload
     ? lang === "de"
       ? "Bild einfügen — Turbo-Freisteller startet automatisch"
       : "أدرج صورة — يبدأ القص التلقائي فوراً"
-    : fieldLabel;
+    : isBannerFolder
+      ? lang === "de"
+        ? "Banner hochladen (ohne Auto-Freisteller)"
+        : "رفع بانر (بدون إزالة خلفية تلقائية)"
+      : fieldLabel;
 
   return (
     <div
@@ -380,9 +425,9 @@ export default function ImageUpload({
         {urls.map((url, index) => (
           <div
             key={url}
-            className={`relative h-24 w-24 overflow-hidden rounded-xl bg-jmle-cream ring-2 ${
+            className={`group relative h-24 w-24 overflow-hidden rounded-xl bg-jmle-cream ring-2 ${
               index === 0 ? "ring-gold" : "ring-transparent"
-            }`}
+            } ${editorEnabled ? "cursor-pointer" : ""}`}
           >
             <Image
               src={url}
@@ -395,29 +440,29 @@ export default function ImageUpload({
             {editorEnabled && (
               <button
                 type="button"
-                className="absolute inset-0"
+                className="absolute inset-0 z-[5] cursor-pointer bg-transparent transition-colors hover:bg-brand-orange/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
                 aria-label={copy.title}
-                onClick={() => {
-                  if (uploading || session) return;
-                  batchRef.current = null;
-                  setSession({ key: url, source: url, replaceUrl: url });
-                }}
+                title={copy.title}
+                onClick={() => openEditorForUrl(url)}
               />
             )}
             {index === 0 && (
-              <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-gold px-1.5 py-0.5 text-[9px] font-medium text-white">
+              <span className="pointer-events-none absolute bottom-1 left-1 z-[6] rounded bg-gold px-1.5 py-0.5 text-[9px] font-medium text-white">
                 {copy.cover}
               </span>
             )}
             {editorEnabled && (
-              <span className="pointer-events-none absolute bottom-1 right-1 rounded-full bg-white/90 p-1 text-gray-700">
+              <span className="pointer-events-none absolute bottom-1 right-1 z-[6] rounded-full bg-white/95 p-1 text-brand-orange shadow-sm ring-1 ring-orange-200/80">
                 <Pencil size={10} />
               </span>
             )}
             <div className="absolute right-1 top-1 z-10 flex flex-col gap-1">
               <button
                 type="button"
-                onClick={() => remove(url)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  remove(url);
+                }}
                 className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-white/90 p-1.5"
                 aria-label={copy.remove}
               >
@@ -425,7 +470,10 @@ export default function ImageUpload({
               </button>
               <button
                 type="button"
-                onClick={() => void downloadImageUrl(url, `jmle-${folder}-${index + 1}`)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void downloadImageUrl(url, `jmle-${folder}-${index + 1}`);
+                }}
                 className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-white/90 p-1.5 text-brand-orange"
                 title={downloadLabel}
                 aria-label={downloadLabel}
@@ -435,7 +483,10 @@ export default function ImageUpload({
               {multiple && index !== 0 && (
                 <button
                   type="button"
-                  onClick={() => setCover(url)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCover(url);
+                  }}
                   className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-white/90 p-1.5 text-gold"
                   title={copy.setCover}
                   aria-label={copy.setCover}
@@ -498,8 +549,7 @@ export default function ImageUpload({
                   }
                 : null
           }
-          // Upload-Pfad entfernt den Hintergrund bereits automatisch.
-          // Im Editor: manuell erneut auslösen („Hintergrund erneut entfernen“).
+          // Nie Auto-Freisteller im Editor — manuell per Button (bes. Banner)
           autoRemoveBackground={false}
           autoExport={false}
           onRemember={(settings) => {
