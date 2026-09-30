@@ -3,12 +3,18 @@ import {
   STORAGE_WEBP_QUALITY,
   maxEdgeForFolder,
 } from "@/lib/image-bounds";
+import {
+  centerImageInTransparentSquare,
+  shouldAutoCenterFolder,
+} from "@/lib/center-image-square";
 
 /**
  * Client-seitige Speicher-Optimierung:
  * - Immer WebP (inkl. Alpha für Freisteller)
  * - quality 90 → optisch HD, deutlich kleinere Dateien
  * - Max-Bounds je Ordner (Produkte 1000 / Banner 2048)
+ * - Produkte/Kategorien: optische 1:1-Zentrierung (transparent)
+ * - Banner: Original-Aspekt, kein Auto-Freisteller
  * - EXIF/Metadaten entfallen durch Canvas-Reencode
  * - Keine festen Hintergrundfarben
  */
@@ -107,18 +113,30 @@ export async function canvasToCompressedFile(
 
 /**
  * Upload in Supabase Storage.
- * Immer WebP-Optimierung (auch nach Turbo-Pipeline), Ordner steuert Max-Kante.
+ * WebP q90 + Bounds. Produkte werden transparent 1:1 zentriert (kein Freisteller).
+ * Banner behalten das Original-Seitenverhältnis.
  */
 export async function uploadProductImage(
   file: File,
   folder = "products",
-  options?: { alreadyEncoded?: boolean }
+  options?: { alreadyEncoded?: boolean; skipCenter?: boolean }
 ): Promise<string> {
   const { createClient } = await import("@/lib/supabase/client");
   const maxEdge = maxEdgeForFolder(folder);
-  // Auch „alreadyEncoded“ Freisteller → WebP q90 + Bounds (Alpha bleibt)
-  void options?.alreadyEncoded;
-  const compressed = await compressImageFile(file, maxEdge);
+  let working = file;
+  // Manuell freigestellte Exports nicht erneut umrahmen
+  if (
+    !options?.alreadyEncoded &&
+    !options?.skipCenter &&
+    shouldAutoCenterFolder(folder)
+  ) {
+    try {
+      working = await centerImageInTransparentSquare(file, { maxEdge });
+    } catch {
+      working = file;
+    }
+  }
+  const compressed = await compressImageFile(working, maxEdge);
   const supabase = createClient();
   const ext = compressed.type === "image/png" ? "png" : "webp";
   const path = `${folder}/${crypto.randomUUID()}.${ext}`;

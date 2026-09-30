@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
-import { Archive, ArchiveRestore, Pencil, Plus, X, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Pencil,
+  Plus,
+  X,
+  Trash2,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { categoryDepth, categoryLabel, sortedCategories } from "@/lib/category-tree";
 import { uncategorizedLabel } from "@/lib/category-product-guard";
@@ -20,9 +29,16 @@ import type { NumberPlan } from "@/lib/product-numbers";
 import BarcodeScanModal from "@/components/admin/BarcodeScanModal";
 import { downloadPriceLabels } from "@/components/admin/PriceLabelPdf";
 import { compareAlpha } from "@/lib/locale-sort";
+import {
+  analyzeProductImages,
+  qualityBadgeLabel,
+  qualityIssueSummary,
+  type ImageQualityResult,
+} from "@/lib/image-quality";
 import type { FoodCategory, FoodProduct } from "@/types";
 
-type SortKey = "newest" | "oldest" | "priceAsc" | "priceDesc" | "az" | "za";
+type SortKey = "newest" | "oldest" | "priceAsc" | "priceDesc" | "az" | "za" | "imageIssues";
+type ImageFilter = "all" | "issues";
 
 const DISCOUNT_PRESETS = [0, 5, 10, 15, 20, 50];
 const ORIGINS = ["Syrien", "Türkei", "Palästina"];
@@ -65,6 +81,7 @@ export default function AdminProductsPage() {
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [stockFilter, setStockFilter] = useState<"all" | "low" | "out" | "ok">("all");
+  const [imageFilter, setImageFilter] = useState<ImageFilter>("all");
   const [scanning, setScanning] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [listTab, setListTab] = useState<"published" | "draft">("published");
@@ -87,7 +104,14 @@ export default function AdminProductsPage() {
   const [csvBusy, setCsvBusy] = useState(false);
   const [numberPlan, setNumberPlan] = useState<NumberPlan[] | null>(null);
   const [numberBusy, setNumberBusy] = useState(false);
+  const [imageQuality, setImageQuality] = useState<Record<string, ImageQualityResult>>({});
+  const [qualityScan, setQualityScan] = useState<{
+    running: boolean;
+    done: number;
+    total: number;
+  }>({ running: false, done: 0, total: 0 });
   const sel = useRowSelection();
+  const qualityLang = lang === "ar" ? "ar" : "de";
 
   const load = () => {
     sel.clear();
@@ -111,6 +135,39 @@ export default function AdminProductsPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showArchived, listTab]);
+
+  const runImageQualityScan = useCallback(async (list: FoodProduct[]) => {
+    const items = list
+      .filter((p) => !p.deleted_at)
+      .map((p) => ({
+        id: p.id,
+        image: p.image ? originalImageSrc(p.image) : null,
+      }));
+    if (!items.length) {
+      setImageQuality({});
+      return;
+    }
+    setQualityScan({ running: true, done: 0, total: items.length });
+    try {
+      const map = await analyzeProductImages(items, {
+        concurrency: 3,
+        onProgress: (done, total) => setQualityScan({ running: true, done, total }),
+      });
+      setImageQuality(map);
+    } finally {
+      setQualityScan((s) => ({ ...s, running: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (loading || !products.length) return;
+    void runImageQualityScan(products);
+  }, [products, loading, runImageQualityScan]);
+
+  const issueCount = useMemo(
+    () => Object.values(imageQuality).filter((q) => !q.ok).length,
+    [imageQuality]
+  );
 
   const openCreate = () => {
     setEditingId(null);
@@ -337,6 +394,10 @@ export default function AdminProductsPage() {
       if (stockFilter === "low" && !(stock > 0 && stock < 5)) return false;
       if (stockFilter === "out" && stock !== 0) return false;
       if (stockFilter === "ok" && stock < 5) return false;
+      if (imageFilter === "issues") {
+        const q = imageQuality[p.id];
+        if (!q || q.ok) return false;
+      }
       if (!needle) return true;
       const hay = [p.name_de, p.name_ar, p.product_number, p.barcode]
         .filter(Boolean)
@@ -346,7 +407,17 @@ export default function AdminProductsPage() {
     });
     const nameOf = (p: FoodProduct) =>
       (lang === "ar" ? p.name_ar || p.name_de : p.name_de || p.name_ar || "").trim();
+    const issueScore = (p: FoodProduct) => {
+      const q = imageQuality[p.id];
+      if (!q) return 50;
+      return q.ok ? 100 : q.score;
+    };
     rows.sort((a, b) => {
+      // Problematische Bilder immer nach oben (rot)
+      const ai = issueScore(a);
+      const bi = issueScore(b);
+      if (ai !== bi) return ai - bi;
+      if (sortKey === "imageIssues") return 0;
       if (sortKey === "oldest") {
         return String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""));
       }
@@ -357,7 +428,18 @@ export default function AdminProductsPage() {
       return String(b.created_at ?? "").localeCompare(String(a.created_at ?? ""));
     });
     return rows;
-  }, [products, showArchived, listTab, query, categoryFilter, stockFilter, sortKey, lang]);
+  }, [
+    products,
+    showArchived,
+    listTab,
+    query,
+    categoryFilter,
+    stockFilter,
+    imageFilter,
+    imageQuality,
+    sortKey,
+    lang,
+  ]);
   const displayedIds = displayed.map((p) => p.id);
   const lowStock = products.filter(
     (p) => !p.deleted_at && Number(p.stock_quantity ?? 0) > 0 && Number(p.stock_quantity) < 5
@@ -506,6 +588,9 @@ export default function AdminProductsPage() {
           aria-label="Produktsuche"
         />
         <select className="input-field" value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+          <option value="imageIssues">
+            {lang === "de" ? "Bildprobleme zuerst" : "مشاكل الصور أولاً"}
+          </option>
           <option value="newest">Neueste</option>
           <option value="oldest">Älteste</option>
           <option value="priceAsc">Preis aufsteigend</option>
@@ -515,7 +600,7 @@ export default function AdminProductsPage() {
         </select>
         <select className="input-field" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="">Alle Kategorien</option>
-          <option value="__none__">{uncategorizedLabel(lang === "ar" ? "ar" : "de")}</option>
+          <option value="__none__">{uncategorizedLabel(qualityLang)}</option>
           {sortedCategories(categories).map((c) => (
             <option key={c.id} value={c.id}>{categoryLabel(c)}</option>
           ))}
@@ -527,6 +612,73 @@ export default function AdminProductsPage() {
           <option value="ok">Ausreichend</option>
         </select>
       </div>
+
+      {(issueCount > 0 || qualityScan.running) && (
+        <div
+          className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+            issueCount > 0
+              ? "border-red-300 bg-red-50 text-red-800"
+              : "border-orange-200 bg-orange-50/80 text-brand-orange"
+          }`}
+        >
+          <div className="flex items-start gap-2 text-sm">
+            {qualityScan.running ? (
+              <Loader2 size={18} className="mt-0.5 shrink-0 animate-spin" />
+            ) : (
+              <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+            )}
+            <div>
+              <p className="font-semibold">
+                {qualityScan.running
+                  ? lang === "de"
+                    ? `Bildqualität wird geprüft… (${qualityScan.done}/${qualityScan.total})`
+                    : `جاري فحص جودة الصور… (${qualityScan.done}/${qualityScan.total})`
+                  : lang === "de"
+                    ? `${issueCount} Produkt(e) mit fehlerhaftem / schwachem Bild`
+                    : `${issueCount} منتج/منتجات بصورة ضعيفة أو خاطئة`}
+              </p>
+              <p className="text-xs opacity-90">
+                {lang === "de"
+                  ? "Rot markierte Einträge oben — Klick aufs Bild öffnet den Editor."
+                  : "العناصر الحمراء في الأعلى — انقر على الصورة لفتح المحرر."}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={`rounded-xl px-3 py-2 text-sm min-h-11 border ${
+                imageFilter === "issues"
+                  ? "bg-red-600 text-white border-red-600"
+                  : "bg-white border-red-300 text-red-700"
+              }`}
+              onClick={() => {
+                setImageFilter("issues");
+                setSortKey("imageIssues");
+              }}
+            >
+              {lang === "de" ? "Nur Bildprobleme" : "مشاكل الصور فقط"}
+            </button>
+            {imageFilter === "issues" && (
+              <button
+                type="button"
+                className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm min-h-11"
+                onClick={() => setImageFilter("all")}
+              >
+                {lang === "de" ? "Alle zeigen" : "عرض الكل"}
+              </button>
+            )}
+            <button
+              type="button"
+              className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm min-h-11 text-red-700 disabled:opacity-50"
+              disabled={qualityScan.running}
+              onClick={() => void runImageQualityScan(products)}
+            >
+              {lang === "de" ? "Erneut prüfen" : "إعادة الفحص"}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap gap-2">
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => void previewNumbers()}>Nummern prüfen</button>
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={exportCsv}>CSV exportieren</button>
@@ -941,14 +1093,23 @@ export default function AdminProductsPage() {
             {editMode && <span className="text-right">Aktionen</span>}
           </div>
           <div className="max-h-[70vh] overflow-y-auto divide-y">
-            {displayed.map((p, idx) => (
+            {displayed.map((p, idx) => {
+              const q = imageQuality[p.id];
+              const hasIssue = !!q && !q.ok;
+              return (
                 <SwipeToDeleteRow
                   key={p.id}
                   disabled={!editMode || !!p.deleted_at}
                   label={t("archive")}
                   onSwipeDelete={() => swipeToTrash(p)}
                 >
-                  <div className={`grid grid-cols-1 ${editMode ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto]" : "sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)]"} gap-1 sm:gap-2 items-center px-4 py-3 sm:py-2.5 text-sm min-h-[52px]`}>
+                  <div
+                    className={`grid grid-cols-1 ${editMode ? "sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto]" : "sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)]"} gap-1 sm:gap-2 items-center px-4 py-3 sm:py-2.5 text-sm min-h-[52px] ${
+                      hasIssue
+                        ? "bg-red-50/90 border-l-4 border-l-red-500 hover:bg-red-100/90"
+                        : ""
+                    }`}
+                  >
                     <div className="font-medium min-w-0 flex items-center gap-2">
                       {editMode && (
                         <input
@@ -966,20 +1127,28 @@ export default function AdminProductsPage() {
                       {p.image ? (
                         <button
                           type="button"
-                          className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-orange-200/80 bg-transparent ring-offset-2 hover:ring-2 hover:ring-brand-orange/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
+                          className={`h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-transparent ring-offset-2 hover:ring-2 focus-visible:outline-none focus-visible:ring-2 ${
+                            hasIssue
+                              ? "border-2 border-red-500 ring-red-400/40 hover:ring-red-500/50 focus-visible:ring-red-500/50"
+                              : "border border-orange-200/80 hover:ring-brand-orange/40 focus-visible:ring-brand-orange/50"
+                          }`}
                           onClick={(e) => {
                             e.stopPropagation();
                             openEdit(p, { openImageEditor: true });
                           }}
                           title={
-                            lang === "de"
-                              ? "Bild-Editor öffnen"
-                              : "فتح محرر الصور"
+                            hasIssue
+                              ? qualityBadgeLabel(q, qualityLang)
+                              : lang === "de"
+                                ? "Bild-Editor öffnen"
+                                : "فتح محرر الصور"
                           }
                           aria-label={
-                            lang === "de"
-                              ? "Bild-Editor öffnen"
-                              : "فتح محرر الصور"
+                            hasIssue
+                              ? qualityBadgeLabel(q, qualityLang)
+                              : lang === "de"
+                                ? "Bild-Editor öffnen"
+                                : "فتح محرر الصور"
                           }
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -990,14 +1159,59 @@ export default function AdminProductsPage() {
                           />
                         </button>
                       ) : (
-                        <span className="h-12 w-12 shrink-0 rounded-lg bg-gray-100" />
+                        <button
+                          type="button"
+                          className={`h-12 w-12 shrink-0 rounded-lg ${
+                            hasIssue
+                              ? "border-2 border-red-500 bg-red-100"
+                              : "bg-gray-100"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(p, { openImageEditor: true });
+                          }}
+                          title={qualityBadgeLabel(
+                            q ?? {
+                              ok: false,
+                              score: 0,
+                              issues: ["missing"],
+                              width: 0,
+                              height: 0,
+                              labelDe: "Kein Bild",
+                              labelAr: "لا صورة",
+                            },
+                            qualityLang
+                          )}
+                          aria-label={
+                            lang === "de"
+                              ? "Bild prüfen / Editor öffnen"
+                              : "فحص الصورة / فتح المحرر"
+                          }
+                        />
                       )}
                       <div className="min-w-0">
-                      <span className="truncate block" dir="rtl">
+                      <span
+                        className={`truncate block ${hasIssue ? "text-red-900" : ""}`}
+                        dir="rtl"
+                      >
                         {p.name_ar || p.name_de}
                       </span>
                       {p.name_de && (
                         <span className="truncate block text-xs text-gray-400">{p.name_de}</span>
+                      )}
+                      {hasIssue && (
+                        <button
+                          type="button"
+                          className="mt-0.5 inline-flex items-center gap-1 rounded bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white hover:bg-red-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(p, { openImageEditor: true });
+                          }}
+                          title={qualityIssueSummary(q, qualityLang)}
+                        >
+                          <AlertTriangle size={11} />
+                          {qualityBadgeLabel(q, qualityLang)}
+                        </button>
                       )}
                       {p.status === "draft" && (
                         <span className="text-[11px] uppercase tracking-wide text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
@@ -1051,7 +1265,8 @@ export default function AdminProductsPage() {
                     )}
                   </div>
                 </SwipeToDeleteRow>
-              ))}
+              );
+            })}
           </div>
         </div>
       )}
