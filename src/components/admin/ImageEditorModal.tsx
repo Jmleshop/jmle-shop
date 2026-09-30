@@ -30,7 +30,8 @@ import {
 } from "@/lib/image-editor/geometry";
 import { adjustmentsEqual, PRESET_ORDER, PRESETS } from "@/lib/image-editor/presets";
 import {
-  removeImageBackground,
+  preloadBackgroundRemoval,
+  removeImageBackgroundDetailed,
   type RemovalProgress,
 } from "@/lib/image-editor/remove-background";
 import {
@@ -131,6 +132,7 @@ export default function ImageEditorModal({
   onCancel,
   seed,
   autoExport = false,
+  autoRemoveBackground = true,
   onRemember,
 }: {
   source: File | string;
@@ -139,6 +141,8 @@ export default function ImageEditorModal({
   onCancel: () => void;
   seed?: RenderSettings | null;
   autoExport?: boolean;
+  /** Sofort nach dem Laden Turbo-Freisteller starten */
+  autoRemoveBackground?: boolean;
   onRemember?: (settings: RenderSettings) => void;
 }) {
   const { lang } = useAdminI18n();
@@ -147,10 +151,12 @@ export default function ImageEditorModal({
 
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<TabId>("adjust");
+  const [tab, setTab] = useState<TabId>("ai");
   const [busy, setBusy] = useState<Busy>(null);
   const [progress, setProgress] = useState<RemovalProgress | null>(null);
   const [bgRemoved, setBgRemoved] = useState(false);
+  const [bgEngine, setBgEngine] = useState<string>("");
+  const [bgMs, setBgMs] = useState<number | null>(null);
   const [bitmap, setBitmap] = useState<ImageBitmap | null>(null);
   const [adjustments, setAdjustments] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
   const [rotation, setRotation] = useState<QuarterTurn>(0);
@@ -184,6 +190,8 @@ export default function ImageEditorModal({
   const histIndex = useRef(-1);
   const applyingHist = useRef(false);
   const originalBlobRef = useRef<Blob | null>(null);
+  const originalBitmapRef = useRef<ImageBitmap | null>(null);
+  const autoRemoveOnce = useRef(false);
   const filteredRef = useRef<HTMLCanvasElement | null>(null);
   const squareRef = useRef<HTMLCanvasElement>(null);
   const cropViewRef = useRef<HTMLCanvasElement>(null);
@@ -192,7 +200,7 @@ export default function ImageEditorModal({
   const replaceBitmap = (next: ImageBitmap | null) => {
     const prev = bitmapRef.current;
     bitmapRef.current = next;
-    if (prev && prev !== next) {
+    if (prev && prev !== next && prev !== originalBitmapRef.current) {
       try {
         prev.close();
       } catch {
@@ -203,6 +211,7 @@ export default function ImageEditorModal({
   };
 
   useEffect(() => {
+    void preloadBackgroundRemoval();
     return () => {
       try {
         bitmapRef.current?.close();
@@ -210,6 +219,12 @@ export default function ImageEditorModal({
         /* already closed */
       }
       bitmapRef.current = null;
+      try {
+        originalBitmapRef.current?.close();
+      } catch {
+        /* already closed */
+      }
+      originalBitmapRef.current = null;
     };
   }, []);
 
@@ -270,7 +285,18 @@ export default function ImageEditorModal({
           next.close();
           return;
         }
+        // Original für Vorher/Nachher behalten
+        try {
+          originalBitmapRef.current?.close();
+        } catch {
+          /* ignore */
+        }
+        originalBitmapRef.current = await createImageBitmap(next);
         replaceBitmap(next);
+        setBgRemoved(false);
+        setBgEngine("");
+        setBgMs(null);
+        autoRemoveOnce.current = false;
         if (seed) {
           if (seed.adjustments) {
             setAdjustments({ ...DEFAULT_ADJUSTMENTS, ...seed.adjustments });
@@ -332,30 +358,41 @@ export default function ImageEditorModal({
     };
   }, [source, copy.loadError, seed]);
 
-  const activeAdjustments = comparing ? DEFAULT_ADJUSTMENTS : adjustments;
+  // Vorher = Originalbild; Nachher = Freisteller
+  const viewBitmap =
+    comparing && bgRemoved && originalBitmapRef.current
+      ? originalBitmapRef.current
+      : bitmap;
+  const activeAdjustments =
+    comparing && bgRemoved ? DEFAULT_ADJUSTMENTS : comparing ? DEFAULT_ADJUSTMENTS : adjustments;
   const squareSettings = {
-    crop,
-    background: comparing ? ("white" as const) : background,
+    crop: comparing && bgRemoved ? FULL_FRAME : crop,
+    background:
+      comparing && bgRemoved
+        ? ("color" as const)
+        : comparing
+          ? ("white" as const)
+          : background,
     shadow: comparing ? ("none" as const) : shadow,
-    backgroundColor,
+    backgroundColor: comparing && bgRemoved ? "#FFF7ED" : backgroundColor,
     watermark: comparing ? false : watermark,
     studio: comparing ? ("none" as const) : studio,
-    margin,
+    margin: comparing && bgRemoved ? false : margin,
   };
 
   useEffect(() => {
-    if (!bitmap) return;
+    if (!viewBitmap) return;
     const filtered = renderFilteredCanvas(
-      bitmap,
+      viewBitmap,
       {
         adjustments: activeAdjustments,
-        rotation,
-        flipH,
-        flipV,
+        rotation: comparing && bgRemoved ? 0 : rotation,
+        flipH: comparing && bgRemoved ? false : flipH,
+        flipV: comparing && bgRemoved ? false : flipV,
         straighten: comparing ? 0 : straighten,
         heal: comparing ? [] : heal,
-        crop,
-        background,
+        crop: comparing && bgRemoved ? FULL_FRAME : crop,
+        background: comparing && bgRemoved ? "transparent" : background,
       },
       PREVIEW_EDGE
     );
@@ -367,7 +404,20 @@ export default function ImageEditorModal({
       setConsistency(lang === "ar" ? score.labelAr : score.labelDe);
     }
     setFilterTick((tick) => tick + 1);
-  }, [bitmap, activeAdjustments, rotation, flipH, flipV, straighten, heal, comparing, lang]);
+  }, [
+    viewBitmap,
+    activeAdjustments,
+    rotation,
+    flipH,
+    flipV,
+    straighten,
+    heal,
+    comparing,
+    bgRemoved,
+    crop,
+    background,
+    lang,
+  ]);
 
   useEffect(() => {
     const filtered = filteredRef.current;
@@ -449,41 +499,37 @@ export default function ImageEditorModal({
     if (!blob || busy) return;
     setBusy("bg");
     setError("");
-    setProgress({ phase: "download", ratio: 0, label: copy.loading });
+    setTab("ai");
+    setProgress({
+      phase: "process",
+      ratio: 0.02,
+      label: copy.bgTurbo,
+      engine: "webgpu",
+    });
     try {
-      const result = await removeImageBackground(blob, setProgress);
-      const next = await bitmapFromBlob(result);
+      const detailed = await removeImageBackgroundDetailed(blob, setProgress);
+      const next = await bitmapFromBlob(detailed.blob);
       replaceBitmap(next);
       setBgRemoved(true);
+      setBgEngine(detailed.engine);
+      setBgMs(detailed.durationMs);
       setBackground("transparent");
       setBackgroundColor("#FFF7ED");
       setAspectId("square");
       setMargin(true);
-      // Objekt anhand Bounding-Box exakt in die 1:1-Mitte setzen
-      try {
-        const preview = renderFilteredCanvas(
-          next,
-          {
-            adjustments: DEFAULT_ADJUSTMENTS,
-            rotation: 0,
-            flipH: false,
-            flipV: false,
-          },
-          Math.min(1600, Math.max(next.width, next.height))
-        );
-        const ctx = preview.getContext("2d", { willReadFrequently: true });
-        if (ctx) {
-          const pixels = ctx.getImageData(0, 0, preview.width, preview.height);
-          const bounds = smartBounds(pixels.data, preview.width, preview.height, 0.06);
-          if (bounds) setCrop(bounds);
-        }
-      } catch {
-        /* keep prior crop */
-      }
+      // Postprocess liefert bereits zentriertes 1:1 — Full-Frame Crop
+      setCrop(FULL_FRAME);
+      setRotation(0);
+      setFlipH(false);
+      setFlipV(false);
       setTab("ai");
     } catch (cause) {
       console.error(cause);
-      setError(copy.bgError);
+      setError(
+        cause instanceof Error && cause.message
+          ? `${copy.bgError} (${cause.message})`
+          : copy.bgError
+      );
     } finally {
       setBusy(null);
       setProgress(null);
@@ -497,12 +543,34 @@ export default function ImageEditorModal({
       const next = await bitmapFromBlob(blob);
       replaceBitmap(next);
       setBgRemoved(false);
+      setBgEngine("");
+      setBgMs(null);
       setBackground("transparent");
       setBackgroundColor("#FFF7ED");
+      setCrop(FULL_FRAME);
     } catch {
       setError(copy.loadError);
     }
   };
+
+  // Auto-Turbo beim Einfügen/Upload (einmal pro Bild)
+  useEffect(() => {
+    if (
+      !autoRemoveBackground ||
+      autoExport ||
+      phase !== "ready" ||
+      lowRes === "ask" ||
+      lowRes === "pending" ||
+      bgRemoved ||
+      busy ||
+      autoRemoveOnce.current
+    ) {
+      return;
+    }
+    autoRemoveOnce.current = true;
+    void onRemoveBackground();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, lowRes, autoRemoveBackground, autoExport, bgRemoved, busy]);
 
   const applySettings = (settings: RenderSettings) => {
     applyingHist.current = true;
@@ -816,14 +884,29 @@ export default function ImageEditorModal({
                   {progress.label} · {Math.round(progress.ratio * 100)} %
                 </p>
                 <p className="mt-1 text-[11px] text-gray-500">
-                  Kostenloses WASM-Modell (fp16) — lokal im Browser, ohne API-Kosten.
+                  {progress.engine === "server"
+                    ? "Server-Turbo-Fallback aktiv…"
+                    : progress.engine === "webgpu"
+                      ? "WebGPU-Beschleunigung · FP16-Modell"
+                      : "WASM-Turbo · FP16-Modell · lokal & kostenlos"}
                 </p>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-orange-100">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-brand-orange to-gold transition-all duration-200"
-                    style={{ width: `${Math.round(progress.ratio * 100)}%` }}
+                    style={{ width: `${Math.round(Math.max(0.05, progress.ratio) * 100)}%` }}
                   />
                 </div>
+              </div>
+            )}
+            {bgRemoved && !busy && (
+              <div className="absolute inset-x-6 top-4 flex justify-center pointer-events-none">
+                <span className="rounded-full bg-emerald-600/95 px-3 py-1 text-[11px] font-semibold text-white shadow">
+                  {copy.bgDone}
+                  {bgMs != null ? ` · ${bgMs} ms` : ""}
+                  {bgEngine ? ` · ${bgEngine}` : ""}
+                  {" · "}
+                  {copy.bgCompareHint}
+                </span>
               </div>
             )}
           </div>
@@ -857,6 +940,11 @@ export default function ImageEditorModal({
               {tab === "ai" && (
                 <div className="space-y-3">
                   <p className="text-[11px] leading-relaxed text-gray-500">{copy.bgHint}</p>
+                  {busy === "bg" && (
+                    <p className="rounded-lg bg-orange-50 px-3 py-2 text-xs font-medium text-brand-orange">
+                      {progress?.label || copy.bgTurbo}
+                    </p>
+                  )}
                   <Button
                     type="button"
                     size="sm"
@@ -871,7 +959,7 @@ export default function ImageEditorModal({
                     }
                     onClick={() => void onRemoveBackground()}
                   >
-                    {copy.removeBg}
+                    {busy === "bg" ? copy.bgTurbo : copy.removeBg}
                   </Button>
                   {bgRemoved && (
                     <Button
@@ -1180,13 +1268,13 @@ export default function ImageEditorModal({
               type="button"
               title={copy.compare}
               aria-label={copy.compare}
-              disabled={phase !== "ready"}
+              disabled={phase !== "ready" || !bgRemoved}
               onPointerDown={() => setComparing(true)}
               onPointerUp={() => setComparing(false)}
               onPointerLeave={() => setComparing(false)}
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 px-2 text-[10px] font-semibold text-gray-700"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-gray-200 px-2 text-[10px] font-semibold text-gray-700 disabled:opacity-40"
             >
-              {comparing ? "Nachher" : "Vorher"}
+              {comparing ? "Vorher" : "Nachher"}
             </button>
             <IconAction
               label={copy.flipH}
