@@ -1,5 +1,5 @@
-/** Next.js Image quality. Product photos also set unoptimized so this file is served as exported. */
-export const SHOP_IMAGE_QUALITY = 95;
+/** Next.js Image quality for srcset/HD on desktop (sharp WebP/AVIF). */
+export const SHOP_IMAGE_QUALITY = 90;
 
 /**
  * Prefer the original storage object over Supabase image transforms.

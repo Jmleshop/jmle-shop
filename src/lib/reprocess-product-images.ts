@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { optimizeProductImageBuffer } from "./optimize-product-image";
 import { PRODUCT_FILL, TRIM_THRESHOLD, productFrame } from "./image-editor/product-bounds";
 
 const BUCKET = "product-images";
@@ -38,9 +39,7 @@ function urlList(value: unknown): string[] {
 }
 
 /**
- * Trims near-white edges with Sharp, then centers the package on a square
- * so its longer side fills 88 % of the canvas. Returns null when the photo
- * is already tight. Encodes WebP once, at quality 95.
+ * Legacy helper — trim + center only (no AI). Kept for frame-product-image API.
  */
 export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
   const base = sharp(input, { failOn: "none" }).rotate();
@@ -85,7 +84,7 @@ export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
       channels: 4,
       background: hasAlpha
         ? { r: 0, g: 0, b: 0, alpha: 0 }
-        : { r: 255, g: 255, b: 255, alpha: 1 },
+        : { r: 255, g: 247, b: 237, alpha: 1 },
     },
   })
     .composite([{ input: resized, left: place.dx, top: place.dy }])
@@ -118,6 +117,7 @@ async function productRows(supabase: SupabaseClient): Promise<ProductRow[]> {
   return (data ?? []) as ProductRow[];
 }
 
+/** Alle Bild-URLs inkl. externer (Unsplash etc.) */
 function orderedUrls(products: ProductRow[]): string[] {
   const urls: string[] = [];
   const seen = new Set<string>();
@@ -126,7 +126,8 @@ function orderedUrls(products: ProductRow[]): string[] {
       (url): url is string => Boolean(url)
     );
     for (const url of list) {
-      if (seen.has(url) || !storageObjectPath(url)) continue;
+      if (seen.has(url)) continue;
+      if (!/^https?:\/\//i.test(url) && !url.startsWith("/")) continue;
       seen.add(url);
       urls.push(url);
     }
@@ -134,7 +135,7 @@ function orderedUrls(products: ProductRow[]): string[] {
   return urls;
 }
 
-/** Dry-run: framed previews for a few photos. Nothing is uploaded or deleted. */
+/** Dry-run: Freisteller+Zentrierung für ein paar Fotos. */
 export async function previewProductFrames(
   supabase: SupabaseClient,
   limit = 5
@@ -144,35 +145,40 @@ export async function previewProductFrames(
   for (const product of products) {
     if (previews.length >= limit) break;
     const url = product.image;
-    if (!url || !storageObjectPath(url)) continue;
+    if (!url) continue;
     try {
       const response = await fetch(url);
       if (!response.ok) continue;
       const input = Buffer.from(await response.arrayBuffer());
-      const framed = await frameProductWebp(input);
-      if (!framed) continue;
+      const optimized = await optimizeProductImageBuffer(input, {
+        removeBackground: true,
+        force: true,
+      });
       const before = await sharp(input).metadata();
-      const after = await sharp(framed).metadata();
       previews.push({
         id: product.id,
         name: product.name_ar || product.name_de || product.id,
         beforeUrl: url,
-        afterUrl: `data:image/webp;base64,${framed.toString("base64")}`,
+        afterUrl: `data:${optimized.contentType};base64,${optimized.buffer.toString("base64")}`,
         beforeSize: `${before.width ?? "?"}×${before.height ?? "?"}`,
-        afterSize: `${after.width ?? "?"}×${after.height ?? "?"}`,
+        afterSize: `${optimized.width}×${optimized.height}`,
       });
     } catch {
-      /* skip a photo that cannot be decoded */
+      /* skip */
     }
   }
   return previews;
 }
 
-/** Applies the trim to one page of images and reports progress. */
+/**
+ * Verarbeitet einen Chunk aller Produktbilder:
+ * AI-Freisteller + Trim + 1:1-Zentrierung (10 % Padding) → Storage → DB.
+ * Funktioniert auch für externe URLs (Unsplash).
+ */
 export async function applyProductFrameChunk(
   supabase: SupabaseClient,
   offset = 0,
-  limit = 4
+  limit = 2
 ): Promise<FrameChunk> {
   const products = await productRows(supabase);
   const urls = orderedUrls(products);
@@ -189,41 +195,34 @@ export async function applyProductFrameChunk(
     done: offset + slice.length >= urls.length,
   };
   const replacements = new Map<string, string>();
-  const outcomes = await Promise.all(
-    slice.map(async (url) => {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Download ${response.status}`);
-        const framed = await frameProductWebp(Buffer.from(await response.arrayBuffer()));
-        if (!framed) return { url, status: "skipped" as const };
-        const path = `products/${crypto.randomUUID()}.webp`;
-        const uploaded = await supabase.storage.from(BUCKET).upload(path, framed, {
-          contentType: "image/webp",
-          upsert: false,
-        });
-        if (uploaded.error) throw new Error(uploaded.error.message);
-        return {
-          url,
-          status: "reframed" as const,
-          next: supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl,
-        };
-      } catch (cause) {
-        return {
-          url,
-          status: "failed" as const,
-          message: cause instanceof Error ? cause.message : "Fehler",
-        };
-      }
-    })
-  );
-  for (const outcome of outcomes) {
-    if (outcome.status === "skipped") summary.skipped += 1;
-    else if (outcome.status === "failed") {
-      summary.failed += 1;
-      summary.errors.push(`${outcome.url}: ${outcome.message}`);
-    } else {
-      replacements.set(outcome.url, outcome.next);
+
+  // Sequentiell: ONNX-Modell teilt sich den RAM
+  for (const url of slice) {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "jmle-image-optimizer/1.0" },
+      });
+      if (!response.ok) throw new Error(`Download ${response.status}`);
+      const input = Buffer.from(await response.arrayBuffer());
+      const optimized = await optimizeProductImageBuffer(input, {
+        removeBackground: true,
+        force: true,
+      });
+      const ext = optimized.contentType === "image/png" ? "png" : "webp";
+      const path = `products/${crypto.randomUUID()}.${ext}`;
+      const uploaded = await supabase.storage.from(BUCKET).upload(path, optimized.buffer, {
+        contentType: optimized.contentType,
+        upsert: false,
+      });
+      if (uploaded.error) throw new Error(uploaded.error.message);
+      const next = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      replacements.set(url, next);
       summary.reframed += 1;
+    } catch (cause) {
+      summary.failed += 1;
+      summary.errors.push(
+        `${url}: ${cause instanceof Error ? cause.message : "Fehler"}`
+      );
     }
   }
 
@@ -244,6 +243,7 @@ export async function applyProductFrameChunk(
     }
   }
 
+  // Alte Storage-Objekte löschen (externe URLs haben keinen Storage-Pfad)
   if (!databaseFailed && replacements.size > 0) {
     const stale = [...replacements.keys()]
       .map((url) => storageObjectPath(url))
@@ -267,7 +267,7 @@ export async function reprocessAllProductImages(
   let offset = 0;
   let guard = 0;
   while (guard < 5000) {
-    const chunk = await applyProductFrameChunk(supabase, offset, 4);
+    const chunk = await applyProductFrameChunk(supabase, offset, 2);
     summary.examined += chunk.examined;
     summary.reframed += chunk.reframed;
     summary.skipped += chunk.skipped;

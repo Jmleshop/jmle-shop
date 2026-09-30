@@ -8,7 +8,8 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const runtime = "nodejs";
+export const maxDuration = 120;
 
 function clientFor(session: SupabaseClient) {
   return process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : session;
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     const chunk = await applyProductFrameChunk(
       clientFor(auth.supabase),
       Number(body.offset) || 0,
-      4
+      2
     );
     return NextResponse.json(chunk);
   } catch (cause) {

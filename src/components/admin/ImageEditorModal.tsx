@@ -523,6 +523,32 @@ export default function ImageEditorModal({
       setFlipH(false);
       setFlipV(false);
       setTab("ai");
+      // Zero-Click: nach Auto-Freisteller sofort exportieren & übernehmen
+      if (autoRemoveBackground) {
+        setBusy("save");
+        setProgress(null);
+        try {
+          const file = await exportProductImage(next, {
+            ...currentSettings(),
+            crop: FULL_FRAME,
+            background: "transparent",
+            studio: "none",
+            margin: true,
+            rotation: 0,
+            flipH: false,
+            flipV: false,
+            shadow: "none",
+            watermark: false,
+            straighten: 0,
+            heal: [],
+          });
+          onComplete(file);
+          return;
+        } catch (exportErr) {
+          console.error(exportErr);
+          setError(copy.bgError);
+        }
+      }
     } catch (cause) {
       console.error(cause);
       setError(

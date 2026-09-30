@@ -2,9 +2,9 @@ import { squarePlacement } from "./geometry";
 
 /**
  * The product's longest side fills this share of the square.
- * The remaining 12 % is split into a 6 % margin on every side.
+ * 10 % padding on every side → fill = 0.80.
  */
-export const PRODUCT_FILL = 0.88;
+export const PRODUCT_FILL = 0.8;
 
 /** Matches Sharp trim threshold 12 against white. */
 export const TRIM_THRESHOLD = 12;

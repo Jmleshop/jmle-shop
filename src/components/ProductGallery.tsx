@@ -82,7 +82,6 @@ export default function ProductGallery({
               src={originalImageSrc(src)}
               alt={i === index ? alt : ""}
               fill
-              unoptimized
               quality={SHOP_IMAGE_QUALITY}
               className="max-h-full max-w-full object-contain object-center"
               sizes="(max-width: 768px) 100vw, 50vw"

@@ -91,7 +91,6 @@ export default function ProductCard({ product }: ProductCardProps) {
             src={originalImageSrc(product.image)}
             alt={product.nameDe ? `${title} – ${product.name}` : title}
             fill
-            unoptimized
             quality={SHOP_IMAGE_QUALITY}
             className="object-contain object-center transition-transform duration-500 ease-boutique group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"

@@ -3,10 +3,15 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Upload, X, Star, Crop, Pencil, Download } from "lucide-react";
+import { Upload, X, Star, Pencil, Download, Loader2, Sparkles } from "lucide-react";
 import { uploadProductImage } from "@/lib/compress-image";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { copyFor } from "@/lib/image-editor/copy";
+import {
+  autoProcessProductFile,
+  type AutoProcessProgress,
+} from "@/lib/image-editor/auto-process-upload";
+import { preloadBackgroundRemoval } from "@/lib/image-editor/remove-background";
 import type { RenderSettings } from "@/lib/image-editor/types";
 
 const ImageEditorModal = dynamic(() => import("@/components/admin/ImageEditorModal"), {
@@ -117,8 +122,13 @@ export default function ImageUpload({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [pasteHint, setPasteHint] = useState(false);
+  const [turboProgress, setTurboProgress] = useState<AutoProcessProgress | null>(null);
   const [session, setSession] = useState<EditorSession | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (editorEnabled) void preloadBackgroundRemoval();
+  }, [editorEnabled]);
   const urls = Array.isArray(value) ? value : value ? [value] : [];
   const urlsKey = urls.join("\n");
   const urlsKeyRef = useRef(urlsKey);
@@ -155,8 +165,35 @@ export default function ImageUpload({
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (!list.length) return;
 
+    // Zero-Click: Freisteller + Zentrierung automatisch, kein manueller Zuschnitt
     if (editorEnabled) {
-      openBatch(list, 0);
+      setUploading(true);
+      setTurboProgress({
+        phase: "process",
+        ratio: 0.02,
+        label: "⚡ Entferne Hintergrund mit KI (Turbo-Modus)…",
+        total: list.length,
+        index: 1,
+      });
+      try {
+        const uploaded: string[] = [];
+        for (let i = 0; i < list.length; i++) {
+          const file = list[i];
+          const processed = await autoProcessProductFile(file, (p) =>
+            setTurboProgress({ ...p, index: i + 1, total: list.length, fileName: file.name })
+          );
+          uploaded.push(await uploadProductImage(processed, folder, { alreadyEncoded: true }));
+        }
+        if (multiple) publish([...urlsRef.current, ...uploaded]);
+        else publish(uploaded[0] ? [uploaded[0]] : []);
+      } catch (cause) {
+        setError(
+          cause instanceof Error ? cause.message : "Auto-Optimierung fehlgeschlagen"
+        );
+      } finally {
+        setUploading(false);
+        setTurboProgress(null);
+      }
       return;
     }
 
@@ -282,10 +319,29 @@ export default function ImageUpload({
       <label className="mb-1 block text-sm">{t("images")}</label>
       <p className="mb-2 text-[11px] text-gray-500">
         {editorEnabled
-          ? copy.editHint
+          ? "Zero-Click: Freisteller + Auto-Zentrierung starten sofort bei Upload/Einfügen. Stift = optional nachbearbeiten."
           : "Automatische WebP-Kompression. Bei mehreren Bildern: Stern = Hauptbild (Cover)."}{" "}
         · {pasteLabel}
       </p>
+      {turboProgress && (
+        <div className="mb-3 rounded-xl border border-orange-200 bg-orange-50/90 px-3 py-3">
+          <p className="flex items-center gap-2 text-xs font-semibold text-brand-orange">
+            <Loader2 size={14} className="animate-spin" />
+            {turboProgress.label}
+            {turboProgress.total && turboProgress.total > 1
+              ? ` (${turboProgress.index}/${turboProgress.total})`
+              : ""}
+          </p>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-orange-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-brand-orange to-gold transition-all duration-200"
+              style={{
+                width: `${Math.round(Math.max(0.05, turboProgress.ratio) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {urls.map((url, index) => (
           <div
@@ -359,8 +415,18 @@ export default function ImageUpload({
       </div>
       <div className="flex flex-wrap gap-2">
         <label className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-gold/40 py-3 text-sm text-gray-600 hover:bg-jmle-warm">
-          {editorEnabled ? <Crop size={16} /> : <Upload size={16} />}
-          {uploading ? t("saving") : editorEnabled ? copy.choose : t("images")}
+          {uploading ? (
+            <Loader2 size={16} className="animate-spin text-brand-orange" />
+          ) : editorEnabled ? (
+            <Sparkles size={16} className="text-brand-orange" />
+          ) : (
+            <Upload size={16} />
+          )}
+          {uploading
+            ? turboProgress?.label || t("saving")
+            : editorEnabled
+              ? "Bild einfügen — Turbo-Freisteller startet automatisch"
+              : t("images")}
           <input
             type="file"
             accept="image/*"
@@ -402,7 +468,8 @@ export default function ImageUpload({
                   }
                 : null
           }
-          autoExport={Boolean(bulkRef.current) && !session.replaceUrl && batchIndexRef.current > 0}
+          autoRemoveBackground
+          autoExport={false}
           onRemember={(settings) => {
             bulkRef.current = {
               ...settings,
