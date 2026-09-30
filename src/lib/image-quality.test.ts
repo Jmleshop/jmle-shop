@@ -3,8 +3,9 @@ import { describe, it } from "node:test";
 import {
   analyzeRawPixels,
   missingImageQuality,
+  corruptImageQuality,
+  unknownOkQuality,
   qualityBadgeLabel,
-  qualityIssueSummary,
   IMAGE_QUALITY_MIN_EDGE,
 } from "./image-quality";
 
@@ -35,43 +36,46 @@ describe("image-quality", () => {
     assert.equal(qualityBadgeLabel(q, "de"), "Bild prüfen erforderlich");
   });
 
-  it("flags low resolution", () => {
-    const w = 80;
-    const h = 80;
-    assert.ok(Math.min(w, h) < IMAGE_QUALITY_MIN_EDGE);
-    // Sharp checkerboard → high Laplacian, but still low_res
-    const data = rgba(w, h, (x, y) =>
-      (x + y) % 2 === 0 ? [0, 0, 0, 255] : [255, 255, 255, 255]
+  it("marks corrupt images", () => {
+    const q = corruptImageQuality();
+    assert.equal(q.ok, false);
+    assert.ok(q.issues.includes("corrupt"));
+  });
+
+  it("does not red-flag unknown/CORS results", () => {
+    const q = unknownOkQuality();
+    assert.equal(q.ok, true);
+    assert.deepEqual(q.issues, []);
+  });
+
+  it("flags only extreme low resolution (<150px)", () => {
+    assert.equal(IMAGE_QUALITY_MIN_EDGE, 150);
+    const tiny = analyzeRawPixels(
+      rgba(80, 80, () => [10, 20, 30, 255]),
+      80,
+      80
     );
-    const q = analyzeRawPixels(data, w, h);
-    assert.equal(q.ok, false);
-    assert.ok(q.issues.includes("low_res"));
+    assert.equal(tiny.ok, false);
+    assert.ok(tiny.issues.includes("low_res"));
+
+    const okSize = analyzeRawPixels(
+      rgba(200, 200, () => [10, 20, 30, 255]),
+      200,
+      200
+    );
+    assert.equal(okSize.ok, true);
+    assert.deepEqual(okSize.issues, []);
   });
 
-  it("flags matte/bad cutout with heavy semi-transparency", () => {
-    const w = 120;
-    const h = 120;
+  it("accepts normal product-sized images even with soft alpha", () => {
+    const w = 400;
+    const h = 400;
     const data = rgba(w, h, (x, y) => {
-      const inSubject = x > 20 && x < 100 && y > 20 && y < 100;
+      const inSubject = x > 40 && x < 360 && y > 40 && y < 360;
       if (!inSubject) return [0, 0, 0, 0];
-      // Soft matte edges dominate
-      return [40, 40, 40, 120];
-    });
-    const q = analyzeRawPixels(data, w, h);
-    assert.equal(q.ok, false);
-    assert.ok(q.issues.includes("bad_cutout"));
-    assert.match(qualityIssueSummary(q, "de"), /Freistellung/);
-  });
-
-  it("accepts a sharp opaque product patch with padding (no alpha issues)", () => {
-    // Analyze canvas is often downscaled; here we use sharp noise in center
-    const w = 500;
-    const h = 500;
-    const data = rgba(w, h, (x, y) => {
-      const inSubject = x > 80 && x < 420 && y > 80 && y < 420;
-      if (!inSubject) return [0, 0, 0, 0];
-      const v = ((x * 17 + y * 31) % 255);
-      return [v, 255 - v, (x * y) % 255, 255];
+      // Soft edges would previously false-positive as bad_cutout
+      const edge = x < 50 || x > 350 || y < 50 || y > 350;
+      return edge ? [40, 40, 40, 120] : [80, 40, 20, 255];
     });
     const q = analyzeRawPixels(data, w, h);
     assert.equal(q.ok, true);
