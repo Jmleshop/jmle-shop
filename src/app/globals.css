@@ -122,19 +122,20 @@
   }
 }
 
-/* Header-Logo: groß, zentriert, gestochen scharf — nie Briefmarke */
+/* Header-Logo: h-10 mobil / h-14 desktop, w-auto, zentriert, Originalqualität */
 .brand-mark-frame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 72px;
-  max-width: min(20rem, 78vw);
+  height: 2.5rem; /* h-10 */
+  width: auto;
+  max-width: min(14rem, 70vw);
   overflow: visible;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: 96px;
-    max-width: 26rem;
+    height: 3.5rem; /* h-14 */
+    max-width: 18rem;
   }
 }
 /* Footer/Hero-Mark über dem Slogan — groß & markant */
@@ -160,7 +161,7 @@
 }
 .brand-mark-img {
   display: block;
-  height: 100%;
+  height: 100%; /* folgt Frame: h-10 / h-14 */
   width: auto;
   max-width: 100%;
   object-fit: contain;
@@ -168,13 +169,13 @@
   image-rendering: auto;
 }
 .brand-mark-text {
-  font-size: 2.75rem !important;
+  font-size: 1.75rem !important; /* ~h-10 */
   line-height: 1 !important;
   letter-spacing: 0.08em;
 }
 @media (min-width: 1024px) {
   .brand-mark-text {
-    font-size: 3.25rem !important;
+    font-size: 2.25rem !important; /* ~h-14 */
   }
 }
 
