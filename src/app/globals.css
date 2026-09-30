@@ -73,20 +73,20 @@
   }
 
   /**
-   * Produktbild-Rahmen: 1:1, transparent.
-   * object-contain + Zoom → groß/formatfüllend ohne Kanten-Clipping.
+   * Produktbild-Rahmen: 1:1, helles Off-White.
+   * object-contain ohne Scale → nie abgeschnitten (Flaschen/Säcke vollständig).
    */
   .product-image-frame {
-    @apply relative aspect-square overflow-hidden bg-transparent flex items-center justify-center;
+    @apply relative aspect-square overflow-hidden bg-[#FAF7F2] flex items-center justify-center p-2 sm:p-3;
   }
 
   .product-image-media {
-    @apply object-contain object-center origin-center;
-    transform: scale(1.22);
+    @apply object-contain object-center;
+    transform: none;
   }
 
   .group:hover .product-image-media {
-    transform: scale(1.26);
+    transform: scale(1.02);
   }
 
   .section-title {
