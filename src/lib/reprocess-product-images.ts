@@ -1,5 +1,9 @@
 import sharp from "sharp";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  MAX_EDGE_PRODUCT,
+  STORAGE_WEBP_QUALITY_PCT,
+} from "./image-bounds";
 import { optimizeProductImageBuffer } from "./optimize-product-image";
 import { PRODUCT_FILL, TRIM_THRESHOLD, productFrame } from "./image-editor/product-bounds";
 
@@ -78,7 +82,10 @@ export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
   if (removedW < beforeW * 0.04 && removedH < beforeH * 0.04) return null;
 
   const longest = Math.max(tw, th, 1);
-  const size = Math.min(1000, Math.max(longest, Math.round(longest / PRODUCT_FILL)));
+  const size = Math.min(
+    MAX_EDGE_PRODUCT,
+    Math.max(longest, Math.round(longest / PRODUCT_FILL))
+  );
   const place = productFrame(tw, th, size);
   const resized = await sharp(trimmed.data)
     .resize(place.dw, place.dh, { fit: "fill", kernel: "lanczos3" })
@@ -89,7 +96,6 @@ export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
       width: size,
       height: size,
       channels: 4,
-      // Immer transparent — keine feste Hintergrundfarbe
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
@@ -100,7 +106,12 @@ export async function frameProductWebp(input: Buffer): Promise<Buffer | null> {
         top: place.dy,
       },
     ])
-    .webp({ quality: 90, alphaQuality: 100, effort: 6, smartSubsample: true })
+    .webp({
+      quality: STORAGE_WEBP_QUALITY_PCT,
+      alphaQuality: 90,
+      effort: 4,
+      smartSubsample: true,
+    })
     .toBuffer();
 }
 

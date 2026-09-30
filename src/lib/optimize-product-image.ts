@@ -57,8 +57,8 @@ export async function optimizeProductImageBuffer(
     })
     .webp({
       quality: STORAGE_WEBP_QUALITY_PCT,
-      alphaQuality: 100,
-      effort: 6,
+      alphaQuality: 90,
+      effort: 4,
       smartSubsample: true,
     })
     .toBuffer({ resolveWithObject: true });

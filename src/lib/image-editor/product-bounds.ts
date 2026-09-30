@@ -1,3 +1,4 @@
+import { MAX_EDGE_PRODUCT } from "@/lib/image-bounds";
 import { squarePlacement } from "./geometry";
 
 /**
@@ -149,8 +150,8 @@ export function shouldReframe(box: PixelBox, width: number, height: number): boo
 export function frameSquareSize(boxW: number, boxH: number): number {
   const longest = Math.max(boxW, boxH, 1);
   const needed = Math.round(longest / PRODUCT_FILL);
-  // Produkt-HD-Cap 1000 — kein erzwungenes Upscale auf 1500+
-  return Math.min(1000, Math.max(longest, needed));
+  // Storage-Cap — kein Upscale über MAX_EDGE_PRODUCT
+  return Math.min(MAX_EDGE_PRODUCT, Math.max(longest, needed));
 }
 
 /** Zentriert das Motiv mit PRODUCT_FILL-Innenabstand im Quadrat. */

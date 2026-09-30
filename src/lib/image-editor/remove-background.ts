@@ -1,3 +1,4 @@
+import { MAX_EDGE_PRODUCT } from "@/lib/image-bounds";
 import {
   blobHasTransparency,
   trimAndCenterCutout,
@@ -61,8 +62,9 @@ function baseConfig(
     device,
     model: "isnet_fp16",
     output: {
-      format: "image/png",
-      quality: 1,
+      // WebP statt PNG → deutlich weniger RAM/Transfer vor dem Upload
+      format: "image/webp",
+      quality: 0.85,
       type: "foreground",
     },
     progress: (key: string, current: number, total: number) => {
@@ -216,7 +218,7 @@ export async function removeImageBackgroundDetailed(
   options?: { maxEdge?: number }
 ): Promise<RemovalResult> {
   const started = performance.now();
-  const maxEdge = options?.maxEdge ?? 1000;
+  const maxEdge = options?.maxEdge ?? MAX_EDGE_PRODUCT;
   // Preload anstoßen (no-op wenn schon fertig)
   void preloadBackgroundRemoval(onProgress);
 

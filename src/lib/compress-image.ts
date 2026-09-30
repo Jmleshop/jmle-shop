@@ -1,7 +1,7 @@
 import {
   MAX_EDGE_PRODUCT,
+  STORAGE_MAX_MB,
   STORAGE_WEBP_QUALITY,
-  isLogoFolder,
   maxEdgeForFolder,
 } from "@/lib/image-bounds";
 import {
@@ -9,25 +9,10 @@ import {
   shouldAutoCenterFolder,
 } from "@/lib/center-image-square";
 
-function extensionForMime(type: string, fallbackName: string): string {
-  if (type === "image/png") return "png";
-  if (type === "image/jpeg" || type === "image/jpg") return "jpg";
-  if (type === "image/webp") return "webp";
-  if (type === "image/gif") return "gif";
-  if (type === "image/svg+xml") return "svg";
-  const m = fallbackName.match(/\.([a-zA-Z0-9]+)$/);
-  return m?.[1]?.toLowerCase() || "png";
-}
-
 /**
- * Client-seitige Speicher-Optimierung:
- * - Immer WebP (inkl. Alpha für Freisteller)
- * - quality 90 → optisch HD, deutlich kleinere Dateien
- * - Max-Bounds je Ordner (Produkte 1000 / Banner 2048)
- * - Produkte/Kategorien: optische 1:1-Zentrierung (transparent)
- * - Banner: Original-Aspekt, kein Auto-Freisteller
- * - EXIF/Metadaten entfallen durch Canvas-Reencode
- * - Keine festen Hintergrundfarben
+ * Client-Upload: immer WebP, harte Bounds, keine Temp-Dateien.
+ * Produkte/Kategorien: optionale 1:1-Zentrierung (transparent).
+ * Banner/Logos: Aspekt behalten, nur skalieren + komprimieren.
  */
 
 async function encodeWebpFromBitmap(
@@ -45,7 +30,6 @@ async function encodeWebpFromBitmap(
   if (!ctx) return null;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  // Transparent lassen — keine Weiß-/Cream-Fläche
   ctx.clearRect(0, 0, width, height);
   ctx.drawImage(bitmap, 0, 0, width, height);
   const blob = await new Promise<Blob | null>((resolve) =>
@@ -71,11 +55,10 @@ export async function compressImageFile(
     /* fall through */
   }
 
-  // Fallback: browser-image-compression → WebP q90
   try {
     const imageCompression = (await import("browser-image-compression")).default;
     const compressed = await imageCompression(file, {
-      maxSizeMB: 1.5,
+      maxSizeMB: STORAGE_MAX_MB,
       maxWidthOrHeight: maxEdge,
       useWebWorker: true,
       fileType: "image/webp",
@@ -106,7 +89,7 @@ function fitCanvas(canvas: HTMLCanvasElement, maxEdge: number): HTMLCanvasElemen
   return next;
 }
 
-/** Canvas → WebP q90, skaliert auf maxEdge. */
+/** Canvas → WebP, skaliert auf maxEdge (kein Disk-Temp). */
 export async function canvasToCompressedFile(
   canvas: HTMLCanvasElement,
   filename = "crop.webp",
@@ -123,10 +106,8 @@ export async function canvasToCompressedFile(
 }
 
 /**
- * Upload in Supabase Storage.
- * WebP q90 + Bounds. Produkte werden transparent 1:1 zentriert (kein Freisteller).
- * Banner behalten das Original-Seitenverhältnis.
- * Logos: Originalbytes, keine Kompression/Zentrierung/Freistellung.
+ * Upload → immer komprimiertes WebP in Supabase Storage.
+ * Keine Original-Riesenfiles, keine lokalen Temp-Dateien.
  */
 export async function uploadProductImage(
   file: File,
@@ -134,23 +115,9 @@ export async function uploadProductImage(
   options?: { alreadyEncoded?: boolean; skipCenter?: boolean }
 ): Promise<string> {
   const { createClient } = await import("@/lib/supabase/client");
-  const supabase = createClient();
-
-  // Logos: volle Originalqualität, natürliches Seitenverhältnis
-  if (isLogoFolder(folder) && !options?.alreadyEncoded) {
-    const ext = extensionForMime(file.type, file.name);
-    const path = `${folder}/${crypto.randomUUID()}.${ext}`;
-    const contentType = file.type || "image/png";
-    const { error } = await supabase.storage
-      .from("product-images")
-      .upload(path, file, { contentType, upsert: false });
-    if (error) throw error;
-    return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
-  }
-
   const maxEdge = maxEdgeForFolder(folder);
   let working = file;
-  // Manuell freigestellte Exports nicht erneut umrahmen
+
   if (
     !options?.alreadyEncoded &&
     !options?.skipCenter &&
@@ -162,12 +129,19 @@ export async function uploadProductImage(
       working = file;
     }
   }
+
+  // Immer neu enkodieren (auch Cutouts) → harte Bounds + q78, kein Raw-Upload
   const compressed = await compressImageFile(working, maxEdge);
-  const ext = compressed.type === "image/png" ? "png" : "webp";
-  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+
+  const supabase = createClient();
+  const path = `${folder}/${crypto.randomUUID()}.webp`;
   const { error } = await supabase.storage
     .from("product-images")
-    .upload(path, compressed, { contentType: compressed.type, upsert: false });
+    .upload(path, compressed, {
+      contentType: "image/webp",
+      upsert: false,
+      cacheControl: "31536000",
+    });
   if (error) throw error;
   return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
 }

@@ -28,10 +28,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const png = await removeWithNode(input);
-    return new NextResponse(new Uint8Array(png), {
+    const webp = await removeWithNode(input);
+    return new NextResponse(new Uint8Array(webp), {
       headers: {
-        "Content-Type": "image/png",
+        "Content-Type": "image/webp",
         "X-Bg-Engine": "imgly-node-medium",
         "Cache-Control": "no-store",
       },
@@ -51,10 +51,10 @@ export async function POST(request: Request) {
       );
     }
     try {
-      const png = await removeWithHuggingFace(input, token);
-      return new NextResponse(new Uint8Array(png), {
+      const webp = await removeWithHuggingFace(input, token);
+      return new NextResponse(new Uint8Array(webp), {
         headers: {
-          "Content-Type": "image/png",
+          "Content-Type": "image/webp",
           "X-Bg-Engine": "hf-rmbg-1.4",
           "Cache-Control": "no-store",
         },
@@ -74,23 +74,27 @@ export async function POST(request: Request) {
   }
 }
 
+/** Freisteller im Speicher → WebP; kein Disk-Temp. */
+async function toWebp(buf: Buffer): Promise<Buffer> {
+  const sharp = (await import("sharp")).default;
+  return sharp(buf)
+    .ensureAlpha()
+    .webp({ quality: 85, alphaQuality: 90, effort: 4 })
+    .toBuffer();
+}
+
 async function removeWithNode(input: Buffer): Promise<Buffer> {
   const { removeBackground } = await import("@imgly/background-removal-node");
-  // Mime-typisierter Blob — die Node-Lib lehnt Buffer ohne type ab
   const source = new Blob([new Uint8Array(input)], { type: "image/png" });
   const blob = await removeBackground(source, {
     model: "medium",
-    output: {
-      format: "image/png",
-      quality: 1,
-    },
+    output: { format: "image/png", quality: 1 },
   });
-  const ab = await blob.arrayBuffer();
-  const out = Buffer.from(ab);
+  const out = Buffer.from(await blob.arrayBuffer());
   if (!(await pngHasTransparency(out))) {
     throw new Error("Node-Freisteller ohne Alpha-Kanal");
   }
-  return out;
+  return toWebp(out);
 }
 
 async function removeWithHuggingFace(input: Buffer, token: string): Promise<Buffer> {
@@ -111,7 +115,7 @@ async function removeWithHuggingFace(input: Buffer, token: string): Promise<Buff
   if (!(await pngHasTransparency(out))) {
     throw new Error("HF-Ergebnis ohne Alpha-Kanal");
   }
-  return out;
+  return toWebp(out);
 }
 
 /** Pixelgenaue Transparenz-Prüfung via Sharp (Indexed-PNG + tRNS inklusive) */

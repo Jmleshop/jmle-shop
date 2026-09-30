@@ -16,8 +16,8 @@ import {
  */
 export const CUTOUT_PADDING = 0.11;
 export const CUTOUT_FILL = 1 - CUTOUT_PADDING * 2;
-/** Produkt-Cutouts: 1000px reicht für Retina-Karten, spart Speicher. */
-export const HD_MAX_EDGE = 1000;
+/** Produkt-Cutouts: 800px reicht für Retina-Karten, spart Speicher. */
+export const HD_MAX_EDGE = 800;
 /** Großzügiger Feather-Rand um die Silhouette (Pixel) — feine Kanten/Spritzer behalten. */
 export const CUTOUT_FEATHER_PX = 16;
 
