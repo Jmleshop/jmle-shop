@@ -19,10 +19,8 @@ export default function SiteFooter({
           <BrandMark
             logoUrl={logoUrl}
             name={siteName}
-            className="mx-auto"
+            className="justify-center mx-auto"
             textClassName="text-jmle-yellow hover:text-white"
-            textClassName="text-3xl tracking-[0.28em] text-jmle-yellow hover:text-white"
-            className="justify-center"
           />
           <p className="text-jmle-ocher/80 text-sm mt-2 font-ui font-light">
             {t("tagline")}
