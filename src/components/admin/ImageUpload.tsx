@@ -170,12 +170,12 @@ export default function ImageUpload({
   useEffect(() => {
     if (!editorEnabled || !autoOpenUrl || uploading || session) return;
     if (autoOpenHandledRef.current === autoOpenUrl) return;
-    if (!urls.includes(autoOpenUrl)) return;
+    if (!urlsKey.split("\n").includes(autoOpenUrl)) return;
     autoOpenHandledRef.current = autoOpenUrl;
     batchRef.current = null;
     setSession({ key: autoOpenUrl, source: autoOpenUrl, replaceUrl: autoOpenUrl });
     onAutoOpenConsumed?.();
-  }, [autoOpenUrl, editorEnabled, uploading, session, urls, onAutoOpenConsumed]);
+  }, [autoOpenUrl, editorEnabled, uploading, session, urlsKey, onAutoOpenConsumed]);
 
   useEffect(() => {
     if (!autoOpenUrl) autoOpenHandledRef.current = null;
