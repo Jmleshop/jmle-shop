@@ -13,7 +13,7 @@ import {
 import { getAppUrl } from "@/lib/site-defaults";
 import { HomepageSectionsRenderer } from "@/components/HomeSections";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getSiteConfigAsync();
@@ -50,7 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [sections, slidesByZone, brands, categories, offers, bestsellers, allProducts] =
+  const [sections, slidesByZone, brands, categories, offers, bestsellers] =
     await Promise.all([
       getHomepageSectionsAsync(),
       getSlidesByZoneAsync(),
@@ -58,8 +58,13 @@ export default async function HomePage() {
       getHomepageCategoriesAsync(),
       getOffersAsync(),
       getBestsellersAsync(),
-      getProductsAsync(),
     ]);
+
+  // Only hydrate the full catalog into the client tree when a section asks for it.
+  const needsAllProducts = sections.some(
+    (s) => s.type === "products" && s.productSource === "all"
+  );
+  const allProducts = needsAllProducts ? await getProductsAsync() : [];
 
   return (
     <HomepageSectionsRenderer

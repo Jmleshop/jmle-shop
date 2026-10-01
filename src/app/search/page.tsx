@@ -6,7 +6,7 @@ import {
 import { ProductGrid } from "@/components/ProductCard";
 import { ShopHeading } from "@/components/ShopText";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string }>;

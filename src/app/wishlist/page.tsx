@@ -20,22 +20,53 @@ export default function WishlistPage() {
   const { addItem } = useCart();
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchOk, setFetchOk] = useState(false);
   const cleanedRef = useRef(false);
+  const idsKey = ids.join(",");
 
   useEffect(() => {
-    fetch("/api/products")
-      .then((r) => r.json())
-      .then((d) => {
-        setCatalog((d.products as Product[]) ?? []);
+    if (!idsKey) {
+      setCatalog([]);
+      setFetchOk(true);
+      setLoading(false);
+      return;
+    }
+    const qs = new URLSearchParams({
+      ids: idsKey,
+      fields: "cart",
+    });
+    let cancelled = false;
+    setLoading(true);
+    setFetchOk(false);
+    fetch(`/api/products?${qs.toString()}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("products fetch failed");
+        return r.json();
       })
-      .catch(() => setCatalog([]))
-      .finally(() => setLoading(false));
-  }, []);
+      .then((d) => {
+        if (!cancelled) {
+          setCatalog((d.products as Product[]) ?? []);
+          setFetchOk(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCatalog([]);
+          setFetchOk(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [idsKey]);
 
-  // Geister-IDs (nicht mehr im Katalog) automatisch bereinigen
+  // Geister-IDs (angefragt, aber nicht mehr im Katalog) bereinigen
   useEffect(() => {
-    if (loading || wlLoading || cleanedRef.current) return;
-    if (!catalog.length && ids.length === 0) return;
+    if (loading || wlLoading || !fetchOk || cleanedRef.current) return;
+    if (!ids.length) return;
     const valid = new Set(catalog.map((p) => p.id));
     const stale = ids.filter((id) => !valid.has(id));
     if (!stale.length) {
@@ -48,7 +79,7 @@ export default function WishlistPage() {
         await remove(id);
       }
     })();
-  }, [loading, wlLoading, catalog, ids, remove]);
+  }, [loading, wlLoading, fetchOk, catalog, ids, remove]);
 
   const products = useMemo(() => {
     const map = new Map(catalog.map((p) => [p.id, p]));

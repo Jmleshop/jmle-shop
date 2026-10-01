@@ -5,7 +5,7 @@ import { ProductGrid } from "@/components/ProductCard";
 import { ShopHeading } from "@/components/ShopText";
 
 // Immer serverseitig frisch: neu importierte Produkte sind sofort sichtbar.
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getSiteConfigAsync();

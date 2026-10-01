@@ -11,7 +11,7 @@ import CategoryGrid from "@/components/CategoryGrid";
 import { CategoryHeading } from "@/components/ShopText";
 import { EmptyCategoryNotice } from "@/components/HomeSections";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 interface CategoryPageProps {
   params: Promise<{ id: string }>;

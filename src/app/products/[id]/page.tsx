@@ -12,7 +12,7 @@ import ProductInfo from "@/components/ProductInfo";
 import WishlistButton from "@/components/WishlistButton";
 import { DiscountBadge } from "@/components/ui";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;

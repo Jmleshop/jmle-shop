@@ -1,5 +1,5 @@
-/** Next.js Image quality for srcset/HD on desktop (sharp WebP/AVIF). */
-export const SHOP_IMAGE_QUALITY = 90;
+/** Next.js Image quality for shop delivery (sharp WebP/AVIF). */
+export const SHOP_IMAGE_QUALITY = 75;
 
 /**
  * Prefer the original storage object over Supabase image transforms.
@@ -17,7 +17,6 @@ export function originalImageSrc(src: string | null | undefined): string {
         "/storage/v1/object/public/"
       );
       url.search = "";
-      return url.toString();
     }
     if (url.hostname.endsWith("supabase.co")) {
       for (const key of ["width", "height", "quality", "resize", "format"]) {

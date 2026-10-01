@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -61,30 +62,57 @@ function setGuestCart(items: GuestCartItem[]) {
   localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
 }
 
+async function fetchProductsByIds(ids: string[]): Promise<Product[]> {
+  const unique = Array.from(
+    new Set(ids.map((id) => String(id || "").trim()).filter(Boolean))
+  );
+  if (!unique.length) return [];
+  const qs = new URLSearchParams({
+    ids: unique.join(","),
+    fields: "cart",
+  });
+  const res = await fetch(`/api/products?${qs.toString()}`);
+  if (!res.ok) return [];
+  const data = (await res.json()) as { products?: Product[] };
+  return data.products ?? [];
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<Map<string, Product>>(new Map());
+  const productsRef = useRef(products);
+  productsRef.current = products;
   const supabase = createClient();
 
-  const resolveProduct = useCallback(
-    (productId: string): Product | undefined => {
-      return products.get(productId);
-    },
-    [products]
-  );
-
-  useEffect(() => {
-    fetch("/api/products")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.products) {
-          setProducts(new Map(data.products.map((p: Product) => [p.id, p])));
-        }
-      })
-      .catch(() => {});
+  const mergeProducts = useCallback((list: Product[]) => {
+    if (!list.length) return;
+    setProducts((prev) => {
+      const next = new Map(prev);
+      for (const p of list) next.set(p.id, p);
+      return next;
+    });
   }, []);
+
+  const ensureProducts = useCallback(
+    async (ids: string[]): Promise<Map<string, Product>> => {
+      const missing = ids.filter(
+        (id) => id && !productsRef.current.has(id)
+      );
+      if (missing.length) {
+        const fetched = await fetchProductsByIds(missing);
+        if (fetched.length) {
+          mergeProducts(fetched);
+          const next = new Map(productsRef.current);
+          for (const p of fetched) next.set(p.id, p);
+          return next;
+        }
+      }
+      return productsRef.current;
+    },
+    [mergeProducts]
+  );
 
   const refreshCart = useCallback(async () => {
     setLoading(true);
@@ -100,8 +128,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .eq("user_id", currentUser.id);
 
       if (!error && data) {
+        const map = await ensureProducts(data.map((item) => item.product_id));
         const enriched: CartItem[] = data.map((item) => {
-          const product = resolveProduct(item.product_id);
+          const product = map.get(item.product_id);
           const max = product
             ? maxBuyQuantity(product.stock, product.maxOrderQuantity)
             : Number(item.quantity);
@@ -118,17 +147,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     } else {
       const guestItems = getGuestCart();
+      const map = await ensureProducts(guestItems.map((i) => i.product_id));
       let changed = false;
-      const clamped = guestItems.map((item) => {
-        const product = resolveProduct(item.product_id);
-        if (!product) return item;
-        const max = maxBuyQuantity(product.stock, product.maxOrderQuantity);
-        if (item.quantity > max) {
-          changed = true;
-          return { ...item, quantity: Math.max(0, max) };
-        }
-        return item;
-      }).filter((item) => item.quantity > 0);
+      const clamped = guestItems
+        .map((item) => {
+          const product = map.get(item.product_id);
+          if (!product) return item;
+          const max = maxBuyQuantity(product.stock, product.maxOrderQuantity);
+          if (item.quantity > max) {
+            changed = true;
+            return { ...item, quantity: Math.max(0, max) };
+          }
+          return item;
+        })
+        .filter((item) => item.quantity > 0);
       if (changed || clamped.length !== guestItems.length) {
         setGuestCart(clamped);
       }
@@ -140,15 +172,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           quantity: item.quantity,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          product: resolveProduct(item.product_id),
+          product: map.get(item.product_id),
         }))
       );
     }
     setLoading(false);
-  }, [supabase, resolveProduct]);
+  }, [supabase, ensureProducts]);
 
   useEffect(() => {
-    refreshCart();
+    void refreshCart();
 
     const {
       data: { subscription },
@@ -174,21 +206,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }
         }
       }
-      refreshCart();
+      void refreshCart();
     });
 
     return () => subscription.unsubscribe();
   }, [supabase, refreshCart]);
 
-  useEffect(() => {
-    if (products.size > 0) {
-      refreshCart();
-    }
-  }, [products, refreshCart]);
-
   const addItem = useCallback(
     async (productId: string, quantity = 1) => {
-      const product = resolveProduct(productId);
+      const map = await ensureProducts([productId]);
+      const product = map.get(productId);
       if (product && !product.inStock) {
         toast.error("هذا المنتج غير متوفر حالياً");
         return;
@@ -248,7 +275,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           : "تمت إضافة المنتج إلى السلة"
       );
     },
-    [user, items, supabase, refreshCart, resolveProduct]
+    [user, items, supabase, refreshCart, ensureProducts]
   );
 
   const updateQuantity = useCallback(
@@ -256,8 +283,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (quantity < 1) return;
 
       const current = items.find((i) => i.id === cartItemId);
+      const map = current
+        ? await ensureProducts([current.product_id])
+        : productsRef.current;
       const product = current
-        ? resolveProduct(current.product_id)
+        ? map.get(current.product_id)
         : undefined;
       const max = product
         ? maxBuyQuantity(product.stock, product.maxOrderQuantity)
@@ -280,7 +310,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       await refreshCart();
     },
-    [user, items, supabase, refreshCart, resolveProduct]
+    [user, items, supabase, refreshCart, ensureProducts]
   );
 
   const removeItem = useCallback(

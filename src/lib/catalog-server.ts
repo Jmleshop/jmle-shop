@@ -538,16 +538,32 @@ const getBrandLogosCached = unstable_cache(
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides", "brands"] }
 );
 
-/**
- * Produkte werden bewusst NICHT über unstable_cache zwischengespeichert, damit
- * frisch in die DB importierte Produkte sofort sichtbar sind. `cache` dedupt
- * lediglich innerhalb eines einzelnen Requests.
- */
+const getProductsCached = unstable_cache(
+  async (): Promise<Product[]> => {
+    const products = await fetchAllPublicProducts();
+    // Nie eine leere Seite: wenn die DB (noch) nichts liefert, Demo-Katalog zeigen.
+    return products.length ? products : FALLBACK_PRODUCTS;
+  },
+  ["catalog-products-v2"],
+  { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "products"] }
+);
+
+/** Request-dedupe + ISR/tag cache for the public product catalog. */
 export const getProductsAsync = cache(async (): Promise<Product[]> => {
-  const products = await fetchAllPublicProducts();
-  // Nie eine leere Seite: wenn die DB (noch) nichts liefert, Demo-Katalog zeigen.
-  return products.length ? products : FALLBACK_PRODUCTS;
+  return getProductsCached();
 });
+
+/** Point lookup by ids (uses cached catalog; no full JSON over the wire). */
+export const getProductsByIdsAsync = cache(
+  async (ids: string[]): Promise<Product[]> => {
+    const wanted = new Set(
+      ids.map((id) => String(id || "").trim()).filter(Boolean)
+    );
+    if (!wanted.size) return [];
+    const products = await getProductsAsync();
+    return products.filter((p) => wanted.has(p.id));
+  }
+);
 
 export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
   const dbTree = await getCategoriesCached();

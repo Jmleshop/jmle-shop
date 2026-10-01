@@ -4,7 +4,7 @@ import { getCategoriesAsync } from "@/lib/catalog-server";
 import { ShopHeading, CategoryHeading } from "@/components/ShopText";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function CategoriesPage() {
   const categories = await getCategoriesAsync();

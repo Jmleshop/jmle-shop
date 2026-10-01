@@ -66,6 +66,9 @@ function OfferCard({ product }: { product: Product }) {
   );
 }
 
+/** Cap marquee DOM; full catalog still available on product/category pages. */
+const MARQUEE_MAX_ITEMS = 16;
+
 export default function OffersCarousel({
   products,
   title,
@@ -77,8 +80,11 @@ export default function OffersCarousel({
 
   // Leerer Titel = Überschrift ausblenden (kein i18n-Fallback auf der Startseite)
   const heading = (title ?? "").trim() || (titleKey ? t(titleKey) : "");
-  const loop = [...products, ...products];
-  const duration = Math.max(20, products.length * 6);
+  // Never mount the entire catalog twice — keep a small, seamless track.
+  const visible = products.slice(0, MARQUEE_MAX_ITEMS);
+  const loop =
+    visible.length > 1 ? [...visible, ...visible] : visible;
+  const duration = Math.max(20, visible.length * 6);
 
   return (
     <section className="py-8 md:py-10 bg-gradient-to-b from-jmle-warm/60 to-transparent">

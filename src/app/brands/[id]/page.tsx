@@ -11,7 +11,7 @@ import { ProductGrid } from "@/components/ProductCard";
 import { ShopHeading } from "@/components/ShopText";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 interface BrandPageProps {
   params: Promise<{ id: string }>;
