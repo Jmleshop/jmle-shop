@@ -20,7 +20,7 @@ export function Skeleton({
 
 export function ProductCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-orange-100/80 bg-transparent" aria-busy="true">
+    <div className="overflow-hidden rounded-2xl border border-orange-100/80 bg-white" aria-busy="true">
       <div className="product-image-frame">
         <Skeleton className="absolute inset-[10%] rounded-lg" />
       </div>

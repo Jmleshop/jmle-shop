@@ -30,7 +30,7 @@ function OfferCard({ product }: { product: Product }) {
         <WishlistButton productId={product.id} size="sm" />
       </div>
       <Link href={`/products/${product.id}`} className="block" aria-label={title}>
-        <div className="overflow-hidden rounded-2xl border border-orange-100/80 bg-transparent transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
+        <div className="overflow-hidden rounded-2xl border border-orange-100/80 bg-white transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
           <div className="product-image-frame">
             <Image
               src={originalImageSrc(product.image)}

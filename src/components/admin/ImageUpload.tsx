@@ -7,8 +7,12 @@ import { Upload, X, Star, Pencil, Download, Loader2 } from "lucide-react";
 import { uploadProductImage } from "@/lib/compress-image";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { copyFor } from "@/lib/image-editor/copy";
-import { preloadBackgroundRemoval } from "@/lib/image-editor/remove-background";
-import type { RenderSettings } from "@/lib/image-editor/types";
+import { isBannerFolder, isLogoFolder } from "@/lib/image-bounds";
+
+const ProductImageAdjustModal = dynamic(
+  () => import("@/components/admin/ProductImageAdjustModal"),
+  { ssr: false }
+);
 
 const ImageEditorModal = dynamic(() => import("@/components/admin/ImageEditorModal"), {
   ssr: false,
@@ -42,7 +46,6 @@ async function downloadImageUrl(url: string, filename = "bild") {
       type: blob.type || `image/${ext}`,
     });
 
-    // iOS/Android: Web Share speichert oft direkt in Fotos/Album
     const nav = navigator as Navigator & {
       canShare?: (data?: ShareData) => boolean;
       share?: (data: ShareData) => Promise<void>;
@@ -70,7 +73,6 @@ async function downloadImageUrl(url: string, filename = "bild") {
     await saveBlob(await res.blob());
   } catch {
     try {
-      // Same-origin / blob URLs: XHR as second path (better than Safari tab)
       const blob = await new Promise<Blob>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("GET", url, true);
@@ -85,7 +87,6 @@ async function downloadImageUrl(url: string, filename = "bild") {
       });
       await saveBlob(blob);
     } catch {
-      // Letzter Fallback: verstecktes iframe, kein neuer Tab
       const iframe = document.createElement("iframe");
       iframe.style.display = "none";
       iframe.src = url;
@@ -101,10 +102,8 @@ export default function ImageUpload({
   folder = "products",
   multiple = false,
   enableCrop = false,
-  /** Global: Turbo-Pipeline (Freisteller + Zentrierung) für alle Admin-Uploads */
   enableEditor = true,
   label,
-  /** Sofort-Editor aus Listen/Vorschau: URL öffnen, sobald sie im Value liegt */
   autoOpenUrl,
   onAutoOpenConsumed,
 }: {
@@ -112,16 +111,10 @@ export default function ImageUpload({
   onChange: (urls: string | string[]) => void;
   folder?: string;
   multiple?: boolean;
-  /**
-   * Bild-Editor verfügbar (Standard: an).
-   * Freisteller läuft NIEMALS automatisch beim Upload — nur manuell im Editor.
-   */
   enableEditor?: boolean;
   /** @deprecated Alias für enableEditor */
   enableCrop?: boolean;
-  /** Optionaler UI-Label (sonst t("images")) */
   label?: string;
-  /** Klick aus Produkt-/Banner-Liste → Editor sofort öffnen */
   autoOpenUrl?: string | null;
   onAutoOpenConsumed?: () => void;
 }) {
@@ -129,6 +122,11 @@ export default function ImageUpload({
   const copy = copyFor(lang);
   const fieldLabel = label || t("images");
   const editorEnabled = enableEditor || enableCrop;
+  const isLogo = isLogoFolder(folder);
+  const isBanner = isBannerFolder(folder);
+  /** Produkte/Kategorien: manueller Weißkarten-Anpasser; Banner/Logo: optionaler Legacy-Editor ohne Freisteller */
+  const useProductAdjuster = !isLogo && !isBanner;
+
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [pasteHint, setPasteHint] = useState(false);
@@ -136,11 +134,6 @@ export default function ImageUpload({
   const [session, setSession] = useState<EditorSession | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const autoOpenHandledRef = useRef<string | null>(null);
-
-  // Modell nur vorladen wenn Editor offen werden kann — kein Auto-Run
-  useEffect(() => {
-    if (editorEnabled) void preloadBackgroundRemoval();
-  }, [editorEnabled]);
 
   const openEditorForUrl = (url: string) => {
     if (uploading || session) return;
@@ -157,9 +150,7 @@ export default function ImageUpload({
   }
   const batchRef = useRef<File[] | null>(null);
   const batchIndexRef = useRef(0);
-  const bulkRef = useRef<RenderSettings | null>(null);
 
-  // Listen-Klick: Form öffnet sich + Editor startet sofort für das Bild
   useEffect(() => {
     if (!editorEnabled || !autoOpenUrl || uploading || session) return;
     if (autoOpenHandledRef.current === autoOpenUrl) return;
@@ -179,8 +170,6 @@ export default function ImageUpload({
     onChange(multiple ? next : (next[0] ?? ""));
   };
 
-  const uploadOne = async (file: File) => uploadProductImage(file, folder);
-
   const openBatch = (files: File[], index: number) => {
     batchRef.current = files;
     batchIndexRef.current = index;
@@ -198,9 +187,8 @@ export default function ImageUpload({
     const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (!list.length) return;
 
-    // Produkte: Editor sofort öffnen — Auto-Freisteller, Fenster bleibt offen (kein Auto-Export).
-    // Banner/Logos: direkt speichern, kein Freisteller.
-    if (editorEnabled && allowBackgroundRemoval && !session) {
+    // Produkte: sofort manueller Anpasser (weiße Karte + Zoom/Pan)
+    if (editorEnabled && useProductAdjuster && !session) {
       openBatch(list, 0);
       return;
     }
@@ -209,7 +197,7 @@ export default function ImageUpload({
     try {
       const uploaded: string[] = [];
       for (const file of list) {
-        uploaded.push(await uploadOne(file));
+        uploaded.push(await uploadProductImage(file, folder));
       }
       if (multiple) publish([...urlsRef.current, ...uploaded]);
       else publish(uploaded[0] ? [uploaded[0]] : []);
@@ -243,9 +231,8 @@ export default function ImageUpload({
       window.setTimeout(() => setPasteHint(false), 1200);
       void handleFiles(files);
     },
-    // handleFiles closes over latest editor/upload state via refs
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editorEnabled, folder, multiple]
+    [editorEnabled, folder, multiple, useProductAdjuster]
   );
 
   useEffect(() => {
@@ -253,10 +240,8 @@ export default function ImageUpload({
     if (!el) return;
     const listener = (e: ClipboardEvent) => onPaste(e);
     el.addEventListener("paste", listener);
-    // Auch global, wenn Fokus im Upload-Bereich liegt
     const onDocPaste = (e: ClipboardEvent) => {
       if (!el.contains(document.activeElement) && document.activeElement !== el) {
-        // Erlaube Paste, wenn der Bereich fokussiert ist oder nichts anderes fokussiert ist
         const active = document.activeElement;
         const isTyping =
           active instanceof HTMLInputElement ||
@@ -283,7 +268,11 @@ export default function ImageUpload({
     setUploading(true);
     setError("");
     try {
-      const url = await uploadProductImage(file, folder, { alreadyEncoded: true });
+      // Adjuster liefert bereits weißes WebP — nicht erneut zentrieren
+      const url = await uploadProductImage(file, folder, {
+        alreadyEncoded: true,
+        skipCenter: true,
+      });
       const base = urlsRef.current;
       const next = current?.replaceUrl
         ? base.map((item) => (item === current.replaceUrl ? url : item))
@@ -324,18 +313,19 @@ export default function ImageUpload({
     lang === "de"
       ? "Drag & Drop hierher"
       : "اسحب وأفلت هنا";
-  const isLogo = /^(brand|brands|logo|logos)$/.test(folder.trim().toLowerCase());
-  const isBanner = /^(banners?|slides|hero)$/.test(folder.trim().toLowerCase());
-  const allowBackgroundRemoval = !isBanner && !isLogo;
   const helperText = isLogo
     ? lang === "de"
-      ? "Logo: Originalqualität ohne Kompression/Zentrierung/Freisteller. Drag & Drop oder Einfügen."
-      : "الشعار: الجودة الأصلية بدون ضغط/توسيط/قص. اسحب وأفلت أو الصق."
-    : lang === "de"
-      ? "Original bleibt erhalten (WebP q90). Kein Auto-Freisteller. Drag & Drop, Einfügen oder Klick."
-      : "تبقى الصورة الأصلية (WebP q90). لا قص تلقائي. اسحب وأفلت أو الصق أو انقر.";
+      ? "Logo: hohe Qualität. Drag & Drop oder Einfügen."
+      : "الشعار: جودة عالية. اسحب وأفلت أو الصق."
+    : isBanner
+      ? lang === "de"
+        ? "Banner: WebP-Kompression. Drag & Drop oder Einfügen."
+        : "البانر: ضغط WebP. اسحب وأفلت أو الصق."
+      : lang === "de"
+        ? "Produktbild: Live-Vorschau auf weißer Karte, manueller Zoom/Position. Scharfe WebP-Kompression."
+        : "صورة المنتج: معاينة على بطاقة بيضاء مع تكبير/تحريك يدوي. ضغط WebP حاد.";
   const dropLabel =
-    lang === "de" ? "Bild hochladen (Original)" : "رفع صورة (الأصلية)";
+    lang === "de" ? "Bild hochladen" : "رفع صورة";
 
   return (
     <div
@@ -379,7 +369,7 @@ export default function ImageUpload({
         {urls.map((url, index) => (
           <div
             key={url}
-            className={`group relative h-24 w-24 overflow-hidden rounded-xl bg-jmle-cream ring-2 ${
+            className={`group relative h-24 w-24 overflow-hidden rounded-xl bg-white ring-2 ${
               index === 0 ? "ring-gold" : "ring-transparent"
             } ${editorEnabled ? "cursor-pointer" : ""}`}
           >
@@ -491,35 +481,30 @@ export default function ImageUpload({
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      {session && (
+      {session && useProductAdjuster && (
+        <ProductImageAdjustModal
+          key={session.key}
+          source={session.source}
+          step={session.step}
+          onComplete={(file) => void onEditorDone(file)}
+          onCancel={() => {
+            setSession(null);
+            batchRef.current = null;
+          }}
+        />
+      )}
+
+      {session && !useProductAdjuster && (
         <ImageEditorModal
           key={session.key}
           source={session.source}
           step={session.step}
-          seed={
-            session.replaceUrl
-              ? null
-              : bulkRef.current
-                ? {
-                    // Crop/Zentrierung NIEMALS auf andere Bilder übernehmen
-                    ...bulkRef.current,
-                    crop: { x: 0, y: 0, w: 1, h: 1 },
-                  }
-                : null
-          }
-          // Auto-Freisteller starten, Editor offen lassen (kein Auto-Export)
-          autoRemoveBackground={allowBackgroundRemoval && !session.replaceUrl}
-          allowBackgroundRemoval={allowBackgroundRemoval}
+          seed={null}
+          autoRemoveBackground={false}
+          allowBackgroundRemoval={false}
           autoExport={false}
-          onRemember={(settings) => {
-            bulkRef.current = {
-              ...settings,
-              crop: { x: 0, y: 0, w: 1, h: 1 },
-            };
-          }}
           onComplete={(file) => void onEditorDone(file)}
           onCancel={() => {
-            bulkRef.current = null;
             setSession(null);
             batchRef.current = null;
           }}

@@ -2,8 +2,8 @@ import { MAX_EDGE_PRODUCT, STORAGE_WEBP_QUALITY } from "@/lib/image-bounds";
 import { PRODUCT_FILL } from "@/lib/image-editor/product-bounds";
 
 /**
- * Zentriert ein sauberes Bild optisch in ein transparentes 1:1-Quadrat.
- * Kein Freisteller, kein farbiger Kasten, kein Abschneiden des Motivs.
+ * Zentriert ein Bild optisch in ein weißes 1:1-Quadrat.
+ * Kein Freisteller, kein Abschneiden — Originalbild unverändert auf Weiß.
  */
 export async function centerImageInTransparentSquare(
   file: File,
@@ -32,8 +32,8 @@ export async function centerImageInTransparentSquare(
     canvas.height = side;
     const ctx = canvas.getContext("2d");
     if (!ctx) return file;
-    // 100 % transparent — kein Weiß/Cream/Grau
-    ctx.clearRect(0, 0, side, side);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, side, side);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(bitmap, 0, 0, srcW, srcH, dx, dy, dw, dh);

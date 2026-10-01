@@ -13,7 +13,7 @@ import {
 
 /**
  * Client-Upload: immer WebP, harte Bounds, keine Temp-Dateien.
- * Produkte/Kategorien: optionale 1:1-Zentrierung (transparent).
+ * Produkte/Kategorien: optionale 1:1-Zentrierung auf weißem Grund.
  * Banner/Logos: Aspekt behalten, nur skalieren + komprimieren.
  */
 
@@ -134,7 +134,10 @@ export async function uploadProductImage(
   }
 
   const quality = isLogoFolder(folder) ? LOGO_WEBP_QUALITY : STORAGE_WEBP_QUALITY;
-  const compressed = await compressImageFile(working, maxEdge, quality);
+  // Bereits vom Anpasser/Editor optimiertes WebP nicht nochmals verlustreich kodieren
+  const compressed = options?.alreadyEncoded
+    ? working
+    : await compressImageFile(working, maxEdge, quality);
 
   const supabase = createClient();
   const path = `${folder}/${crypto.randomUUID()}.webp`;

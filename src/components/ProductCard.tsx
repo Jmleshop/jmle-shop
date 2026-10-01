@@ -79,7 +79,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-2xl border border-orange-100/80 bg-transparent transition-all duration-300 ease-boutique hover:-translate-y-0.5 hover:shadow-gold hover:border-orange-200/80 sm:hover:-translate-y-1 ${
+      className={`group relative overflow-hidden rounded-2xl border border-orange-100/80 bg-white transition-all duration-300 ease-boutique hover:-translate-y-0.5 hover:shadow-gold hover:border-orange-200/80 sm:hover:-translate-y-1 ${
         out ? "opacity-60" : ""
       }`}
     >

@@ -74,7 +74,8 @@
 
   /**
    * PRODUKT-REGEL (dauerhaft):
-   * 1:1 + flex-center, transparent, object-contain, 8–12px Padding, multiply.
+   * 1:1 + flex-center, rein weißer Kartenhintergrund, object-contain,
+   * Originalbild zentriert — kein Freisteller, kein multiply.
    */
   .product-image-frame {
     position: relative;
@@ -83,7 +84,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background: transparent !important;
+    background: #ffffff !important;
     box-shadow: none !important;
     padding: 10px;
   }
@@ -102,19 +103,19 @@
     max-height: calc(100% - 20px) !important;
     margin: auto !important;
     transform: none !important;
-    mix-blend-mode: multiply;
+    mix-blend-mode: normal !important;
   }
 
-  /* Kategorie-Kreis-Icons: kein Innenkasten, transparent + multiply */
+  /* Kategorie-Kreis-Icons: weiß + contain (kein multiply) */
   .category-icon-circle {
-    background: transparent !important;
+    background: #ffffff !important;
     box-shadow: none !important;
   }
   .category-icon-media {
     object-fit: contain !important;
     object-position: center !important;
     background: transparent !important;
-    mix-blend-mode: multiply;
+    mix-blend-mode: normal !important;
   }
 
   .section-title {

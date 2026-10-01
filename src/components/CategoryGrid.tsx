@@ -49,7 +49,7 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
           />
         </div>
       ) : (
-        <div className="relative aspect-square w-full max-w-[11rem] overflow-hidden rounded-2xl bg-transparent ring-1 ring-orange-200/70 transition-[ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:ring-brand-orange/40 p-2">
+        <div className="relative aspect-square w-full max-w-[11rem] overflow-hidden rounded-2xl bg-white ring-1 ring-orange-200/70 transition-[ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:ring-brand-orange/40 p-2">
           <Image
             src={originalImageSrc(category.image)}
             alt={label}

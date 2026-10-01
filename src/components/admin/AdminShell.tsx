@@ -5,7 +5,6 @@ import { Menu, X } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 import { AdminI18nProvider } from "@/components/admin/AdminI18n";
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import BgRemovalPreloader from "@/components/admin/BgRemovalPreloader";
 import type { StaffRole } from "@/types";
 import { cn } from "@/lib/cn";
 
@@ -22,7 +21,6 @@ export default function AdminShell({
 
   return (
     <AdminI18nProvider>
-      <BgRemovalPreloader />
       <div
         className="fixed inset-0 z-[100] flex bg-gray-100 overflow-hidden"
         lang="de"

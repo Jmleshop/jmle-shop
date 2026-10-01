@@ -132,7 +132,7 @@ export default function ImageEditorModal({
   seed,
   autoExport = false,
   autoRemoveBackground = false,
-  allowBackgroundRemoval = true,
+  allowBackgroundRemoval = false,
   onRemember,
 }: {
   source: File | string;
@@ -167,7 +167,7 @@ export default function ImageEditorModal({
   const [flipV, setFlipV] = useState(false);
   const [crop, setCrop] = useState<NormRect>(FULL_FRAME);
   const [aspectId, setAspectId] = useState<CropAspectId>("original");
-  const [background, setBackground] = useState<BackgroundMode>("transparent");
+  const [background, setBackground] = useState<BackgroundMode>("white");
   const [zoom, setZoom] = useState(1);
   const [straighten, setStraighten] = useState(0);
   const [shadow, setShadow] = useState<ShadowMode>("none");
@@ -687,26 +687,7 @@ export default function ImageEditorModal({
           }
         : { ...currentSettings(), exportQuality: 90, upscale: 0 };
       if (bulkApply) onRemember?.(settings);
-      let file = await exportProductImage(bitmap, settings);
-      // Nach manuellem Freisteller: kein zweites Server-Trim (schneidet Ecken ab)
-      if (!bgRemoved) {
-        try {
-          const body = new FormData();
-          body.append("file", file);
-          const framed = await fetch("/api/admin/frame-product-image", {
-            method: "POST",
-            body,
-          });
-          if (framed.ok && framed.headers.get("X-Frame-Changed") === "1") {
-            const blob = await framed.blob();
-            file = new File([blob], "product.webp", {
-              type: blob.type || "image/webp",
-            });
-          }
-        } catch {
-          /* keep the editor file when the trim service is unreachable */
-        }
-      }
+      const file = await exportProductImage(bitmap, settings);
       try {
         sessionStorage.setItem("jmle-editor-peer-luma", consistency);
       } catch {
