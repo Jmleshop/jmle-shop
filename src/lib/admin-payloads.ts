@@ -26,8 +26,12 @@ export function validateProductPayload(payload: ProductCreateInput): string | nu
   return null;
 }
 
+/** Fallback without optional columns (status/badges/custom_note/brand_id). */
 export const PRODUCT_SELECT_BASE =
-  "id, name_ar, name_de, description, price, currency, category_id, brand_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, purchase_price, discount_percent, barcode, product_number, max_order_quantity, stock_quantity, deleted_at, created_at, updated_at, category:categories(id, name_ar, name_de)";
+  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, purchase_price, discount_percent, barcode, product_number, max_order_quantity, stock_quantity, deleted_at, created_at, updated_at, category:categories(id, name_ar, name_de)";
 
 export const PRODUCT_SELECT =
   "id, name_ar, name_de, description, price, currency, category_id, brand_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, purchase_price, discount_percent, barcode, product_number, max_order_quantity, stock_quantity, status, badges, custom_note, deleted_at, created_at, updated_at, category:categories(id, name_ar, name_de)";
+
+export const PRODUCT_SELECT_NO_BRAND =
+  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, purchase_price, discount_percent, barcode, product_number, max_order_quantity, stock_quantity, status, badges, custom_note, deleted_at, created_at, updated_at, category:categories(id, name_ar, name_de)";

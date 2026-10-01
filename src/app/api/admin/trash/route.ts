@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
-import { isAuthError, requireStaff } from "@/lib/admin-server";
-import { PRODUCT_SELECT, PRODUCT_SELECT_BASE } from "@/lib/admin-payloads";
+import {
+  isAuthError,
+  requireStaff,
+  staffDataClient,
+} from "@/lib/admin-server";
+import {
+  PRODUCT_SELECT,
+  PRODUCT_SELECT_BASE,
+  PRODUCT_SELECT_NO_BRAND,
+} from "@/lib/admin-payloads";
 
 /**
  * Papierkorb: alle soft-gelöschten Produkte & Kategorien.
@@ -12,14 +20,26 @@ export async function GET() {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  let { data: products, error: pErr } = await auth.supabase
+  const db = staffDataClient(auth.supabase);
+
+  let { data: products, error: pErr } = await db
     .from("products")
     .select(PRODUCT_SELECT)
     .not("deleted_at", "is", null)
     .order("deleted_at", { ascending: false });
 
+  if (pErr && /brand_id/i.test(pErr.message)) {
+    const retry = await db
+      .from("products")
+      .select(PRODUCT_SELECT_NO_BRAND)
+      .not("deleted_at", "is", null)
+      .order("deleted_at", { ascending: false });
+    products = retry.data as typeof products;
+    pErr = retry.error;
+  }
+
   if (pErr && /(status|badges|custom_note)/i.test(pErr.message)) {
-    const retry = await auth.supabase
+    const retry = await db
       .from("products")
       .select(PRODUCT_SELECT_BASE)
       .not("deleted_at", "is", null)
@@ -32,7 +52,7 @@ export async function GET() {
     return NextResponse.json({ error: pErr.message }, { status: 500 });
   }
 
-  const { data: categories, error: cErr } = await auth.supabase
+  const { data: categories, error: cErr } = await db
     .from("categories")
     .select(
       "id, name_ar, name_de, image, parent_id, sort_order, deleted_at, created_at, updated_at"

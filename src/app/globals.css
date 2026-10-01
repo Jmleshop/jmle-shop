@@ -111,13 +111,21 @@
     background: transparent !important;
   }
 
-  /* Kategorie-Kreis-Icons: weiß; Schatten kommt von Utility-Klassen */
+  /* Kategorie-Icons: vollflächig, zentriert, kein Miniatur-Punkt */
   .category-icon-circle {
     background: #ffffff !important;
     isolation: isolate;
   }
   .category-icon-media {
+    object-fit: cover !important;
     object-position: center !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: transparent !important;
     mix-blend-mode: normal !important;
     filter: none !important;

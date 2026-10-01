@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
-import { isAuthError, requireStaff } from "@/lib/admin-server";
+import {
+  isAuthError,
+  requireStaff,
+  staffDataClient,
+} from "@/lib/admin-server";
 import {
   PRODUCT_SELECT,
   PRODUCT_SELECT_BASE,
+  PRODUCT_SELECT_NO_BRAND,
   parseProductBody,
 } from "@/lib/admin-payloads";
 import { nextProductNumber } from "@/lib/product-numbers";
@@ -12,8 +17,55 @@ import {
 } from "@/lib/resolve-product-brand";
 import type { FoodProduct } from "@/types";
 
-const SELECT_NO_BRAND =
-  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, purchase_price, discount_percent, barcode, product_number, max_order_quantity, stock_quantity, status, badges, custom_note, deleted_at, created_at, updated_at, category:categories(id, name_ar, name_de)";
+type Db = ReturnType<typeof staffDataClient>;
+
+async function selectProducts(
+  db: Db,
+  archived: boolean,
+  status: string | null
+) {
+  const build = (columns: string) => {
+    let query = db
+      .from("products")
+      .select(columns)
+      .order("created_at", { ascending: false });
+    if (!archived) {
+      query = query.is("deleted_at", null);
+    }
+    if (status === "draft") {
+      query = query.eq("status", "draft");
+    } else if (status === "published") {
+      // Match public catalog: null status counts as published on older DBs
+      query = query.or("status.is.null,status.eq.published");
+    }
+    return query;
+  };
+
+  let { data, error } = await build(PRODUCT_SELECT);
+
+  if (error && /brand_id/i.test(error.message)) {
+    const retry = await build(PRODUCT_SELECT_NO_BRAND);
+    data = retry.data as typeof data;
+    error = retry.error;
+  }
+
+  if (error && /(status|badges|custom_note)/i.test(error.message)) {
+    let fallback = db
+      .from("products")
+      .select(PRODUCT_SELECT_BASE)
+      .order("created_at", { ascending: false });
+    if (!archived) fallback = fallback.is("deleted_at", null);
+    const retry = await fallback;
+    data = retry.data as typeof data;
+    error = retry.error;
+    // Client-side status filter when column missing (all treated as published)
+    if (!error && status === "draft") {
+      data = [];
+    }
+  }
+
+  return { data, error };
+}
 
 export async function GET(request: Request) {
   const auth = await requireStaff();
@@ -21,39 +73,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
   const { searchParams } = new URL(request.url);
   const archived = searchParams.get("archived") === "true";
   const status = searchParams.get("status");
 
-  let query = auth.supabase
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .order("created_at", { ascending: false });
-
-  if (!archived) {
-    query = query.is("deleted_at", null);
-  }
-  if (status === "draft" || status === "published") {
-    query = query.eq("status", status);
-  }
-
-  let { data, error } = await query;
-  if (error && /(status|badges|custom_note|brand_id)/i.test(error.message)) {
-    const useNoBrand = /brand_id/i.test(error.message);
-    let fallback = useNoBrand
-      ? auth.supabase
-          .from("products")
-          .select(SELECT_NO_BRAND)
-          .order("created_at", { ascending: false })
-      : auth.supabase
-          .from("products")
-          .select(PRODUCT_SELECT_BASE)
-          .order("created_at", { ascending: false });
-    if (!archived) fallback = fallback.is("deleted_at", null);
-    const retry = await fallback;
-    data = retry.data as typeof data;
-    error = retry.error;
-  }
+  const { data, error } = await selectProducts(db, archived, status);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -69,6 +94,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
+
   let raw: unknown;
   try {
     raw = await request.json();
@@ -81,20 +108,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const resolved = await resolveProductBrand(auth.supabase, parsed.data);
+  const resolved = await resolveProductBrand(db, parsed.data);
   const payload = {
     ...stripBrandName(parsed.data),
     brand_id: resolved.brand_id,
   };
 
   if (!payload.product_number) {
-    const existing = await auth.supabase.from("products").select("product_number");
+    const existing = await db.from("products").select("product_number");
     payload.product_number = nextProductNumber(
       (existing.data ?? []).map((row) => row.product_number as string | null)
     );
   }
 
-  let { data, error } = await auth.supabase
+  let { data, error } = await db
     .from("products")
     .insert(payload)
     .select(PRODUCT_SELECT)
@@ -112,10 +139,10 @@ export async function POST(request: Request) {
     void _b;
     void _c;
     void _brand;
-    const retry = await auth.supabase
+    const retry = await db
       .from("products")
       .insert(withoutOptional)
-      .select(SELECT_NO_BRAND)
+      .select(PRODUCT_SELECT_BASE)
       .single();
     data = retry.data as typeof data;
     error = retry.error;

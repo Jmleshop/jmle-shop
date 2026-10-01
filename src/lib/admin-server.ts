@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/admin";
 import type { StaffRole } from "@/types";
 import type { User } from "@supabase/supabase-js";
 
@@ -6,6 +7,20 @@ interface StaffResult {
   user: User;
   supabase: Awaited<ReturnType<typeof createClient>>;
   role: StaffRole;
+}
+
+/**
+ * Data client for staff CRUD. Prefer the service role so product/catalog
+ * admin never goes empty after RLS / view drift in production. Auth is
+ * already enforced by requireStaff / requireAdmin.
+ */
+export function staffDataClient(
+  session: Awaited<ReturnType<typeof createClient>>
+) {
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    return createServiceClient();
+  }
+  return session;
 }
 
 interface AuthError {

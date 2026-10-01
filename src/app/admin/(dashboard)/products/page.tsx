@@ -115,7 +115,7 @@ export default function AdminProductsPage() {
           .map((b) => ({ id: String(b.id), name: String(b.name || b.id) }))
           .sort((a, b) => a.name.localeCompare(b.name, "de"))
       );
-      if (prod.error) setError(prod.error);
+      setError(prod.error ? String(prod.error) : "");
       setLoading(false);
     });
   };
@@ -913,6 +913,12 @@ export default function AdminProductsPage() {
         </div>
       )}
 
+      {!loading && error && !showForm && (
+        <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Produkte konnten nicht geladen werden: {error}
+        </div>
+      )}
+
       {loading ? (
         <p className="text-gray-500">…</p>
       ) : (
@@ -921,6 +927,11 @@ export default function AdminProductsPage() {
             {editMode
               ? "Auswahl, Stift und Papierkorb sind sichtbar. „Fertig“ blendet sie wieder aus."
               : "„Bearbeiten“ oben rechts zeigt Auswahl, Stift und Papierkorb."}
+            {!error && (
+              <span className="ms-2 text-gray-500">
+                ({displayed.length} / {products.length})
+              </span>
+            )}
           </p>
           <div className={`hidden sm:grid ${editMode ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)]"} gap-2 px-4 py-3 text-xs font-medium text-gray-500 bg-gray-50/95 sticky top-0 z-10 border-b`}>
             <span className="flex items-center gap-2">

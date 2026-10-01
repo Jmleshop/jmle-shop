@@ -33,8 +33,8 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
       href={`/categories/${category.id}`}
       className={
         isSub
-          ? "group flex flex-col items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
-          : "group relative z-0 flex flex-col items-center gap-2.5 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 rounded-2xl"
+          ? "group flex w-[5.5rem] sm:w-24 md:w-28 flex-col items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+          : "group relative z-0 flex w-full flex-col items-center gap-2.5 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 rounded-2xl"
       }
     >
       {isSub ? (
@@ -44,18 +44,18 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
             alt={label}
             fill
             quality={SHOP_IMAGE_QUALITY}
-            className="category-icon-media object-cover transition-transform duration-300 ease-boutique group-hover:scale-105"
+            className="category-icon-media object-cover"
             sizes="(max-width: 640px) 80px, (max-width: 768px) 96px, 112px"
           />
         </div>
       ) : (
-        <div className="relative aspect-square w-full max-w-[11rem] overflow-hidden rounded-2xl bg-white ring-1 ring-orange-200/70 transition-[ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:ring-brand-orange/40 p-2">
+        <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white ring-1 ring-orange-200/70 transition-[ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:ring-brand-orange/40">
           <Image
             src={originalImageSrc(category.image)}
             alt={label}
             fill
             quality={SHOP_IMAGE_QUALITY}
-            className="category-icon-media object-contain p-2 transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
+            className="category-icon-media object-cover transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
             sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 280px"
           />
         </div>
@@ -63,7 +63,7 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
       <span
         className={
           isSub
-            ? "font-ui text-[11px] sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.4em]"
+            ? "font-ui text-[11px] sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.4em] w-full"
             : "font-ui text-xs sm:text-sm font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-1 min-h-[2.5em]"
         }
       >
@@ -105,8 +105,8 @@ export default function CategoryGrid({
       <div
         className={
           isSub
-            ? "mx-auto grid max-w-5xl grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 md:gap-6"
-            : "mx-auto grid max-w-6xl grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 md:gap-6 lg:grid-cols-6"
+            ? "mx-auto flex max-w-5xl flex-wrap justify-center gap-3 sm:gap-4"
+            : "mx-auto grid max-w-6xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 md:gap-5 lg:grid-cols-6"
         }
       >
         {categories.map((category) => (

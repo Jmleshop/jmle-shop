@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { isAuthError, requireStaff } from "@/lib/admin-server";
+import {
+  isAuthError,
+  requireStaff,
+  staffDataClient,
+} from "@/lib/admin-server";
 import { planProductNumbers, type NumberRow } from "@/lib/product-numbers";
 
 export async function GET() {
@@ -8,7 +12,8 @@ export async function GET() {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { data, error } = await auth.supabase
+  const db = staffDataClient(auth.supabase);
+  const { data, error } = await db
     .from("products")
     .select("id, name_ar, product_number, created_at")
     .is("deleted_at", null);
@@ -28,6 +33,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
+
   let body: { apply?: boolean };
   try {
     body = await request.json();
@@ -38,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nur mit apply: true schreiben" }, { status: 400 });
   }
 
-  const { data, error } = await auth.supabase
+  const { data, error } = await db
     .from("products")
     .select("id, name_ar, product_number, created_at")
     .is("deleted_at", null);
@@ -49,7 +56,7 @@ export async function POST(request: Request) {
   const errors: string[] = [];
   for (const row of plan) {
     if (row.from === row.to) continue;
-    const result = await auth.supabase
+    const result = await db
       .from("products")
       .update({ product_number: row.to })
       .eq("id", row.id);

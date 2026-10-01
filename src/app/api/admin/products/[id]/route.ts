@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { isAuthError, requireStaff } from "@/lib/admin-server";
+import {
+  isAuthError,
+  requireStaff,
+  staffDataClient,
+} from "@/lib/admin-server";
 import {
   PRODUCT_SELECT,
   PRODUCT_SELECT_BASE,
+  PRODUCT_SELECT_NO_BRAND,
   parseProductBody,
 } from "@/lib/admin-payloads";
 import { productArchiveSchema } from "@/lib/validations/product";
@@ -32,6 +37,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
   const { id } = await params;
   let raw: unknown;
   try {
@@ -44,20 +50,33 @@ export async function PUT(request: Request, { params }: RouteParams) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const resolved = await resolveProductBrand(auth.supabase, parsed.data);
+  const resolved = await resolveProductBrand(db, parsed.data);
   const payload = {
     ...stripBrandName(parsed.data),
     brand_id: resolved.brand_id,
   };
 
-  let { data, error } = await auth.supabase
+  let { data, error } = await db
     .from("products")
     .update(payload)
     .eq("id", id)
     .select(PRODUCT_SELECT)
     .single();
 
-  if (error && /(status|badges|custom_note|brand_id)/i.test(error.message)) {
+  if (error && /brand_id/i.test(error.message)) {
+    const { brand_id: _brand, ...withoutBrand } = payload;
+    void _brand;
+    const retry = await db
+      .from("products")
+      .update(withoutBrand)
+      .eq("id", id)
+      .select(PRODUCT_SELECT_NO_BRAND)
+      .single();
+    data = retry.data as typeof data;
+    error = retry.error;
+  }
+
+  if (error && /(status|badges|custom_note)/i.test(error.message)) {
     const {
       status: _s,
       badges: _b,
@@ -69,11 +88,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
     void _b;
     void _c;
     void _brand;
-    const retry = await auth.supabase
+    const retry = await db
       .from("products")
       .update(withoutOptional)
       .eq("id", id)
-      .select(PRODUCT_SELECT_BASE.replace(", brand_id", ""))
+      .select(PRODUCT_SELECT_BASE)
       .single();
     data = retry.data as typeof data;
     error = retry.error;
@@ -94,6 +113,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
   const { id } = await params;
   let raw: unknown;
   try {
@@ -109,7 +129,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   // Minimaler Select (id, deleted_at) — unabhängig von optionalen Spalten wie
   // badges/custom_note/status, damit Soft-Delete auf jeder DB funktioniert.
-  const { data, error } = await auth.supabase
+  const { data, error } = await db
     .from("products")
     .update({
       deleted_at: parsed.data.archived ? new Date().toISOString() : null,
@@ -135,9 +155,10 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
   const { id } = await params;
 
-  const { data: existing, error: findErr } = await auth.supabase
+  const { data: existing, error: findErr } = await db
     .from("products")
     .select("id, deleted_at, name_de, name_ar")
     .eq("id", id)
@@ -159,7 +180,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     );
   }
 
-  const { error } = await auth.supabase.from("products").delete().eq("id", id);
+  const { error } = await db.from("products").delete().eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
