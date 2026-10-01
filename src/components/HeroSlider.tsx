@@ -24,12 +24,12 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
   if (!slides.length) return null;
 
   return (
-    <section className="relative w-full h-40 sm:h-48 md:h-64 lg:h-72 overflow-hidden bg-jmle-cream">
+    <section className="relative w-full aspect-[2.4/1] overflow-hidden bg-jmle-cream">
       {slides.map((slide, index) => (
         <div
           key={slide.id}
           className={cn(
-            "absolute inset-0 transition-opacity duration-700 ease-boutique",
+            "absolute inset-0 flex items-center justify-center transition-opacity duration-700 ease-boutique",
             index === current ? "opacity-100" : "opacity-0"
           )}
           aria-hidden={index !== current}
@@ -37,17 +37,15 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
           <Image
             src={slide.image}
             alt={slide.title}
-            fill
+            width={1920}
+            height={800}
             quality={SHOP_IMAGE_QUALITY}
             priority={index === 0}
-            className="object-contain object-center"
+            className="h-auto w-full object-contain object-center"
             sizes="100vw"
           />
           {(slide.title || slide.subtitle) && (
-            <div className="absolute inset-0 bg-gradient-to-t from-jmle-mahogany/55 via-transparent to-transparent pointer-events-none" />
-          )}
-          {(slide.title || slide.subtitle) && (
-            <div className="absolute inset-x-0 bottom-0 p-4 md:p-6 text-center">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-jmle-mahogany/55 via-transparent to-transparent p-4 md:p-6 text-center">
               {slide.title ? (
                 <h2 className="font-display text-xl md:text-3xl text-white drop-shadow-sm text-balance">
                   {slide.title}
@@ -63,7 +61,7 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
         </div>
       ))}
 
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-[2]">
         {slides.map((_, index) => (
           <button
             key={index}

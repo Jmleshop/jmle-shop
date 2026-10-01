@@ -38,26 +38,24 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
       }
     >
       {isSub ? (
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-orange-100/80 transition-[box-shadow,ring-color,transform] duration-300 ease-boutique group-hover:shadow-lg group-hover:ring-brand-orange/35 sm:h-20 sm:w-20">
-          <div className="relative h-8 w-8 sm:h-10 sm:w-10">
-            <Image
-              src={originalImageSrc(category.image)}
-              alt={label}
-              fill
-              quality={SHOP_IMAGE_QUALITY}
-              className="object-contain object-center transition-transform duration-300 ease-boutique group-hover:scale-105"
-              sizes="40px"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="relative aspect-square w-full max-w-[11rem] overflow-hidden rounded-2xl bg-jmle-cream shadow-md ring-1 ring-orange-200/70 transition-[box-shadow,ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:shadow-xl group-hover:ring-brand-orange/40">
+        <div className="category-icon-circle relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full ring-1 ring-orange-200/60 transition-[ring-color,transform] duration-300 ease-boutique group-hover:ring-brand-orange/40 sm:h-20 sm:w-20 p-2">
           <Image
             src={originalImageSrc(category.image)}
             alt={label}
             fill
             quality={SHOP_IMAGE_QUALITY}
-            className="object-cover transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
+            className="category-icon-media p-2 transition-transform duration-300 ease-boutique group-hover:scale-105"
+            sizes="80px"
+          />
+        </div>
+      ) : (
+        <div className="relative aspect-square w-full max-w-[11rem] overflow-hidden rounded-2xl bg-transparent ring-1 ring-orange-200/70 transition-[ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:ring-brand-orange/40 p-2">
+          <Image
+            src={originalImageSrc(category.image)}
+            alt={label}
+            fill
+            quality={SHOP_IMAGE_QUALITY}
+            className="category-icon-media object-contain p-2 transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
             sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 280px"
           />
         </div>

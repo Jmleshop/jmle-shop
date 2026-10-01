@@ -18,9 +18,12 @@ interface CompactBannerSliderProps {
   single?: boolean;
 }
 
-/** Global: Banner vollständig sichtbar (object-contain), Text/Preis nie croppen. */
-export const BANNER_HEIGHT_CLASS =
-  "h-40 sm:h-48 md:h-64 lg:h-72 w-full";
+/**
+ * Keine festen Pixel-Höhen — responsives Seitenverhältnis.
+ * Bild: w-full h-auto / object-contain → Text & Preis nie abgeschnitten.
+ */
+export const BANNER_FRAME_CLASS =
+  "relative w-full aspect-[2.4/1] min-h-0 bg-jmle-cream";
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;
@@ -46,13 +49,12 @@ function BannerSlideContent({
   const subtitle = isPlaceholderSlideCaption(subtitleRaw) ? "" : subtitleRaw.trim();
   const href = slideHref(slide);
   const mediaType = slide.mediaType || "image";
-  const isParallax = mediaType === "parallax";
   const showCaption = Boolean(title || subtitle);
 
   const media =
     mediaType === "video" && slide.videoUrl ? (
       <video
-        className="absolute inset-0 h-full w-full object-contain object-center"
+        className="h-auto w-full object-contain object-center"
         src={slide.videoUrl}
         poster={slide.image}
         autoPlay
@@ -65,13 +67,11 @@ function BannerSlideContent({
       <Image
         src={slide.image}
         alt={title || slideTitle(lang, slide) || "Banner"}
-        fill
+        width={1920}
+        height={800}
         quality={SHOP_IMAGE_QUALITY}
         priority={priority}
-        className={cn(
-          "object-contain object-center",
-          isParallax && "will-change-transform"
-        )}
+        className="h-auto w-full object-contain object-center"
         sizes="100vw"
         draggable={false}
       />
@@ -81,10 +81,7 @@ function BannerSlideContent({
     <>
       {media}
       {showCaption && (
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent pointer-events-none" />
-      )}
-      {showCaption && (
-        <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 md:p-5 text-start pointer-events-none">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent p-3 sm:p-4 md:p-5 text-start">
           {title ? (
             <h2 className="font-display text-base sm:text-xl md:text-2xl text-white drop-shadow-sm text-balance">
               {title}
@@ -106,7 +103,7 @@ function BannerSlideContent({
     return (
       <Link
         href={href}
-        className="absolute inset-0 block"
+        className="relative block w-full"
         draggable={false}
         {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       >
@@ -115,7 +112,7 @@ function BannerSlideContent({
     );
   }
 
-  return <div className="absolute inset-0">{inner}</div>;
+  return <div className="relative w-full">{inner}</div>;
 }
 
 export default function CompactBannerSlider({
@@ -158,8 +155,8 @@ export default function CompactBannerSlider({
   return (
     <section
       className={cn(
-        "relative w-full overflow-hidden bg-jmle-cream select-none touch-pan-y",
-        BANNER_HEIGHT_CLASS,
+        "w-full overflow-hidden select-none touch-pan-y",
+        BANNER_FRAME_CLASS,
         className
       )}
       onTouchStart={(e) => {
@@ -204,7 +201,7 @@ export default function CompactBannerSlider({
         <div
           key={slide.id}
           className={cn(
-            "absolute inset-0 transition-opacity duration-700 ease-boutique",
+            "absolute inset-0 flex items-center justify-center transition-opacity duration-700 ease-boutique",
             index === current || single
               ? "opacity-100 z-[1]"
               : "opacity-0 z-0 pointer-events-none"

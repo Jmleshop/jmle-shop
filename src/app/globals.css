@@ -73,11 +73,8 @@
   }
 
   /**
-   * PRODUKT-REGEL (dauerhaft, alle aktuellen + zukünftigen Produkte):
-   * - object-contain + center (NIEMALS cover)
-   * - transparenter Container → Seitenfarbe (jmle-cream) scheint durch
-   * - ~10 % Innenabstand trotz Next/Image fill (absolute inset)
-   * - mix-blend-mode: multiply als Fallback gegen Studio-Weiß
+   * PRODUKT-REGEL (dauerhaft):
+   * 1:1 + flex-center, transparent, object-contain, 8–12px Padding, multiply.
    */
   .product-image-frame {
     position: relative;
@@ -87,18 +84,32 @@
     justify-content: center;
     overflow: hidden;
     background: transparent !important;
+    box-shadow: none !important;
+    padding: 10px;
   }
 
   .product-image-media {
     object-fit: contain !important;
     object-position: center !important;
-    inset: 10% !important;
-    width: 80% !important;
-    height: 80% !important;
-    max-width: 80% !important;
-    max-height: 80% !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    inset: 10px !important;
     margin: auto !important;
     transform: none !important;
+    mix-blend-mode: multiply;
+  }
+
+  /* Kategorie-Kreis-Icons: kein Innenkasten, transparent + multiply */
+  .category-icon-circle {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .category-icon-media {
+    object-fit: contain !important;
+    object-position: center !important;
+    background: transparent !important;
     mix-blend-mode: multiply;
   }
 
