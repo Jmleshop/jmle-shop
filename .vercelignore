@@ -1,0 +1,14 @@
+# Keep Vercel upload / tracing lean (defense in depth with next.config excludes)
+node_modules/@imgly/background-removal-node
+node_modules/onnxruntime-node
+**/*.onnx
+**/*.wasm
+scripts/output
+tmp
+temp
+uploads
+export
+exports
+backups
+coverage
+.git

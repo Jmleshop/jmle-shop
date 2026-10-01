@@ -73,26 +73,21 @@ export async function optimizeProductImageBuffer(
   };
 }
 
+/** Remote HF inference only — never ship onnxruntime-node into Vercel functions. */
 async function removeBackgroundNode(input: Buffer): Promise<Buffer | null> {
-  const { removeBackground } = await import("@imgly/background-removal-node");
-  const source = new Blob([new Uint8Array(input)], {
-    type: sniffMime(input),
-  });
-  const blob = await removeBackground(source, {
-    model: "medium",
-    output: { format: "image/png", quality: 1 },
-  });
-  const out = Buffer.from(await blob.arrayBuffer());
-  const { data, info } = await sharp(out).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const total = Math.max(1, info.width * info.height);
-  let nonOpaque = 0;
-  let solid = 0;
-  for (let i = 3; i < data.length; i += 4) {
-    if (data[i] < 250) nonOpaque += 1;
-    else solid += 1;
+  const {
+    huggingfaceToken,
+    removeBackgroundViaHuggingFace,
+  } = await import("@/lib/server-remove-background");
+  const token = huggingfaceToken();
+  if (!token) {
+    console.warn(
+      "[optimize] skip server bg-removal: set HF_TOKEN (no local ONNX on Vercel)"
+    );
+    return null;
   }
-  if (nonOpaque / total < 0.02 || solid / total < 0.002) return null;
-  return out;
+  void sniffMime(input);
+  return removeBackgroundViaHuggingFace(input, token);
 }
 
 /** Masken-Reparatur auf Sharp-PNG: Löcher schließen, Matte killen. */

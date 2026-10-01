@@ -10,15 +10,38 @@ function supabaseHostname(): string {
   return "rbdarbzwbzpfjorgeavi.supabase.co";
 }
 
+/** Never ship local ONNX/WASM runtimes / unused sharp platforms into Vercel bundles. */
+const HEAVY_TRACE_EXCLUDES = [
+  "node_modules/@imgly/background-removal-node/**",
+  "node_modules/@imgly/background-removal/**",
+  "node_modules/onnxruntime-node/**",
+  "node_modules/onnxruntime-web/**",
+  "node_modules/onnxruntime-common/**",
+  "**/*.onnx",
+  "**/*.wasm",
+  // Vercel = linux glibc x64 — drop other sharp platform binaries (~20MB each)
+  "node_modules/@img/sharp-libvips-linuxmusl-x64/**",
+  "node_modules/@img/sharp-linuxmusl-x64/**",
+  "node_modules/@img/sharp-wasm32/**",
+  "node_modules/@img/sharp-darwin-*/**",
+  "node_modules/@img/sharp-win32-*/**",
+  "node_modules/@img/sharp-libvips-darwin-*/**",
+  "node_modules/@swc/core*/**",
+  "node_modules/webpack/**",
+  "node_modules/terser/**",
+];
+
 const nextConfig: NextConfig = {
-  // ONNX/WASM des Freistellers bleibt aus dem Server-Bundle; der Editor lädt es nur im Browser.
+  // Client Freisteller lädt Modelle von CDN; Server nutzt HF API.
   serverExternalPackages: [
     "@imgly/background-removal",
-    "@imgly/background-removal-node",
     "onnxruntime-web",
-    "onnxruntime-node",
     "sharp",
   ],
+  // Hard exclude: even dynamic imports must not inflate Functions Storage
+  outputFileTracingExcludes: {
+    "*": HEAVY_TRACE_EXCLUDES,
+  },
   images: {
     // Delivery: AVIF/WebP at shop quality; cap srcset widths to limit egress
     formats: ["image/avif", "image/webp"],
@@ -61,6 +84,12 @@ const nextConfig: NextConfig = {
         module: false,
       };
     }
+    // Never resolve the Node ONNX package into any bundle
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@imgly/background-removal-node": false,
+      "onnxruntime-node": false,
+    };
     return config;
   },
 };

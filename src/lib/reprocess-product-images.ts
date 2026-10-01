@@ -178,11 +178,16 @@ export async function previewProductFrames(
         force: true,
       });
       const before = await sharp(input).metadata();
+      // Tiny thumb only — never embed full-size base64 in API JSON
+      const thumb = await sharp(optimized.buffer)
+        .resize(192, 192, { fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 55, effort: 3 })
+        .toBuffer();
       previews.push({
         id: product.id,
         name: product.name_ar || product.name_de || product.id,
         beforeUrl: url,
-        afterUrl: `data:${optimized.contentType};base64,${optimized.buffer.toString("base64")}`,
+        afterUrl: `data:image/webp;base64,${thumb.toString("base64")}`,
         beforeSize: `${before.width ?? "?"}×${before.height ?? "?"}`,
         afterSize: `${optimized.width}×${optimized.height}`,
       });
@@ -219,7 +224,7 @@ export async function applyProductFrameChunk(
   };
   const replacements = new Map<string, string>();
 
-  // Sequentiell: ONNX-Modell teilt sich den RAM
+  // Sequentiell: HF/Sharp teilen sich den Function-RAM
   for (const url of slice) {
     try {
       const response = await fetch(url, {

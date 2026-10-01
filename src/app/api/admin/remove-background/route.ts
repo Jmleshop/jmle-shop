@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
+import {
+  huggingfaceToken,
+  removeBackgroundViaHuggingFace,
+  toWebpCutout,
+} from "@/lib/server-remove-background";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * Ultra-schneller Server-Fallback für Freisteller.
- * Primary: @imgly/background-removal-node (medium ONNX)
- * Optional: Hugging Face Inference (briaai/RMBG-1.4) wenn HF_TOKEN gesetzt.
+ * Server-Fallback für Freisteller — nur Hugging Face Inference.
+ * Lokales @imgly/background-removal-node / onnxruntime-node (~700MB+)
+ * wird bewusst NICHT deployed (Vercel Functions Storage Limit 10GB).
+ * Primärpfad bleibt der Browser (WebGPU/WASM + CDN-Modelle).
  */
 export async function POST(request: Request) {
   const auth = await requireStaff();
@@ -27,112 +33,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Leere Datei" }, { status: 400 });
   }
 
+  const token = huggingfaceToken();
+  if (!token) {
+    return NextResponse.json(
+      {
+        error:
+          "Server-Freisteller nicht konfiguriert (HF_TOKEN). Bitte Browser-Freisteller nutzen.",
+        code: "HF_TOKEN_MISSING",
+      },
+      { status: 503 }
+    );
+  }
+
   try {
-    const webp = await removeWithNode(input);
+    const png = await removeBackgroundViaHuggingFace(input, token);
+    const webp = await toWebpCutout(png);
     return new NextResponse(new Uint8Array(webp), {
       headers: {
         "Content-Type": "image/webp",
-        "X-Bg-Engine": "imgly-node-medium",
+        "X-Bg-Engine": "hf-rmbg-1.4",
         "Cache-Control": "no-store",
       },
     });
-  } catch (nodeErr) {
-    console.warn("[api/remove-background] node engine failed", nodeErr);
-    const token = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_TOKEN;
-    if (!token) {
-      return NextResponse.json(
-        {
-          error:
-            nodeErr instanceof Error
-              ? nodeErr.message
-              : "Server-Freisteller fehlgeschlagen",
-        },
-        { status: 500 }
-      );
-    }
-    try {
-      const webp = await removeWithHuggingFace(input, token);
-      return new NextResponse(new Uint8Array(webp), {
-        headers: {
-          "Content-Type": "image/webp",
-          "X-Bg-Engine": "hf-rmbg-1.4",
-          "Cache-Control": "no-store",
-        },
-      });
-    } catch (hfErr) {
-      console.error("[api/remove-background] hf failed", hfErr);
-      return NextResponse.json(
-        {
-          error:
-            hfErr instanceof Error
-              ? hfErr.message
-              : "Hugging-Face-Freisteller fehlgeschlagen",
-        },
-        { status: 500 }
-      );
-    }
+  } catch (hfErr) {
+    console.error("[api/remove-background] hf failed", hfErr);
+    return NextResponse.json(
+      {
+        error:
+          hfErr instanceof Error
+            ? hfErr.message
+            : "Hugging-Face-Freisteller fehlgeschlagen",
+      },
+      { status: 500 }
+    );
   }
-}
-
-/** Freisteller im Speicher → WebP; kein Disk-Temp. */
-async function toWebp(buf: Buffer): Promise<Buffer> {
-  const sharp = (await import("sharp")).default;
-  return sharp(buf)
-    .ensureAlpha()
-    .webp({ quality: 85, alphaQuality: 90, effort: 4 })
-    .toBuffer();
-}
-
-async function removeWithNode(input: Buffer): Promise<Buffer> {
-  const { removeBackground } = await import("@imgly/background-removal-node");
-  const source = new Blob([new Uint8Array(input)], { type: "image/png" });
-  const blob = await removeBackground(source, {
-    model: "medium",
-    output: { format: "image/png", quality: 1 },
-  });
-  const out = Buffer.from(await blob.arrayBuffer());
-  if (!(await pngHasTransparency(out))) {
-    throw new Error("Node-Freisteller ohne Alpha-Kanal");
-  }
-  return toWebp(out);
-}
-
-async function removeWithHuggingFace(input: Buffer, token: string): Promise<Buffer> {
-  const res = await fetch("https://api-inference.huggingface.co/models/briaai/RMBG-1.4", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/octet-stream",
-      Accept: "image/png",
-    },
-    body: new Uint8Array(input),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HF ${res.status}: ${text.slice(0, 200)}`);
-  }
-  const out = Buffer.from(await res.arrayBuffer());
-  if (!(await pngHasTransparency(out))) {
-    throw new Error("HF-Ergebnis ohne Alpha-Kanal");
-  }
-  return toWebp(out);
-}
-
-/** Pixelgenaue Transparenz-Prüfung via Sharp (Indexed-PNG + tRNS inklusive) */
-async function pngHasTransparency(buf: Buffer): Promise<boolean> {
-  const sharp = (await import("sharp")).default;
-  const { data, info } = await sharp(buf)
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const total = Math.max(1, info.width * info.height);
-  let nonOpaque = 0;
-  let solid = 0;
-  for (let i = 3; i < data.length; i += 4) {
-    const a = data[i];
-    if (a < 250) nonOpaque += 1;
-    else solid += 1;
-  }
-  // Mindestens 2 % Freisteller-Fläche und etwas deckendes Produkt (≥0.2 %)
-  return nonOpaque / total >= 0.02 && solid / total >= 0.002;
 }

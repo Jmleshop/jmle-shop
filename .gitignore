@@ -21,6 +21,22 @@
 # misc
 .DS_Store
 *.pem
+*.onnx
+*.wasm
+*.node
+
+# local/temp heavy artifacts (never deploy)
+/tmp/
+/temp/
+/.cache/
+/uploads/
+/export/
+/exports/
+/backups/
+*.sql.gz
+*.dump
+*.sqlite
+*.db
 
 # debug
 npm-debug.log*
@@ -38,3 +54,6 @@ next-env.d.ts
 
 # dry-run exports (product ids and names)
 /scripts/output/
+
+# vercel
+.vercel
