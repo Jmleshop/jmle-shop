@@ -1,18 +1,18 @@
 import {
+  isLogoFolder,
   LOGO_WEBP_QUALITY,
   MAX_EDGE_PRODUCT,
   STORAGE_MAX_MB,
   STORAGE_WEBP_QUALITY,
-  policyForFolder,
-  storageQualityForFolder,
-} from "@/lib/image-policy";
+  maxEdgeForFolder,
+} from "@/lib/image-bounds";
 import {
   centerImageInTransparentSquare,
   shouldAutoCenterFolder,
 } from "@/lib/center-image-square";
 
 /**
- * Client-Upload: immer WebP, Bounds/Qualität aus `image-policy`.
+ * Client-Upload: immer WebP, harte Bounds, keine Temp-Dateien.
  * Produkte/Kategorien: optionale 1:1-Zentrierung auf weißem Grund.
  * Banner/Logos: Aspekt behalten, nur skalieren + komprimieren.
  */
@@ -118,8 +118,7 @@ export async function uploadProductImage(
   options?: { alreadyEncoded?: boolean; skipCenter?: boolean }
 ): Promise<string> {
   const { createClient } = await import("@/lib/supabase/client");
-  const policy = policyForFolder(folder);
-  const maxEdge = policy.maxEdge;
+  const maxEdge = maxEdgeForFolder(folder);
   let working = file;
 
   if (
@@ -134,7 +133,7 @@ export async function uploadProductImage(
     }
   }
 
-  const quality = storageQualityForFolder(folder);
+  const quality = isLogoFolder(folder) ? LOGO_WEBP_QUALITY : STORAGE_WEBP_QUALITY;
   // Bereits vom Anpasser/Editor optimiertes WebP nicht nochmals verlustreich kodieren
   const compressed = options?.alreadyEncoded
     ? working

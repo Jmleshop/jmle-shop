@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import ShopImage from "@/components/ShopImage";
 import { originalImageSrc } from "@/lib/sharp-image";
 
 type BrandMarkProps = {
@@ -17,7 +16,7 @@ type BrandMarkProps = {
 };
 
 /**
- * Markenlogo als Home-Link (`/`). Policy-Rolle `logo` (contain, transparent).
+ * Markenlogo als Home-Link (`/`). Original-URL, natürliches Seitenverhältnis.
  */
 export default function BrandMark({
   logoUrl,
@@ -39,15 +38,18 @@ export default function BrandMark({
       aria-label={`${name} – Home`}
     >
       {src ? (
-        <ShopImage
-          role="logo"
-          src={src}
-          alt={name}
-          sizes="180px"
-          priority={priority}
-          frameClassName={cn("brand-mark-frame", heightClassName)}
-          mediaClassName="brand-mark-img"
-        />
+        <span className={cn("brand-mark-frame", heightClassName)}>
+          {/* Native img: keine Next-Resize-Artefakte, Aspekt bleibt erhalten */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={name}
+            className="brand-mark-img"
+            decoding="async"
+            fetchPriority={priority ? "high" : "auto"}
+            draggable={false}
+          />
+        </span>
       ) : (
         <span
           className={cn(

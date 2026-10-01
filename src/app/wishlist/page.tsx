@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingBag, Trash2 } from "lucide-react";
 import { useWishlist } from "@/context/WishlistContext";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
-import ShopImage from "@/components/ShopImage";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import { useCart } from "@/context/CartContext";
 import type { Product } from "@/types";
 import { ProductPrice } from "@/components/ProductPrice";
@@ -139,14 +140,18 @@ export default function WishlistPage() {
                 key={product.id}
                 className="card-boutique overflow-hidden flex flex-col sm:flex-row lg:flex-col"
               >
-                <Link href={`/products/${product.id}`} className="shrink-0 sm:w-36 lg:w-full">
-                  <ShopImage
-                    role="product"
-                    src={product.image}
+                <Link
+                  href={`/products/${product.id}`}
+                  className="product-image-frame sm:w-36 sm:aspect-square lg:w-full shrink-0"
+                >
+                  <Image
+                    src={originalImageSrc(product.image)}
                     alt={productTitle(lang, product)}
+                    fill
                     unoptimized
+                    quality={SHOP_IMAGE_QUALITY}
+                    className="product-image-media"
                     sizes="(max-width: 640px) 100vw, 200px"
-                    frameClassName="sm:aspect-square"
                   />
                 </Link>
                 <div className="flex-1 p-4 flex flex-col gap-3">

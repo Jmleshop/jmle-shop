@@ -1,9 +1,4 @@
-import {
-  IMAGE_BG_PRODUCT,
-  MAX_EDGE_PRODUCT,
-  STORAGE_WEBP_QUALITY,
-  roleForFolder,
-} from "@/lib/image-policy";
+import { MAX_EDGE_PRODUCT, STORAGE_WEBP_QUALITY } from "@/lib/image-bounds";
 import { PRODUCT_FILL } from "@/lib/image-editor/product-bounds";
 
 /**
@@ -37,7 +32,7 @@ export async function centerImageInTransparentSquare(
     canvas.height = side;
     const ctx = canvas.getContext("2d");
     if (!ctx) return file;
-    ctx.fillStyle = IMAGE_BG_PRODUCT;
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, side, side);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
@@ -53,8 +48,8 @@ export async function centerImageInTransparentSquare(
   }
 }
 
-/** Ordner, die 1:1-Zentrierung erhalten (Policy: product/category). */
+/** Ordner, die 1:1-Zentrierung erhalten (keine Banner/Logos). */
 export function shouldAutoCenterFolder(folder: string): boolean {
-  const role = roleForFolder(folder);
-  return role === "product" || role === "category";
+  const key = folder.trim().toLowerCase();
+  return !/^(banners?|slides|hero|brand|brands|logo|logos)$/.test(key);
 }

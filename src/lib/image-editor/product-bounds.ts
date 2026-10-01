@@ -1,10 +1,12 @@
-import { MAX_EDGE_PRODUCT, policyForRole } from "@/lib/image-policy";
+import { MAX_EDGE_PRODUCT } from "@/lib/image-bounds";
 import { squarePlacement } from "./geometry";
 
 /**
- * Bake-Fill aus zentraler Policy (Display-Padding kommt separat aus CSS).
+ * Längste Motiv-Seite füllt diesen Anteil des Quadrats.
+ * ~10 % Padding pro Seite (8–12 %-Regel) → vollständig sichtbar, zentriert.
+ * Gilt für alle Uploads/Cutouts automatisch.
  */
-export const PRODUCT_FILL = policyForRole("product").bakeFill;
+export const PRODUCT_FILL = 0.8;
 
 /** Trim: Alpha/Near-transparent + helles Studio-Weiß. */
 export const TRIM_THRESHOLD = 12;

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Image from "next/image";
 import {
   getBrandByIdAsync,
   getProductsByBrandAsync,
@@ -8,7 +9,7 @@ import {
 import { getAppUrl } from "@/lib/site-defaults";
 import { ProductGrid } from "@/components/ProductCard";
 import { ShopHeading } from "@/components/ShopText";
-import ShopImage from "@/components/ShopImage";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 export const revalidate = 60;
 
@@ -69,13 +70,16 @@ export default async function BrandPage({ params }: BrandPageProps) {
     <div>
       <div className="bg-gradient-to-r from-gold to-jmle-orange-dark text-white py-10 px-4 text-center">
         <div className="mx-auto mb-4 flex h-14 w-36 items-center justify-center rounded-xl bg-white/95 px-3 shadow-sm md:h-16 md:w-44">
-          <ShopImage
-            role="logo"
-            src={brand.image}
-            alt={brand.name}
-            sizes="180px"
-            frameClassName="relative h-10 w-full md:h-12"
-          />
+          <div className="relative h-10 w-full md:h-12">
+            <Image
+              src={originalImageSrc(brand.image)}
+              alt={brand.name}
+              fill
+              quality={SHOP_IMAGE_QUALITY}
+              className="object-contain"
+              sizes="180px"
+            />
+          </div>
         </div>
         <h1 className="font-display text-2xl md:text-3xl tracking-wide">
           {brand.name}

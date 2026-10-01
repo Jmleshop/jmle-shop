@@ -4,11 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Loader2, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
-import {
-  IMAGE_BG_PRODUCT,
-  MAX_EDGE_PRODUCT,
-  STORAGE_WEBP_QUALITY,
-} from "@/lib/image-policy";
+import { MAX_EDGE_PRODUCT, STORAGE_WEBP_QUALITY } from "@/lib/image-bounds";
 import { PRODUCT_FILL } from "@/lib/image-editor/product-bounds";
 import { bitmapFromBlob, loadSourceBlob } from "@/lib/image-editor/render";
 
@@ -35,7 +31,7 @@ export function renderWhiteProductCard(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas nicht verfügbar");
 
-  ctx.fillStyle = IMAGE_BG_PRODUCT;
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, size, size);
 
   const base = Math.min(

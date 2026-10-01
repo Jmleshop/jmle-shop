@@ -1,7 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getCategoriesAsync } from "@/lib/catalog-server";
 import { ShopHeading, CategoryHeading } from "@/components/ShopText";
-import ShopImage from "@/components/ShopImage";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 export const revalidate = 60;
 
@@ -22,17 +23,17 @@ export default async function CategoriesPage() {
             <Link
               key={category.id}
               href={`/categories/${category.id}`}
-              className="group relative aspect-square overflow-hidden rounded-2xl"
+              className="group relative aspect-square overflow-hidden bg-luxury-cream rounded-2xl"
             >
-              <ShopImage
-                role="category"
-                src={category.image}
+              <Image
+                src={originalImageSrc(category.image)}
                 alt={category.name}
+                fill
+                quality={SHOP_IMAGE_QUALITY}
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
                 sizes="(max-width: 768px) 50vw, 33vw"
-                frameClassName="absolute inset-0 aspect-auto rounded-2xl"
-                mediaClassName="transition-transform duration-500 group-hover:scale-105"
               />
-              <div className="absolute inset-0 z-10 bg-black/30 group-hover:bg-black/40 transition-colors flex items-end p-6">
+              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-end p-6">
                 <CategoryHeading
                   as="h2"
                   category={category}

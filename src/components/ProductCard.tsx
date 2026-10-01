@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ShoppingBag, Minus, Plus, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -9,10 +10,9 @@ import type { Product } from "@/types";
 import { ProductPrice, StockBadge } from "@/components/ProductPrice";
 import WishlistButton from "@/components/WishlistButton";
 import ProductPagination from "@/components/ProductPagination";
-import ShopImage from "@/components/ShopImage";
 import { useShopLocale } from "@/components/ShopLocale";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
-import { originalImageSrc } from "@/lib/sharp-image";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import { maxBuyQuantity } from "@/lib/pricing";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import {
@@ -87,14 +87,16 @@ export default function ProductCard({ product }: ProductCardProps) {
         <WishlistButton productId={product.id} size="sm" />
       </div>
       <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40">
-        <ShopImage
-          ref={imgRef}
-          role="product"
-          src={product.image}
-          alt={product.nameDe ? `${title} – ${product.name}` : title}
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 320px"
-        >
-          <div className="absolute inset-x-0 top-0 z-10 p-1 sm:p-2 flex gap-1 justify-between items-start pointer-events-none">
+        <div ref={imgRef} className="product-image-frame">
+          <Image
+            src={originalImageSrc(product.image)}
+            alt={product.nameDe ? `${title} – ${product.name}` : title}
+            fill
+            quality={SHOP_IMAGE_QUALITY}
+            className="product-image-media"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 320px"
+          />
+          <div className="absolute inset-x-0 top-0 p-1 sm:p-2 flex gap-1 justify-between items-start pointer-events-none">
             <div className="flex flex-wrap gap-1">
               <StockBadge stock={product.stock} />
               <DiscountBadge percent={product.discountPercent} />
@@ -115,13 +117,13 @@ export default function ProductCard({ product }: ProductCardProps) {
               )}
             </div>
           </div>
-          <div className="absolute inset-x-0 bottom-0 z-10 hidden p-2 flex-wrap gap-1.5 justify-start sm:flex">
+          <div className="absolute inset-x-0 bottom-0 hidden p-2 flex-wrap gap-1.5 justify-start sm:flex">
             <OriginBadge country={product.originCountry} />
             {seals.map((s) => (
               <SealBadge key={s} type={s} />
             ))}
           </div>
-        </ShopImage>
+        </div>
         <div className="bg-white/95 p-1.5 sm:p-3 text-center">
           <h3 className="font-ui text-[11px] sm:text-sm font-medium text-luxury-ink mb-0.5 line-clamp-2 min-h-[2.2em] sm:min-h-[2.5rem] leading-snug">
             {title}

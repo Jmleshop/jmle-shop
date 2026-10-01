@@ -48,12 +48,12 @@ export default function ProductAnalyticsModal({
         </div>
         <div className="p-5 space-y-4">
           <div className="flex gap-4">
-            <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-white shrink-0">
+            <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-gray-100 shrink-0">
               <Image
                 src={detail.image}
                 alt={detail.name}
                 fill
-                className="object-contain"
+                className="object-cover"
                 sizes="96px"
               />
             </div>

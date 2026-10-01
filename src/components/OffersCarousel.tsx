@@ -1,12 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { formatPrice } from "@/lib/catalog";
 import { DiscountBadge } from "@/components/ui";
 import WishlistButton from "@/components/WishlistButton";
-import ShopImage from "@/components/ShopImage";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle, type ShopMsgKey } from "@/lib/shop-i18n";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import type { Product } from "@/types";
 
 interface OffersCarouselProps {
@@ -30,16 +31,19 @@ function OfferCard({ product }: { product: Product }) {
       </div>
       <Link href={`/products/${product.id}`} className="block" aria-label={title}>
         <div className="overflow-hidden rounded-2xl border border-orange-100/80 bg-white transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
-          <ShopImage
-            role="product"
-            src={product.image}
-            alt={title}
-            sizes="(max-width: 640px) 70vw, (max-width: 1024px) 31vw, 240px"
-          >
-            <div className="absolute top-2 start-2 z-10">
+          <div className="product-image-frame">
+            <Image
+              src={originalImageSrc(product.image)}
+              alt={title}
+              fill
+              quality={SHOP_IMAGE_QUALITY}
+              className="product-image-media"
+              sizes="(max-width: 640px) 70vw, (max-width: 1024px) 31vw, 240px"
+            />
+            <div className="absolute top-2 start-2">
               <DiscountBadge percent={product.discountPercent} />
             </div>
-          </ShopImage>
+          </div>
           <div className="bg-white/95 p-3 text-center">
             <h3 className="font-ui text-sm font-medium text-luxury-ink line-clamp-1">
               {title}
