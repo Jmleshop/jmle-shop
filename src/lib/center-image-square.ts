@@ -2,6 +2,7 @@ import {
   IMAGE_BG_PRODUCT,
   MAX_EDGE_PRODUCT,
   STORAGE_WEBP_QUALITY,
+  roleForFolder,
 } from "@/lib/image-policy";
 import { PRODUCT_FILL } from "@/lib/image-editor/product-bounds";
 
@@ -54,7 +55,6 @@ export async function centerImageInTransparentSquare(
 
 /** Ordner, die 1:1-Zentrierung erhalten (Policy: product/category). */
 export function shouldAutoCenterFolder(folder: string): boolean {
-  const { roleForFolder } = require("@/lib/image-policy") as typeof import("@/lib/image-policy");
   const role = roleForFolder(folder);
   return role === "product" || role === "category";
 }
