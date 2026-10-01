@@ -96,6 +96,8 @@ export interface Product {
   discountPercent: number;
   vatRate: number;
   categoryId: string;
+  /** Verknüpfung zu brand_logos.id */
+  brandId?: string | null;
   image: string;
   images: string[];
   featured?: boolean;
@@ -178,6 +180,7 @@ export interface FoodProduct {
   price: number;
   currency: string;
   category_id: string | null;
+  brand_id?: string | null;
   image: string | null;
   images: string[];
   ingredients: string;

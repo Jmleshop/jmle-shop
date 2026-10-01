@@ -44,6 +44,8 @@ const emptyForm = {
   discount_percent: "0",
   discount_custom: false,
   category_id: "",
+  brand_id: "",
+  brand_name: "",
   images: [] as string[],
   ingredients: "",
   allergens: "",
@@ -62,10 +64,13 @@ const emptyForm = {
   custom_note: "",
 };
 
+type BrandOption = { id: string; name: string };
+
 export default function AdminProductsPage() {
   const { lang, t } = useAdminI18n();
   const [products, setProducts] = useState<FoodProduct[]>([]);
   const [categories, setCategories] = useState<FoodCategory[]>([]);
+  const [brands, setBrands] = useState<BrandOption[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
@@ -99,9 +104,17 @@ export default function AdminProductsPage() {
     Promise.all([
       fetch(`/api/admin/products${qs}`).then((r) => r.json()),
       fetch("/api/admin/categories").then((r) => r.json()),
-    ]).then(([prod, cats]) => {
+      fetch("/api/admin/brands").then((r) => r.json()),
+    ]).then(([prod, cats, brandRes]) => {
       setProducts(prod.products ?? []);
       setCategories(cats.categories ?? []);
+      const logos = (brandRes.logos ?? []) as Array<{ id?: string; name?: string }>;
+      setBrands(
+        logos
+          .filter((b) => b.id)
+          .map((b) => ({ id: String(b.id), name: String(b.name || b.id) }))
+          .sort((a, b) => a.name.localeCompare(b.name, "de"))
+      );
       if (prod.error) setError(prod.error);
       setLoading(false);
     });
@@ -136,6 +149,9 @@ export default function AdminProductsPage() {
       discount_percent: String(p.discount_percent ?? 0),
       discount_custom: !preset,
       category_id: p.category_id ?? "",
+      brand_id: p.brand_id ?? "",
+      brand_name:
+        brands.find((b) => b.id === p.brand_id)?.name || "",
       images,
       ingredients: p.ingredients ?? "",
       allergens: p.allergens ?? "",
@@ -201,6 +217,12 @@ export default function AdminProductsPage() {
     e.preventDefault();
     setSaving(true);
     setError("");
+    const brandName = form.brand_name.trim();
+    const matchedBrand = brands.find(
+      (b) =>
+        b.id === form.brand_id ||
+        b.name.trim().toLowerCase() === brandName.toLowerCase()
+    );
     const payload = {
       ...form,
       price: parseFloat(form.price),
@@ -208,6 +230,8 @@ export default function AdminProductsPage() {
       vat_rate: Number(form.vat_rate),
       images: form.images,
       image: form.images[0] ?? "",
+      brand_id: matchedBrand?.id || form.brand_id || null,
+      brand_name: matchedBrand ? null : brandName || null,
       max_order_quantity:
         form.max_order_quantity === "" ||
         form.max_order_quantity === "unlimited" ||
@@ -644,6 +668,32 @@ export default function AdminProductsPage() {
                     );
                   })}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">{t("brand")}</label>
+                <input
+                  className="input-field"
+                  list="product-brand-options"
+                  placeholder={t("brandHint")}
+                  value={form.brand_name}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const match = brands.find(
+                      (b) => b.name.toLowerCase() === value.trim().toLowerCase()
+                    );
+                    setForm({
+                      ...form,
+                      brand_name: value,
+                      brand_id: match?.id ?? "",
+                    });
+                  }}
+                />
+                <datalist id="product-brand-options">
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.name} />
+                  ))}
+                </datalist>
+                <p className="mt-1 text-[11px] text-gray-500">{t("brandHint")}</p>
               </div>
               <ImageUpload
                 multiple

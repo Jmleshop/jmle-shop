@@ -8,6 +8,10 @@ import {
 } from "@/lib/admin-payloads";
 import { productArchiveSchema } from "@/lib/validations/product";
 import { parseJsonBody } from "@/lib/validations";
+import {
+  resolveProductBrand,
+  stripBrandName,
+} from "@/lib/resolve-product-brand";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -40,7 +44,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const payload = parsed.data;
+  const resolved = await resolveProductBrand(auth.supabase, parsed.data);
+  const payload = {
+    ...stripBrandName(parsed.data),
+    brand_id: resolved.brand_id,
+  };
 
   let { data, error } = await auth.supabase
     .from("products")
@@ -49,21 +57,23 @@ export async function PUT(request: Request, { params }: RouteParams) {
     .select(PRODUCT_SELECT)
     .single();
 
-  if (error && /(status|badges|custom_note)/i.test(error.message)) {
+  if (error && /(status|badges|custom_note|brand_id)/i.test(error.message)) {
     const {
       status: _s,
       badges: _b,
       custom_note: _c,
+      brand_id: _brand,
       ...withoutOptional
     } = payload;
     void _s;
     void _b;
     void _c;
+    void _brand;
     const retry = await auth.supabase
       .from("products")
       .update(withoutOptional)
       .eq("id", id)
-      .select(PRODUCT_SELECT_BASE)
+      .select(PRODUCT_SELECT_BASE.replace(", brand_id", ""))
       .single();
     data = retry.data as typeof data;
     error = retry.error;

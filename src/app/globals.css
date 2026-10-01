@@ -106,13 +106,11 @@
     mix-blend-mode: normal !important;
   }
 
-  /* Kategorie-Kreis-Icons: weiß + contain (kein multiply) */
+  /* Kategorie-Kreis-Icons: weiß; Schatten kommt von Utility-Klassen */
   .category-icon-circle {
     background: #ffffff !important;
-    box-shadow: none !important;
   }
   .category-icon-media {
-    object-fit: contain !important;
     object-position: center !important;
     background: transparent !important;
     mix-blend-mode: normal !important;

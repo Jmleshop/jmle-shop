@@ -37,7 +37,7 @@ const PLACEHOLDER_IMAGE = "/placeholder.svg";
 const REVALIDATE_SECONDS = 60;
 
 const PUBLIC_SELECT =
-  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
+  "id, name_ar, name_de, description, price, currency, category_id, brand_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
 
 /** Fallback ohne Spalten, die in älteren products_public Views fehlen können */
 const PUBLIC_SELECT_BASIC =
@@ -50,6 +50,7 @@ type PublicRow = {
   description?: string | null;
   price?: number | string | null;
   category_id?: string | null;
+  brand_id?: string | null;
   image?: string | null;
   images?: string[] | null;
   ingredients?: string | null;
@@ -128,6 +129,7 @@ export function mapPublicProduct(row: PublicRow): Product {
     discountPercent: discount,
     vatRate: Number(row.vat_rate ?? 19),
     categoryId: row.category_id ?? "",
+    brandId: row.brand_id ? String(row.brand_id) : null,
     image,
     images: uniqueImages,
     stock,
@@ -634,6 +636,60 @@ export const getSlidesByZoneAsync = cache(
 export const getBrandLogosAsync = cache(async (): Promise<BrandLogo[]> => {
   return getBrandLogosCached();
 });
+
+export const getBrandByIdAsync = cache(
+  async (id: string): Promise<BrandLogo | undefined> => {
+    const rawId = decodeURIComponent(String(id || "")).trim();
+    if (!rawId) return undefined;
+    const logos = await getBrandLogosAsync();
+    return (
+      logos.find((b) => b.id === rawId) ||
+      logos.find((b) => b.id.toLowerCase() === rawId.toLowerCase()) ||
+      logos.find(
+        (b) => b.name.trim().toLowerCase() === rawId.toLowerCase()
+      )
+    );
+  }
+);
+
+export const getProductsByBrandAsync = cache(
+  async (brandId: string): Promise<Product[]> => {
+    const rawId = decodeURIComponent(String(brandId || "")).trim();
+    if (!rawId) return [];
+    const brand = await getBrandByIdAsync(rawId);
+    const resolvedId = brand?.id ?? rawId;
+    const products = await getProductsAsync();
+    const matched = products.filter((p) => p.brandId === resolvedId);
+    if (matched.length > 0) return matched;
+
+    // Live-Fallback falls Cache/Mapping ohne brand_id läuft
+    try {
+      const supabase = createPublicClient();
+      let { data, error } = await supabase
+        .from("products_public")
+        .select(PUBLIC_SELECT)
+        .eq("brand_id", resolvedId);
+      if (error && /column|42703|brand_id/i.test(error.message)) {
+        return [];
+      }
+      if (error) {
+        const retry = await supabase
+          .from("products")
+          .select(PUBLIC_SELECT_BASIC + ", brand_id")
+          .is("deleted_at", null)
+          .eq("brand_id", resolvedId);
+        data = retry.data as typeof data;
+        error = retry.error;
+      }
+      if (!error && data?.length) {
+        return (data as PublicRow[]).map(mapPublicProduct);
+      }
+    } catch (e) {
+      console.error("[catalog] getProductsByBrandAsync:", e);
+    }
+    return matched;
+  }
+);
 
 export const getFlatCategoriesAsync = cache(async (): Promise<Category[]> => {
   const tree = await getCategoriesAsync();
