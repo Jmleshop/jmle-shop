@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import type { Category } from "@/types";
 import { useShopLocale } from "@/components/ShopLocale";
 import { categoryTitle, type ShopMsgKey } from "@/lib/shop-i18n";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
-import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import ShopImage from "@/components/ShopImage";
 
 type CategoryTileVariant = "parent" | "sub";
 
@@ -38,27 +37,23 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
       }
     >
       {isSub ? (
-        <div className="category-icon-circle relative h-20 w-20 overflow-hidden rounded-full bg-white shadow-lg ring-1 ring-orange-100/80 transition-[ring-color,transform,box-shadow] duration-300 ease-boutique group-hover:scale-[1.04] group-hover:shadow-xl group-hover:ring-brand-orange/40 sm:h-24 sm:w-24 md:h-28 md:w-28">
-          <Image
-            src={originalImageSrc(category.image)}
-            alt={label}
-            fill
-            quality={SHOP_IMAGE_QUALITY}
-            className="category-icon-media object-cover"
-            sizes="(max-width: 640px) 80px, (max-width: 768px) 96px, 112px"
-          />
-        </div>
+        <ShopImage
+          role="category"
+          src={category.image}
+          alt={label}
+          sizes="(max-width: 640px) 80px, (max-width: 768px) 96px, 112px"
+          frameClassName="category-icon-circle h-20 w-20 rounded-full shadow-lg ring-1 ring-orange-100/80 transition-[ring-color,transform,box-shadow] duration-300 ease-boutique group-hover:scale-[1.04] group-hover:shadow-xl group-hover:ring-brand-orange/40 sm:h-24 sm:w-24 md:h-28 md:w-28 aspect-auto"
+          mediaClassName="category-icon-media"
+        />
       ) : (
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white ring-1 ring-orange-200/70 transition-[ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:ring-brand-orange/40">
-          <Image
-            src={originalImageSrc(category.image)}
-            alt={label}
-            fill
-            quality={SHOP_IMAGE_QUALITY}
-            className="category-icon-media object-cover transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
-            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 280px"
-          />
-        </div>
+        <ShopImage
+          role="category"
+          src={category.image}
+          alt={label}
+          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 280px"
+          frameClassName="w-full rounded-2xl ring-1 ring-orange-200/70 transition-[ring-color] duration-300 ease-boutique group-hover:z-10 group-hover:ring-brand-orange/40"
+          mediaClassName="category-icon-media transition-transform duration-300 ease-boutique group-hover:scale-[1.03]"
+        />
       )}
       <span
         className={

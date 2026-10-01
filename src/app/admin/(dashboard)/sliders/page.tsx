@@ -888,7 +888,7 @@ export default function AdminSlidersPage() {
                           <img
                             src={s.image}
                             alt=""
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-contain bg-jmle-cream"
                           />
                         </button>
                         <div className="flex-1 min-w-0">

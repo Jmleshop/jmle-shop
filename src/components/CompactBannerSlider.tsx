@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import type { Slide } from "@/types";
 import { cn } from "@/lib/cn";
-import { SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import ShopImage from "@/components/ShopImage";
+import { policyForRole } from "@/lib/image-policy";
 import { useShopLocale } from "@/components/ShopLocale";
 import { slideTitle } from "@/lib/shop-i18n";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
@@ -20,10 +20,12 @@ interface CompactBannerSliderProps {
 
 /**
  * Keine festen Pixel-Höhen — responsives Seitenverhältnis.
- * Bild: w-full h-auto / object-contain → Text & Preis nie abgeschnitten.
+ * Fit/Hintergrund aus zentraler Banner-Policy.
  */
-export const BANNER_FRAME_CLASS =
-  "relative w-full aspect-[2.4/1] min-h-0 bg-jmle-cream";
+export const BANNER_FRAME_CLASS = cn(
+  policyForRole("banner").frameClass,
+  "relative w-full"
+);
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;
@@ -64,15 +66,16 @@ function BannerSlideContent({
         aria-label={title || slideTitle(lang, slide) || "Banner"}
       />
     ) : (
-      <Image
+      <ShopImage
+        role="banner"
         src={slide.image}
         alt={title || slideTitle(lang, slide) || "Banner"}
         width={1920}
         height={800}
-        quality={SHOP_IMAGE_QUALITY}
         priority={priority}
-        className="h-auto w-full object-contain object-center"
         sizes="100vw"
+        frameClassName="!aspect-auto !bg-transparent w-full"
+        mediaClassName="h-auto w-full"
         draggable={false}
       />
     );

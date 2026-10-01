@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import ShopImage from "@/components/ShopImage";
 
 export default function ProductGallery({
   images,
@@ -77,20 +76,15 @@ export default function ProductGallery({
         style={{ transform: `translateX(-${index * 100}%)` }}
       >
         {slides.map((src, i) => (
-          <div
+          <ShopImage
             key={`${src}-${i}`}
-            className="product-image-frame relative min-w-full h-full rounded-none border-0"
-          >
-            <Image
-              src={originalImageSrc(src)}
-              alt={i === index ? alt : ""}
-              fill
-              quality={SHOP_IMAGE_QUALITY}
-              className="product-image-media"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              draggable={false}
-            />
-          </div>
+            role="product"
+            src={src}
+            alt={i === index ? alt : ""}
+            sizes="(max-width: 768px) 100vw, 50vw"
+            frameClassName="relative min-w-full h-full rounded-none border-0 aspect-auto"
+            draggable={false}
+          />
         ))}
       </div>
 

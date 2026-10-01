@@ -2,21 +2,17 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { Upload, X, Star, Pencil, Download, Loader2 } from "lucide-react";
 import { uploadProductImage } from "@/lib/compress-image";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { copyFor } from "@/lib/image-editor/copy";
-import { isBannerFolder, isLogoFolder } from "@/lib/image-bounds";
+import { policyForFolder } from "@/lib/image-policy";
+import ShopImage from "@/components/ShopImage";
 
 const ProductImageAdjustModal = dynamic(
   () => import("@/components/admin/ProductImageAdjustModal"),
   { ssr: false }
 );
-
-const ImageEditorModal = dynamic(() => import("@/components/admin/ImageEditorModal"), {
-  ssr: false,
-});
 
 type EditorSession = {
   key: string;
@@ -121,11 +117,13 @@ export default function ImageUpload({
   const { lang, t } = useAdminI18n();
   const copy = copyFor(lang);
   const fieldLabel = label || t("images");
-  const editorEnabled = enableEditor || enableCrop;
-  const isLogo = isLogoFolder(folder);
-  const isBanner = isBannerFolder(folder);
-  /** Produkte/Kategorien: manueller Weißkarten-Anpasser; Banner/Logo: optionaler Legacy-Editor ohne Freisteller */
-  const useProductAdjuster = !isLogo && !isBanner;
+  const policy = policyForFolder(folder);
+  /** Banner/Logo: kein Quadrat-Editor (Policy editorMode=none). */
+  const editorEnabled =
+    policy.allowEditor &&
+    policy.editorMode === "adjust-square" &&
+    (enableEditor || enableCrop);
+  const useProductAdjuster = editorEnabled;
 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -313,19 +311,22 @@ export default function ImageUpload({
     lang === "de"
       ? "Drag & Drop hierher"
       : "اسحب وأفلت هنا";
-  const helperText = isLogo
-    ? lang === "de"
-      ? "Logo: hohe Qualität. Drag & Drop oder Einfügen."
-      : "الشعار: جودة عالية. اسحب وأفلت أو الصق."
-    : isBanner
+  const helperText =
+    policy.role === "logo"
       ? lang === "de"
-        ? "Banner: WebP-Kompression. Drag & Drop oder Einfügen."
-        : "البانر: ضغط WebP. اسحب وأفلت أو الصق."
-      : lang === "de"
-        ? "Produktbild: Live-Vorschau auf weißer Karte, manueller Zoom/Position. Scharfe WebP-Kompression."
-        : "صورة المنتج: معاينة على بطاقة بيضاء مع تكبير/تحريك يدوي. ضغط WebP حاد.";
+        ? "Logo: hohe Qualität, Aspekt bleibt. Drag & Drop oder Einfügen."
+        : "الشعار: جودة عالية مع الحفاظ على النسبة. اسحب وأفلت أو الصق."
+      : policy.role === "banner"
+        ? lang === "de"
+          ? "Banner: WebP, Aspekt bleibt (kein Quadrat-Zuschnitt). Drag & Drop oder Einfügen."
+          : "البانر: WebP مع الحفاظ على النسبة (بدون قص مربع). اسحب وأفلت أو الصق."
+        : lang === "de"
+          ? "Produktbild: Live-Vorschau auf weißer Karte, manueller Zoom/Position. Scharfe WebP-Kompression."
+          : "صورة المنتج: معاينة على بطاقة بيضاء مع تكبير/تحريك يدوي. ضغط WebP حاد.";
   const dropLabel =
     lang === "de" ? "Bild hochladen" : "رفع صورة";
+  const thumbRole =
+    policy.role === "banner" || policy.role === "logo" ? policy.role : "product";
 
   return (
     <div
@@ -373,13 +374,14 @@ export default function ImageUpload({
               index === 0 ? "ring-gold" : "ring-transparent"
             } ${editorEnabled ? "cursor-pointer" : ""}`}
           >
-            <Image
+            <ShopImage
+              role={thumbRole}
               src={url}
               alt=""
-              fill
               unoptimized
-              className="object-contain object-center"
               sizes="96px"
+              frameClassName="absolute inset-0 aspect-auto rounded-xl"
+              mediaClassName="object-contain"
             />
             {editorEnabled && (
               <button
@@ -486,23 +488,6 @@ export default function ImageUpload({
           key={session.key}
           source={session.source}
           step={session.step}
-          onComplete={(file) => void onEditorDone(file)}
-          onCancel={() => {
-            setSession(null);
-            batchRef.current = null;
-          }}
-        />
-      )}
-
-      {session && !useProductAdjuster && (
-        <ImageEditorModal
-          key={session.key}
-          source={session.source}
-          step={session.step}
-          seed={null}
-          autoRemoveBackground={false}
-          allowBackgroundRemoval={false}
-          autoExport={false}
           onComplete={(file) => void onEditorDone(file)}
           onCancel={() => {
             setSession(null);

@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import type { BrandLogo } from "@/types";
-import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import ShopImage from "@/components/ShopImage";
 import { useShopLocale } from "@/components/ShopLocale";
 import { cn } from "@/lib/cn";
 
@@ -25,16 +24,13 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
   const href = brandHref(logo);
   const external = href.startsWith("http");
   const img = (
-    <div className="relative h-10 md:h-14 w-20 md:w-28 shrink-0 opacity-90 transition-opacity hover:opacity-100">
-      <Image
-        src={originalImageSrc(logo.image)}
-        alt={logo.name || "Brand"}
-        fill
-        quality={SHOP_IMAGE_QUALITY}
-        className="object-contain"
-        sizes="(max-width: 768px) 80px, 112px"
-      />
-    </div>
+    <ShopImage
+      role="logo"
+      src={logo.image}
+      alt={logo.name || "Brand"}
+      sizes="(max-width: 768px) 80px, 112px"
+      frameClassName="h-10 md:h-14 w-20 md:w-28 shrink-0 opacity-90 transition-opacity hover:opacity-100"
+    />
   );
 
   return (

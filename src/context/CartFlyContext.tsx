@@ -112,7 +112,7 @@ export function CartFlyProvider({ children }: { children: ReactNode }) {
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.image} alt="" className="h-full w-full object-cover" />
+                <img src={f.image} alt="" className="h-full w-full object-contain bg-white" />
               </div>
             ))}
           </>,

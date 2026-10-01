@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -16,11 +15,11 @@ import OrderCostBreakdown, {
   computeCheckoutTotals,
 } from "@/components/cart/OrderCostBreakdown";
 import { Button } from "@/components/ui";
+import ShopImage from "@/components/ShopImage";
 import { productShippingGrams } from "@/lib/shipping";
 import { whatsAppOrderUrl } from "@/lib/whatsapp-order";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
-import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 const DISCOUNT_STORAGE_KEY = "jmle_cart_discount";
 
@@ -99,19 +98,18 @@ export default function CartPage() {
             key={item.id}
             className="flex gap-4 bg-white p-4 rounded-2xl border border-amber-200/40 shadow-sm"
           >
-            <div className="relative w-24 h-24 sm:h-28 flex-shrink-0 rounded-xl overflow-hidden bg-white">
-              {item.product && (
-                <Image
-                  src={originalImageSrc(item.product.image)}
-                  alt={productTitle(lang, item.product)}
-                  fill
-                  unoptimized
-                  quality={SHOP_IMAGE_QUALITY}
-                  className="product-image-media"
-                  sizes="112px"
-                />
-              )}
-            </div>
+            {item.product ? (
+              <ShopImage
+                role="product"
+                src={item.product.image}
+                alt={productTitle(lang, item.product)}
+                unoptimized
+                sizes="112px"
+                frameClassName="w-24 h-24 sm:h-28 flex-shrink-0 rounded-xl aspect-auto"
+              />
+            ) : (
+              <div className="relative w-24 h-24 sm:h-28 flex-shrink-0 rounded-xl overflow-hidden bg-white" />
+            )}
 
             <div className="flex-1 flex flex-col justify-between min-w-0">
               <div>
