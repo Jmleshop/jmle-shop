@@ -77,13 +77,16 @@ export default function ProductGallery({
         style={{ transform: `translateX(-${index * 100}%)` }}
       >
         {slides.map((src, i) => (
-          <div key={`${src}-${i}`} className="relative min-w-full h-full flex items-center justify-center">
+          <div
+            key={`${src}-${i}`}
+            className="product-image-frame relative min-w-full h-full rounded-none border-0"
+          >
             <Image
               src={originalImageSrc(src)}
               alt={i === index ? alt : ""}
               fill
               quality={SHOP_IMAGE_QUALITY}
-              className="product-image-media max-h-full max-w-full"
+              className="product-image-media"
               sizes="(max-width: 768px) 100vw, 50vw"
               draggable={false}
             />
