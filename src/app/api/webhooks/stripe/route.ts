@@ -161,22 +161,50 @@ export async function POST(request: Request) {
   }
 
   if (discountCode) {
-    const { data: code, error: codeError } = await service
-      .from("discount_codes")
-      .select("id, usage_count")
-      .eq("code", discountCode)
-      .maybeSingle();
+    // Atomar: LIMIT + Ablauf + Aktiv in einer UPDATE-WHERE (kein Read-Modify-Write)
+    const { data: incremented, error: usageError } = await service.rpc(
+      "increment_discount_usage",
+      { p_code: discountCode }
+    );
 
-    if (codeError) {
-      console.error("[stripe-webhook] Discount lookup:", codeError);
-    } else if (code) {
-      const { error: usageError } = await service
+    if (usageError) {
+      console.error("[stripe-webhook] Discount usage RPC:", usageError);
+      // Optimistic-Concurrency-Fallback, falls RPC noch nicht deployed ist
+      const { data: code } = await service
         .from("discount_codes")
-        .update({ usage_count: (code.usage_count ?? 0) + 1 })
-        .eq("id", code.id);
-      if (usageError) {
-        console.error("[stripe-webhook] Discount usage:", usageError);
+        .select("id, usage_count, usage_limit, active, expires_at")
+        .eq("code", discountCode.toUpperCase())
+        .maybeSingle();
+
+      if (
+        code &&
+        code.active !== false &&
+        (!code.expires_at || new Date(code.expires_at) > new Date()) &&
+        (code.usage_limit == null ||
+          (code.usage_count ?? 0) < Number(code.usage_limit))
+      ) {
+        const expected = code.usage_count ?? 0;
+        const { data: updated, error: updErr } = await service
+          .from("discount_codes")
+          .update({ usage_count: expected + 1 })
+          .eq("id", code.id)
+          .eq("usage_count", expected)
+          .select("id")
+          .maybeSingle();
+        if (updErr) {
+          console.error("[stripe-webhook] Discount usage fallback:", updErr);
+        } else if (!updated) {
+          console.warn(
+            "[stripe-webhook] Discount usage race lost:",
+            discountCode
+          );
+        }
       }
+    } else if (incremented === false) {
+      console.warn(
+        "[stripe-webhook] Discount usage not incremented (limit/expired/inactive):",
+        discountCode
+      );
     }
   }
 

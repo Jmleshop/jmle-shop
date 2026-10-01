@@ -5,43 +5,45 @@ import { usePathname } from "next/navigation";
 import { Home, Grid3X3, ShoppingBag, Heart, User } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
+import { useShopLocale } from "@/components/ShopLocale";
 import { cn } from "@/lib/cn";
 
 export default function FooterNav() {
   const pathname = usePathname();
   const { itemCount, user } = useCart();
   const { count: wishCount } = useWishlist();
+  const { t } = useShopLocale();
 
   if (pathname.startsWith("/admin")) return null;
 
   const navItems = [
-    { href: "/", icon: Home, label: "الرئيسية" },
-    { href: "/categories", icon: Grid3X3, label: "الفئات" },
+    { href: "/", icon: Home, label: t("home") },
+    { href: "/categories", icon: Grid3X3, label: t("categories") },
     {
       href: "/wishlist",
       icon: Heart,
-      label: "المفضلة",
+      label: t("wishlist"),
       badge: wishCount,
       badgeTone: "wish" as const,
     },
     {
       href: "/cart",
       icon: ShoppingBag,
-      label: "السلة",
+      label: t("cart"),
       badge: itemCount,
       badgeTone: "cart" as const,
     },
     {
       href: user ? "/profile" : "/auth/login",
       icon: User,
-      label: user ? "حسابي" : "دخول",
+      label: user ? t("account") : t("login"),
     },
   ];
 
   return (
     <nav
       className="fixed bottom-0 inset-x-0 z-50 bg-jmle-cream/95 backdrop-blur-md border-t border-amber-200/50 shadow-[0_-8px_30px_rgba(249,115,22,0.12)] md:hidden"
-      aria-label="التنقل الرئيسي"
+      aria-label={t("mainNav")}
     >
       <div className="flex items-center justify-around h-16 px-0.5 max-w-lg mx-auto safe-pb">
         {navItems.map(({ href, icon: Icon, label, badge, badgeTone }) => {
@@ -80,7 +82,11 @@ export default function FooterNav() {
                         ? "bg-red-500 text-white"
                         : "bg-gold text-white"
                     )}
-                    aria-label={`${badge} منتج`}
+                    aria-label={
+                      badgeTone === "wish"
+                        ? t("wishlistCount", { count: badge })
+                        : t("cartCount", { count: badge })
+                    }
                   >
                     {badge > 99 ? "99+" : badge}
                   </span>

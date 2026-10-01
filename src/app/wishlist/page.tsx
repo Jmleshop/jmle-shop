@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingBag, Trash2 } from "lucide-react";
@@ -20,6 +20,7 @@ export default function WishlistPage() {
   const { addItem } = useCart();
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const cleanedRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/products")
@@ -31,27 +32,30 @@ export default function WishlistPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Geister-IDs (nicht mehr im Katalog) automatisch bereinigen
+  useEffect(() => {
+    if (loading || wlLoading || cleanedRef.current) return;
+    if (!catalog.length && ids.length === 0) return;
+    const valid = new Set(catalog.map((p) => p.id));
+    const stale = ids.filter((id) => !valid.has(id));
+    if (!stale.length) {
+      cleanedRef.current = true;
+      return;
+    }
+    cleanedRef.current = true;
+    void (async () => {
+      for (const id of stale) {
+        await remove(id);
+      }
+    })();
+  }, [loading, wlLoading, catalog, ids, remove]);
+
   const products = useMemo(() => {
     const map = new Map(catalog.map((p) => [p.id, p]));
-    return ids.map((id) => {
-      const found = map.get(id);
-      if (found) return found;
-      return {
-        id,
-        name: t("wishlistSaved"),
-        description: "",
-        price: 0,
-        discountPercent: 0,
-        vatRate: 7,
-        categoryId: "",
-        image: "/placeholder.svg",
-        images: [],
-        stock: 0,
-        inStock: false,
-        maxOrderQuantity: null,
-      } satisfies Product;
-    });
-  }, [ids, catalog, t]);
+    return ids
+      .map((id) => map.get(id))
+      .filter((p): p is Product => Boolean(p));
+  }, [ids, catalog]);
 
   const busy = wlLoading || loading;
 
@@ -65,8 +69,8 @@ export default function WishlistPage() {
           </h1>
           <p className="text-sm text-gray-500 font-ui mt-1">
             {count === 0
-              ? "لا توجد منتجات محفوظة"
-              : `${count} منتج محفوظ`}
+              ? t("wishlistEmpty")
+              : t("wishlistItemsCount", { count })}
           </p>
         </div>
         {count > 0 && (
@@ -98,56 +102,78 @@ export default function WishlistPage() {
         </div>
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-          {products.map((product) => (
-            <li
-              key={product.id}
-              className="card-boutique overflow-hidden flex flex-col sm:flex-row lg:flex-col"
-            >
-              <Link
-                href={`/products/${product.id}`}
-                className="product-image-frame sm:w-36 sm:aspect-square lg:w-full shrink-0"
+          {products.map((product) => {
+            const unavailable = product.stock <= 0 || !product.inStock;
+            return (
+              <li
+                key={product.id}
+                className="card-boutique overflow-hidden flex flex-col sm:flex-row lg:flex-col"
               >
-                <Image
-                  src={originalImageSrc(product.image)}
-                  alt={productTitle(lang, product)}
-                  fill
-                  unoptimized
-                  quality={SHOP_IMAGE_QUALITY}
-                  className="product-image-media"
-                  sizes="(max-width: 640px) 100vw, 200px"
-                />
-              </Link>
-              <div className="flex-1 p-4 flex flex-col gap-3">
-                <Link href={`/products/${product.id}`} className="block">
-                  <h2 className="font-ui font-medium text-luxury-ink line-clamp-2">
-                    {productTitle(lang, product)}
-                  </h2>
-                  <div className="mt-1">
-                    <ProductPrice product={product} align="start" />
-                  </div>
+                <Link
+                  href={`/products/${product.id}`}
+                  className="product-image-frame sm:w-36 sm:aspect-square lg:w-full shrink-0"
+                >
+                  <Image
+                    src={originalImageSrc(product.image)}
+                    alt={productTitle(lang, product)}
+                    fill
+                    unoptimized
+                    quality={SHOP_IMAGE_QUALITY}
+                    className="product-image-media"
+                    sizes="(max-width: 640px) 100vw, 200px"
+                  />
                 </Link>
-                <div className="mt-auto flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1 min-h-11"
-                    leadingIcon={<ShoppingBag size={16} />}
-                    disabled={product.stock <= 0}
-                    onClick={() => void addItem(product.id)}
-                  >
-                    {t("addToCart")}
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => void remove(product.id)}
-                    className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl border border-amber-200/60 text-gray-500 hover:text-red-600 hover:border-red-200"
-                    aria-label={t("wishlistRemove")}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                <div className="flex-1 p-4 flex flex-col gap-3">
+                  <Link href={`/products/${product.id}`} className="block">
+                    <h2 className="font-ui font-medium text-luxury-ink line-clamp-2">
+                      {productTitle(lang, product)}
+                    </h2>
+                    {unavailable ? (
+                      <p className="mt-1 text-sm font-ui text-amber-700">
+                        {t("wishlistUnavailable")}
+                      </p>
+                    ) : (
+                      <div className="mt-1">
+                        <ProductPrice product={product} align="start" />
+                      </div>
+                    )}
+                  </Link>
+                  <div className="mt-auto flex flex-wrap gap-2">
+                    {unavailable ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="flex-1 min-h-11"
+                        leadingIcon={<Trash2 size={16} />}
+                        onClick={() => void remove(product.id)}
+                      >
+                        {t("wishlistRemove")}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          className="flex-1 min-h-11"
+                          leadingIcon={<ShoppingBag size={16} />}
+                          onClick={() => void addItem(product.id)}
+                        >
+                          {t("addToCart")}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => void remove(product.id)}
+                          className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl border border-amber-200/60 text-gray-500 hover:text-red-600 hover:border-red-200"
+                          aria-label={t("wishlistRemove")}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -75,7 +75,7 @@
   /**
    * PRODUKT-REGEL (dauerhaft):
    * 1:1 + flex-center, rein weißer Kartenhintergrund, object-contain,
-   * Originalbild zentriert — kein Freisteller, kein multiply.
+   * Originalbild zentriert — kein Freisteller, kein multiply/Blend.
    */
   .product-image-frame {
     position: relative;
@@ -87,6 +87,7 @@
     background: #ffffff !important;
     box-shadow: none !important;
     padding: 10px;
+    isolation: isolate;
   }
 
   .product-image-media {
@@ -103,17 +104,23 @@
     max-height: calc(100% - 20px) !important;
     margin: auto !important;
     transform: none !important;
+    /* Kein Blend — verhindert Verwaschen auf Cream-/Weißflächen */
     mix-blend-mode: normal !important;
+    filter: none !important;
+    opacity: 1 !important;
+    background: transparent !important;
   }
 
   /* Kategorie-Kreis-Icons: weiß; Schatten kommt von Utility-Klassen */
   .category-icon-circle {
     background: #ffffff !important;
+    isolation: isolate;
   }
   .category-icon-media {
     object-position: center !important;
     background: transparent !important;
     mix-blend-mode: normal !important;
+    filter: none !important;
   }
 
   .section-title {

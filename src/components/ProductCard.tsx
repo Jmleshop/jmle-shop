@@ -144,7 +144,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           </p>
         ) : (
           <div className="flex items-stretch gap-1 sm:gap-2">
-            <div className="hidden sm:flex items-center rounded-xl border border-amber-200/80 bg-white shrink-0">
+            <div className="flex items-center rounded-lg sm:rounded-xl border border-amber-200/80 bg-white shrink-0">
               <button
                 type="button"
                 onClick={changeQty(-1)}
@@ -152,7 +152,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 aria-label={t("qtyDecrease")}
                 className="w-8 min-h-11 flex items-center justify-center text-luxury-charcoal hover:text-gold disabled:opacity-40"
               >
-                <Minus size={14} />
+                <Minus size={14} aria-hidden />
               </button>
               <span
                 aria-live="polite"
@@ -167,13 +167,13 @@ export default function ProductCard({ product }: ProductCardProps) {
                 aria-label={t("qtyIncrease")}
                 className="w-8 min-h-11 flex items-center justify-center text-luxury-charcoal hover:text-gold disabled:opacity-40"
               >
-                <Plus size={14} />
+                <Plus size={14} aria-hidden />
               </button>
             </div>
             <Button
               fullWidth
               size="sm"
-              className={`min-h-9 sm:min-h-11 px-1.5 sm:px-3 ${
+              className={`min-h-11 px-2 sm:px-3 ${
                 added ? "bg-emerald-600 hover:bg-emerald-600 text-white" : ""
               }`}
               leadingIcon={
@@ -182,7 +182,9 @@ export default function ProductCard({ product }: ProductCardProps) {
               onClick={handleAddToCart}
               aria-label={`${t("addToCart")} ${title}`}
             >
-              <span className="hidden sm:inline">{added ? t("added") : t("addToCart")}</span>
+              <span className="text-[11px] sm:text-sm">
+                {added ? t("added") : t("addToCart")}
+              </span>
             </Button>
           </div>
         )}

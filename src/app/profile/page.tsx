@@ -11,6 +11,7 @@ import OrderHistory from "@/components/profile/OrderHistory";
 import type { InvoiceProfile } from "@/lib/orders";
 import { Button } from "@/components/ui";
 import { toast } from "@/components/AppToaster";
+import { useShopLocale } from "@/components/ShopLocale";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -19,6 +20,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useShopLocale();
 
   useEffect(() => {
     async function loadProfile() {
@@ -27,6 +29,7 @@ export default function ProfilePage() {
       } = await supabase.auth.getUser();
 
       if (!currentUser) {
+        setLoading(false);
         router.push("/auth/login");
         return;
       }
@@ -61,7 +64,7 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast.success("تم تسجيل الخروج");
+    toast.success(t("loggedOut"));
     router.push("/");
     router.refresh();
   };
@@ -69,7 +72,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
-        <p className="text-gray-400 font-ui">جاري التحميل...</p>
+        <p className="text-gray-400 font-ui">{t("loading")}</p>
       </div>
     );
   }

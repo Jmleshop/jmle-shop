@@ -104,18 +104,21 @@ export async function POST(request: Request) {
 
     if (discountCode) {
       const supabase = await createClient();
+      const normalizedCode = discountCode.toUpperCase().trim();
       const { data: code } = await supabase
         .from("discount_codes")
         .select("*")
-        .eq("code", discountCode.toUpperCase())
+        .eq("code", normalizedCode)
         .eq("active", true)
         .maybeSingle();
 
       if (code) {
         const expired =
           code.expires_at && new Date(code.expires_at) < new Date();
+        // Harte Grenze: usage_count < usage_limit (atomare Einlösung im Stripe-Webhook)
         const limitReached =
-          code.usage_limit !== null && code.usage_count >= code.usage_limit;
+          code.usage_limit !== null &&
+          Number(code.usage_count ?? 0) >= Number(code.usage_limit);
 
         if (!expired && !limitReached) {
           if (code.type === "percent") {

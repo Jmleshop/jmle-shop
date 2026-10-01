@@ -63,7 +63,7 @@ export default function CartPage() {
   if (loading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
-        <p className="text-gray-400 font-ui">جاري التحميل...</p>
+        <p className="text-gray-400 font-ui">{t("loading")}</p>
       </div>
     );
   }
@@ -73,9 +73,9 @@ export default function CartPage() {
       <div className="min-h-[50vh] flex flex-col items-center justify-center px-4">
         <ShoppingBag size={48} className="text-gray-300 mb-4" aria-hidden />
         <h1 className="font-display text-2xl mb-2">{t("cartEmpty")}</h1>
-        <p className="text-gray-500 text-sm mb-6 font-ui">اكتشف مجموعتنا الفاخرة</p>
+        <p className="text-gray-500 text-sm mb-6 font-ui">{t("cartDiscover")}</p>
         <Link href="/" className="btn-primary">
-          تسوق الآن
+          {t("shopNow")}
         </Link>
       </div>
     );
