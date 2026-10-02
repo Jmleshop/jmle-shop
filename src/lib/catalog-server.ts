@@ -21,6 +21,12 @@ import {
   isSaleCategoryName,
   productIsOnSale,
 } from "@/lib/category-special";
+import {
+  LAYOUT_SETTING_KEYS,
+  defaultLayoutDocument,
+  normalizeLayoutDocument,
+  type LayoutDocument,
+} from "@/lib/layout-builder";
 import { originalImageSrc } from "@/lib/sharp-image";
 import type {
   BrandLogo,
@@ -602,6 +608,36 @@ export const getHomepageCategoriesAsync = cache(async (): Promise<Category[]> =>
 
 export const getSiteConfigAsync = cache(async (): Promise<SiteConfig> => {
   return getSiteConfigCached();
+});
+
+async function fetchPublishedLayout(): Promise<LayoutDocument> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("site_settings")
+    .select("value")
+    .eq("key", LAYOUT_SETTING_KEYS.published)
+    .maybeSingle();
+  if (error || !data?.value) {
+    return defaultLayoutDocument();
+  }
+  return normalizeLayoutDocument(data.value);
+}
+
+const getPublishedLayoutCached = unstable_cache(
+  fetchPublishedLayout,
+  ["catalog-layout-published-v1"],
+  { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "site", "layout"] }
+);
+
+/** Live (published) Layout für Header/Banner — nie Draft. */
+export const getPublishedLayoutAsync = cache(
+  async (): Promise<LayoutDocument> => getPublishedLayoutCached()
+);
+
+/** Kategoriebaum ohne synthetische All/Sale-Einträge (für Navigation). */
+export const getNavCategoriesAsync = cache(async (): Promise<Category[]> => {
+  const dbTree = await getCategoriesCached();
+  return dbTree.length ? dbTree : FALLBACK_CATEGORIES;
 });
 
 export const getHomepageSectionsAsync = cache(

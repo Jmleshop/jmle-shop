@@ -10,15 +10,26 @@ import { useShopLocale } from "@/components/ShopLocale";
 import { formatPrice } from "@/lib/catalog";
 import HeaderSearch from "@/components/HeaderSearch";
 import BrandMark from "@/components/BrandMark";
+import CategoryNavTree from "@/components/CategoryNavTree";
 import { cn } from "@/lib/cn";
+import type { Category } from "@/types";
+import {
+  defaultLayoutDocument,
+  type LayoutDocument,
+} from "@/lib/layout-builder";
 
 export default function Header({
   logoUrl = "",
   siteName = "jmle",
+  layout: layoutProp,
+  categories = [],
 }: {
   logoUrl?: string;
   siteName?: string;
+  layout?: LayoutDocument | null;
+  categories?: Category[];
 }) {
+  const layout = layoutProp ?? defaultLayoutDocument();
   const { total, itemCount, user } = useCart();
   const { count: wishCount } = useWishlist();
   const { lang, setLang, t } = useShopLocale();
@@ -26,10 +37,30 @@ export default function Header({
   const cartRef = useRef<HTMLAnchorElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [cartPos, setCartPos] = useState(layout.chrome.cartPosition);
 
   useEffect(() => {
     registerCartIcon(cartRef.current);
   }, [registerCartIcon, itemCount]);
+
+  // Live-Override aus PreviewBridge (data-layout-cart am html)
+  useEffect(() => {
+    const read = () => {
+      const v = document.documentElement.dataset.layoutCart;
+      if (v === "start" || v === "end") setCartPos(v);
+    };
+    read();
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-layout-cart"],
+    });
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    setCartPos(layout.chrome.cartPosition);
+  }, [layout.chrome.cartPosition]);
 
   const onScroll = useCallback(() => {
     setScrolled(window.scrollY > 12);
@@ -44,7 +75,6 @@ export default function Header({
   const navLinks = [
     { href: "/", label: t("home") },
     { href: "/products", label: t("products") },
-    { href: "/categories", label: t("categories") },
     { href: "/wishlist", label: t("wishlist") },
     { href: "/cart", label: t("cart") },
     { href: "/search", label: t("search") },
@@ -53,6 +83,11 @@ export default function Header({
       label: user ? t("account") : t("login"),
     },
   ];
+
+  /** Farben/Logo kommen aus CSS-Variablen (published + Instant Preview). */
+  const headerStyle = {
+    backgroundColor: "var(--layout-header-bg, transparent)",
+  };
 
   const cartLink = (
     <Link
@@ -82,6 +117,114 @@ export default function Header({
     </Link>
   );
 
+  const wishLink = (
+    <Link
+      href="/wishlist"
+      className="relative p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-brand-red transition-colors rounded-xl"
+      aria-label={t("wishlistCount", { count: wishCount })}
+    >
+      <Heart size={22} aria-hidden />
+      {wishCount > 0 && (
+        <span className="absolute top-1 start-1 bg-brand-red text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-white/80">
+          {wishCount > 99 ? "99+" : wishCount}
+        </span>
+      )}
+    </Link>
+  );
+
+  const accountLink = (
+    <Link
+      href={user ? "/profile" : "/auth/login"}
+      className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
+      aria-label={user ? t("account") : t("login")}
+    >
+      <User size={22} />
+    </Link>
+  );
+
+  const desktopTrail =
+    cartPos === "start" ? (
+      <>
+        {cartLink}
+        <button
+          type="button"
+          onClick={() => setLang(lang === "ar" ? "de" : "ar")}
+          className="px-2 min-h-11 text-xs font-ui font-semibold text-luxury-charcoal hover:text-brand-orange"
+          aria-label={t("langSwitch")}
+        >
+          {t("langSwitch")}
+        </button>
+        {wishLink}
+        {accountLink}
+      </>
+    ) : (
+      <>
+        <button
+          type="button"
+          onClick={() => setLang(lang === "ar" ? "de" : "ar")}
+          className="px-2 min-h-11 text-xs font-ui font-semibold text-luxury-charcoal hover:text-brand-orange"
+          aria-label={t("langSwitch")}
+        >
+          {t("langSwitch")}
+        </button>
+        {wishLink}
+        {accountLink}
+        {cartLink}
+      </>
+    );
+
+  const mobileTrail =
+    cartPos === "start" ? (
+      <>
+        {cartLink}
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          className="p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
+          aria-label={t("menu")}
+        >
+          <Menu size={24} />
+        </button>
+      </>
+    ) : (
+      <>
+        {cartLink}
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          className="p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
+          aria-label={t("menu")}
+        >
+          <Menu size={24} />
+        </button>
+      </>
+    );
+
+  // Bei cartPosition=start: Warenkorb auf die andere Seite des Logos (mobile)
+  const mobileStart =
+    cartPos === "start" ? (
+      <div className="flex justify-start items-center gap-0.5">{cartLink}</div>
+    ) : (
+      <div className="flex justify-start">{accountLink}</div>
+    );
+
+  const mobileEnd =
+    cartPos === "start" ? (
+      <div className="flex items-center justify-end gap-0.5">
+        {accountLink}
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          className="p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
+          aria-label={t("menu")}
+        >
+          <Menu size={24} />
+        </button>
+      </div>
+    ) : (
+      <div className="flex items-center justify-end gap-0.5">{mobileTrail}</div>
+    );
+
   return (
     <>
       <header
@@ -90,46 +233,35 @@ export default function Header({
           "supports-[backdrop-filter]:bg-jmle-cream/90",
           "transition-[box-shadow,background-color] duration-200 ease-out will-change-transform",
           "[transform:translateZ(0)]",
-          scrolled && "shadow-gold-sm bg-jmle-cream/98"
+          scrolled && "shadow-gold-sm bg-jmle-cream/98",
+          "layout-chrome-header"
         )}
+        style={headerStyle}
       >
-        {/* Mobile: Profil | Logo | Warenkorb + Menü — Logo 56px */}
+        {/* Mobile */}
         <div className="lg:hidden max-w-7xl mx-auto px-3 h-20 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <div className="flex justify-start">
-            <Link
-              href={user ? "/profile" : "/auth/login"}
-              className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
-              aria-label={user ? t("account") : t("login")}
-            >
-              <User size={22} />
-            </Link>
-          </div>
+          {mobileStart}
           <BrandMark
             logoUrl={logoUrl}
             name={siteName}
             priority
             textClassName="text-brand-orange hover:text-brand-red"
           />
-          <div className="flex items-center justify-end gap-0.5">
-            {cartLink}
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              className="p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
-              aria-label={t("menu")}
-            >
-              <Menu size={24} />
-            </button>
-          </div>
+          {mobileEnd}
         </div>
 
-        {/* Desktop — Logo 80px, klar lesbar */}
-        <div className="hidden lg:grid max-w-7xl mx-auto px-4 h-[108px] grid-cols-[1fr_auto_1fr] items-center gap-2">
+        {/* Desktop */}
+        <div
+          className="hidden lg:grid max-w-7xl mx-auto px-4 h-[108px] grid-cols-[1fr_auto_1fr] items-center gap-2 layout-chrome-navbar"
+          style={{
+            backgroundColor: "var(--layout-navbar-bg, transparent)",
+          }}
+        >
           <nav
             className="flex items-center gap-1 justify-start"
             aria-label={t("mainNav")}
           >
-            {navLinks.slice(0, 4).map((link) => (
+            {navLinks.slice(0, 3).map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -145,36 +277,7 @@ export default function Header({
             priority
             textClassName="text-brand-orange hover:text-brand-red"
           />
-          <div className="flex items-center gap-0.5 justify-end">
-            <button
-              type="button"
-              onClick={() => setLang(lang === "ar" ? "de" : "ar")}
-              className="px-2 min-h-11 text-xs font-ui font-semibold text-luxury-charcoal hover:text-brand-orange"
-              aria-label={t("langSwitch")}
-            >
-              {t("langSwitch")}
-            </button>
-            <Link
-              href="/wishlist"
-              className="relative p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-brand-red transition-colors rounded-xl"
-              aria-label={t("wishlistCount", { count: wishCount })}
-            >
-              <Heart size={22} aria-hidden />
-              {wishCount > 0 && (
-                <span className="absolute top-1 start-1 bg-brand-red text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-white/80">
-                  {wishCount > 99 ? "99+" : wishCount}
-                </span>
-              )}
-            </Link>
-            <Link
-              href={user ? "/profile" : "/auth/login"}
-              className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
-              aria-label={t("account")}
-            >
-              <User size={22} />
-            </Link>
-            {cartLink}
-          </div>
+          <div className="flex items-center gap-0.5 justify-end">{desktopTrail}</div>
         </div>
 
         <div className="hidden lg:block border-t border-orange-100/80">
@@ -218,16 +321,36 @@ export default function Header({
             </div>
 
             <nav className="space-y-1 flex-1 overflow-y-auto">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-3.5 min-h-12 text-sm font-ui font-medium text-luxury-charcoal hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              <Link
+                href="/"
+                onClick={() => setMenuOpen(false)}
+                className="block px-4 py-3.5 min-h-12 text-sm font-ui font-medium text-luxury-charcoal hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
+              >
+                {t("home")}
+              </Link>
+              <Link
+                href="/products"
+                onClick={() => setMenuOpen(false)}
+                className="block px-4 py-3.5 min-h-12 text-sm font-ui font-medium text-luxury-charcoal hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
+              >
+                {t("products")}
+              </Link>
+              <CategoryNavTree
+                categories={categories}
+                onNavigate={() => setMenuOpen(false)}
+              />
+              {navLinks
+                .filter((l) => !["/", "/products"].includes(l.href))
+                .map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-3.5 min-h-12 text-sm font-ui font-medium text-luxury-charcoal hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
             </nav>
 
             <div className="pt-4 mt-auto border-t border-orange-100">

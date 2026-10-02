@@ -167,21 +167,34 @@
   }
 }
 
-/* Header-Logo: mobil 56px, Desktop 80px — contain, zentriert, Originalqualität */
+/* Header-Logo: mobil 56px, Desktop 80px — contain, zentriert, Originalqualität.
+   Page-Builder: --layout-logo-scale skaliert stufenlos. */
 .brand-mark-frame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 3.5rem; /* 56px */
+  height: calc(3.5rem * var(--layout-logo-scale, 1));
   width: auto;
   max-width: min(16rem, 72vw);
   overflow: visible;
+  transform-origin: center center;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: 5rem; /* 80px */
+    height: calc(5rem * var(--layout-logo-scale, 1));
     max-width: 22rem;
   }
+}
+
+/* Page-Builder Banner- & Chrome-Steuerung */
+.layout-banner-frame {
+  margin-block: var(--layout-banner-margin-y, 0px);
+  transform: translateY(var(--layout-banner-offset-y, 0px));
+  min-height: var(--layout-banner-min-height, 0px);
+}
+.layout-banner-media {
+  object-fit: var(--layout-banner-object-fit, contain) !important;
+  object-position: var(--layout-banner-object-position, center center) !important;
 }
 /* Footer/Hero-Mark über dem Slogan — groß & markant */
 .brand-mark-frame--footer {

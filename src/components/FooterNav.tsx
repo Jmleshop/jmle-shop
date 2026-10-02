@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Grid3X3, ShoppingBag, Heart, User } from "lucide-react";
+import { Home, Grid3X3, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { useWishlist } from "@/context/WishlistContext";
 import { useShopLocale } from "@/components/ShopLocale";
 import { cn } from "@/lib/cn";
 
+/**
+ * Untere mobile Leiste: nur Hauptmenü (Home, Kategorien, Warenkorb),
+ * damit die Leiste übersichtlich bleibt.
+ */
 export default function FooterNav() {
   const pathname = usePathname();
-  const { itemCount, user } = useCart();
-  const { count: wishCount } = useWishlist();
+  const { itemCount } = useCart();
   const { t } = useShopLocale();
 
   if (pathname.startsWith("/admin")) return null;
@@ -20,23 +22,10 @@ export default function FooterNav() {
     { href: "/", icon: Home, label: t("home") },
     { href: "/categories", icon: Grid3X3, label: t("categories") },
     {
-      href: "/wishlist",
-      icon: Heart,
-      label: t("wishlist"),
-      badge: wishCount,
-      badgeTone: "wish" as const,
-    },
-    {
       href: "/cart",
       icon: ShoppingBag,
       label: t("cart"),
       badge: itemCount,
-      badgeTone: "cart" as const,
-    },
-    {
-      href: user ? "/profile" : "/auth/login",
-      icon: User,
-      label: user ? t("account") : t("login"),
     },
   ];
 
@@ -46,7 +35,7 @@ export default function FooterNav() {
       aria-label={t("mainNav")}
     >
       <div className="flex items-center justify-around h-16 px-0.5 max-w-lg mx-auto safe-pb">
-        {navItems.map(({ href, icon: Icon, label, badge, badgeTone }) => {
+        {navItems.map(({ href, icon: Icon, label, badge }) => {
           const isActive =
             pathname === href ||
             (href !== "/" && pathname.startsWith(href));
@@ -67,26 +56,12 @@ export default function FooterNav() {
                 <Icon
                   size={22}
                   strokeWidth={isActive ? 2.5 : 1.5}
-                  fill={
-                    href === "/wishlist" && wishCount > 0 && isActive
-                      ? "currentColor"
-                      : "none"
-                  }
                   aria-hidden
                 />
                 {badge != null && badge > 0 && (
                   <span
-                    className={cn(
-                      "absolute -top-1.5 -start-2.5 text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-gold-sm border border-white/80",
-                      badgeTone === "wish"
-                        ? "bg-red-500 text-white"
-                        : "bg-gold text-white"
-                    )}
-                    aria-label={
-                      badgeTone === "wish"
-                        ? t("wishlistCount", { count: badge })
-                        : t("cartCount", { count: badge })
-                    }
+                    className="absolute -top-1.5 -start-2.5 text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-gold-sm border border-white/80 bg-gold text-white"
+                    aria-label={t("cartCount", { count: badge })}
                   >
                     {badge > 99 ? "99+" : badge}
                   </span>

@@ -19,11 +19,11 @@ interface CompactBannerSliderProps {
 }
 
 /**
- * Keine festen Pixel-Höhen — responsives Seitenverhältnis.
- * Bild: w-full h-auto / object-contain → Text & Preis nie abgeschnitten.
+ * Responsives Seitenverhältnis; Page-Builder kann Höhe/Abstand/Fit
+ * über CSS-Variablen (--layout-banner-*) steuern.
  */
 export const BANNER_FRAME_CLASS =
-  "relative w-full aspect-[2.4/1] min-h-0 bg-jmle-cream";
+  "relative w-full aspect-[2.4/1] min-h-0 bg-jmle-cream layout-banner-frame";
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;
@@ -54,7 +54,7 @@ function BannerSlideContent({
   const media =
     mediaType === "video" && slide.videoUrl ? (
       <video
-        className="h-auto w-full object-contain object-center"
+        className="h-auto w-full object-contain object-center layout-banner-media"
         src={slide.videoUrl}
         poster={slide.image}
         autoPlay
@@ -71,7 +71,7 @@ function BannerSlideContent({
         height={800}
         quality={SHOP_IMAGE_QUALITY}
         priority={priority}
-        className="h-auto w-full object-contain object-center"
+        className="h-auto w-full object-contain object-center layout-banner-media"
         sizes="100vw"
         draggable={false}
       />

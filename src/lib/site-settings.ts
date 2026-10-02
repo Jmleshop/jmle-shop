@@ -7,6 +7,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const SITE_SETTING_ROW_IDS: Record<string, string> = {
   site: "00000000-0000-4000-8000-000000000001",
   site_logo: "00000000-0000-4000-8000-000000000002",
+  layout_draft: "00000000-0000-4000-8000-000000000003",
+  layout_published: "00000000-0000-4000-8000-000000000004",
+  layout_versions: "00000000-0000-4000-8000-000000000005",
 };
 
 export function siteSettingRowId(key: string): string {
