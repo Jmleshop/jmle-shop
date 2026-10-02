@@ -93,7 +93,30 @@ export default function AdminProductsPage() {
   const [csvBusy, setCsvBusy] = useState(false);
   const [numberPlan, setNumberPlan] = useState<NumberPlan[] | null>(null);
   const [numberBusy, setNumberBusy] = useState(false);
+  const [brandResetBusy, setBrandResetBusy] = useState(false);
   const sel = useRowSelection();
+
+  const runBrandReset = async () => {
+    if (brandResetBusy) return;
+    if (!window.confirm(t("brandResetConfirm"))) return;
+    setBrandResetBusy(true);
+    try {
+      const res = await fetch("/api/admin/brands/reset", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(String(data.error || t("brandResetFail")));
+        return;
+      }
+      toast.success(
+        `${t("brandResetOk")}: ${data.insertedBrands ?? 71} / ${data.productsMatched ?? 0}`
+      );
+      load();
+    } catch {
+      toast.error(t("brandResetFail"));
+    } finally {
+      setBrandResetBusy(false);
+    }
+  };
 
   const load = () => {
     sel.clear();
@@ -521,6 +544,14 @@ export default function AdminProductsPage() {
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => setScanning(true)}>Barcode scannen</button>
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => void downloadPriceLabels(displayed)}>
           Etiketten-PDF
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm min-h-11 text-amber-950 disabled:opacity-60"
+          disabled={brandResetBusy}
+          onClick={() => void runBrandReset()}
+        >
+          {brandResetBusy ? "…" : t("brandReset")}
         </button>
       </div>
       {lowStock.length > 0 && (

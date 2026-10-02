@@ -1,13 +1,21 @@
 /**
- * CLI: kompletter Marken-Reset + Import + Produkt-Matching.
- * Usage: node --import tsx scripts/reset-brands.ts
+ * Marken-Reset gegen Supabase.
+ *
+ * Produktion (Standard — verweigert localhost):
+ *   PRODUCTION_SUPABASE_URL=https://xxxx.supabase.co \
+ *   PRODUCTION_SUPABASE_SERVICE_ROLE_KEY=eyJ... \
+ *   node --import tsx scripts/reset-brands.ts --production
+ *
+ * Lokal (explizit):
+ *   node --import tsx scripts/reset-brands.ts --local
  */
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "fs";
 import { resetAndImportBrands } from "../src/lib/brand-reset";
+import { resolveSupabaseTarget } from "../src/lib/supabase-target";
 
 function loadEnv() {
-  for (const file of [".env.local", ".env"]) {
+  for (const file of [".env.production.local", ".env.production", ".env.local", ".env"]) {
     if (!existsSync(file)) continue;
     const text = readFileSync(file, "utf8");
     for (const line of text.split("\n")) {
@@ -29,27 +37,44 @@ function loadEnv() {
 
 async function main() {
   loadEnv();
+  const args = new Set(process.argv.slice(2));
+  const wantLocal = args.has("--local") || process.env.ALLOW_LOCAL_SUPABASE === "1";
+  const wantProduction =
+    args.has("--production") ||
+    args.has("--prod") ||
+    (!wantLocal && process.env.FORCE_PRODUCTION_SUPABASE !== "0");
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    console.error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
-    );
-    process.exit(1);
+  const target = resolveSupabaseTarget({
+    production: wantProduction && !wantLocal,
+    allowLocal: wantLocal,
+  });
+
+  console.log(`▶ Brand reset target: ${target.label}`);
+  console.log(`▶ URL host: ${new URL(target.url).host}`);
+
+  if (target.label !== "production" && wantProduction) {
+    throw new Error("Produktions-Ziel erwartet, aber lokal aufgelöst.");
   }
 
-  const supabase = createClient(url, key, {
+  const supabase = createClient(target.url, target.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // Sanity: Host nochmal prüfen
+  const host = new URL(target.url).hostname;
+  if (wantProduction && (host === "127.0.0.1" || host === "localhost")) {
+    throw new Error("Abbruch: Produktions-Reset darf nicht gegen localhost laufen.");
+  }
+
   console.log("▶ Brand reset starting…");
-  const result = await resetAndImportBrands(supabase);
+  const result = await resetAndImportBrands(supabase, {
+    targetLabel: target.label,
+  });
   console.log(JSON.stringify(result, null, 2));
   console.log("✓ Done");
 }
 
 main().catch((e) => {
-  console.error(e);
+  console.error(e instanceof Error ? e.message : e);
   process.exit(1);
 });

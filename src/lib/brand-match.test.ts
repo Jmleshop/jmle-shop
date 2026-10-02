@@ -15,8 +15,15 @@ describe("brand-match", () => {
 
   it("matches Durra aliases", () => {
     assert.equal(textContainsAlias("Durra Gewürzmischung", "Durra"), true);
+    assert.equal(textContainsAlias("Al-Durra Spice Mix", "Al-Durra"), true);
     assert.equal(textContainsAlias("بهارات الدرة الأصلية", "الدرة"), true);
     assert.equal(textContainsAlias("منتج درة فاخر", "درة"), true);
+  });
+
+  it("matches Indomie / إندومي flexibly", () => {
+    assert.equal(textContainsAlias("Indomie Noodles", "Indomie"), true);
+    assert.equal(textContainsAlias("Indo Mie Curry", "Indo Mie"), true);
+    assert.equal(textContainsAlias("نودلز إندومي", "إندومي"), true);
   });
 
   it("does not match Amarin inside Tamarindensaft", () => {

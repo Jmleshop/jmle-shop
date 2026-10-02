@@ -5,26 +5,30 @@ export function normalizeMatchText(input: string): string {
   return String(input || "")
     .normalize("NFKD")
     .replace(/[\u064B-\u065F\u0670]/g, "") // Tashkeel
+    .replace(/\u0640/g, "") // Tatweel ـ
     .replace(/[إأآٱا]/g, "ا")
     .replace(/ة/g, "ه")
     .replace(/ى/g, "ي")
     .replace(/ؤ/g, "و")
     .replace(/ئ/g, "ي")
+    .replace(/ء/g, "")
     .toLowerCase()
+    // Bindestriche/Unterstriche wie Spaces (Al-Durra, Chtoura_Garden)
+    .replace(/[-_/]+/g, " ")
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
+/** Zusätzlich ohne Leerzeichen — fängt „ChtouraGarden“ / zusammengeschriebene Titel ab. */
+export function normalizeCompact(input: string): string {
+  return normalizeMatchText(input).replace(/\s+/g, "");
+}
+
 function isLatinAlias(alias: string): boolean {
-  // Enthält lateinische Buchstaben und kein Arabisch
   return /[a-z]/i.test(alias) && !/[\u0600-\u06FF]/.test(alias);
 }
 
-/**
- * Kurze/häufige arabische Tokens brauchen Wortgrenzen (False Positives).
- * Lateinische Aliasse immer mit Wortgrenze (z. B. „Amarin“ ≠ „Tamarindensaft“).
- */
 function needsStrictBoundary(alias: string): boolean {
   if (isLatinAlias(alias)) return true;
   const n = normalizeMatchText(alias);
@@ -50,6 +54,9 @@ function needsStrictBoundary(alias: string): boolean {
     "محمود",
     "شهيه",
     "كرزه",
+    "هامول",
+    "سومار",
+    "توسكا",
   ]);
   return strict.has(n);
 }
@@ -62,12 +69,28 @@ export function textContainsAlias(haystack: string, alias: string): boolean {
   const h = normalizeMatchText(haystack);
   const a = normalizeMatchText(alias);
   if (!h || !a) return false;
+
   if (needsStrictBoundary(alias)) {
-    // Wortgrenze: Whitespace oder String-Anfang/Ende (nach Normalisierung)
     const re = new RegExp(`(?:^|\\s)${escapeRegExp(a)}(?:\\s|$)`, "u");
-    return re.test(h);
+    if (re.test(h)) return true;
+    // Latein kompakt nur bei Alias-Länge ≥ 5 (vermeidet „rana“ in Zufallswörtern)
+    if (isLatinAlias(alias) && a.length >= 5) {
+      const hc = normalizeCompact(haystack);
+      const ac = normalizeCompact(alias);
+      const re2 = new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(ac)}(?:[^a-z0-9]|$)`, "i");
+      return re2.test(hc);
+    }
+    return false;
   }
-  return h.includes(a);
+
+  if (h.includes(a)) return true;
+  // Arabisch ohne Spaces (z. B. „حدائقشتورة“)
+  if (a.length >= 4) {
+    const hc = normalizeCompact(haystack);
+    const ac = normalizeCompact(alias);
+    if (ac && hc.includes(ac)) return true;
+  }
+  return false;
 }
 
 export type ProductMatchInput = {
@@ -76,7 +99,10 @@ export type ProductMatchInput = {
   name_de?: string | null;
   description?: string | null;
   ingredients?: string | null;
+  allergens?: string | null;
   custom_note?: string | null;
+  barcode?: string | null;
+  product_number?: string | null;
   brand_id?: string | null;
 };
 
@@ -100,20 +126,26 @@ export function buildAliasIndex(catalog: BrandSeed[]): Array<{
   return rows;
 }
 
-export function matchProductToBrand(
-  product: ProductMatchInput,
-  aliasIndex: ReturnType<typeof buildAliasIndex>
-): string | null {
-  const blob = [
+export function productSearchBlob(product: ProductMatchInput): string {
+  return [
     product.name_ar,
     product.name_de,
     product.description,
     product.ingredients,
+    product.allergens,
     product.custom_note,
+    product.barcode,
+    product.product_number,
   ]
     .filter(Boolean)
     .join(" \n ");
+}
 
+export function matchProductToBrand(
+  product: ProductMatchInput,
+  aliasIndex: ReturnType<typeof buildAliasIndex>
+): string | null {
+  const blob = productSearchBlob(product);
   for (const row of aliasIndex) {
     if (textContainsAlias(blob, row.alias)) return row.brandId;
   }

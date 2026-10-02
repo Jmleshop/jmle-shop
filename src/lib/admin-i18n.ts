@@ -70,6 +70,11 @@ export const adminMessages = {
     brandNone: "— Keine Marke —",
     brandDuplicate: "Dieser Markenname existiert bereits",
     brandNameInternal: "Markenname (nur intern, nicht öffentlich)",
+    brandReset: "Marken-Reset (71)",
+    brandResetConfirm:
+      "Alle Marken unwiderruflich löschen und die 71 Katalog-Marken neu anlegen? Produkte werden per Name/Beschreibung neu zugeordnet.",
+    brandResetOk: "Marken-Reset abgeschlossen",
+    brandResetFail: "Marken-Reset fehlgeschlagen",
     ingredients: "Zutatenliste",
     allergens: "Allergene",
     origin: "Herkunftsland",
@@ -165,6 +170,11 @@ export const adminMessages = {
     brandNone: "— بدون علامة —",
     brandDuplicate: "اسم العلامة التجارية موجود بالفعل",
     brandNameInternal: "اسم العلامة (داخلي فقط، غير ظاهر للعملاء)",
+    brandReset: "إعادة تعيين العلامات (71)",
+    brandResetConfirm:
+      "حذف جميع العلامات نهائيًا وإعادة إنشاء قائمة الـ 71؟ ستُعاد مطابقة المنتجات عبر الاسم/الوصف.",
+    brandResetOk: "اكتملت إعادة تعيين العلامات",
+    brandResetFail: "فشلت إعادة تعيين العلامات",
     ingredients: "المكونات",
     allergens: "مسببات الحساسية",
     origin: "بلد المنشأ",
