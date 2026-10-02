@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LAYOUT_PREVIEW_MESSAGE,
+  LAYOUT_PREVIEW_PING,
   LAYOUT_PREVIEW_READY,
   detectViewportWidth,
   layoutCssVars,
@@ -34,46 +34,70 @@ function applyVars(doc: LayoutDocument, viewport: LayoutViewport) {
   }
 }
 
-function clearPreviewFlags() {
-  const root = document.documentElement;
-  delete root.dataset.layoutPreview;
+function isBuilderPreviewFrame(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.self !== window.top) return true;
+  } catch {
+    // cross-origin parent → treat as iframe
+    return true;
+  }
+  const q = window.location.search;
+  return q.includes("_preview=1") || q.includes("_builder=1");
 }
 
-function BridgeInner({
+function emitReady() {
+  try {
+    window.parent?.postMessage(
+      { type: LAYOUT_PREVIEW_READY },
+      window.location.origin
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Wendet published Layout-CSS an und hört auf Admin-postMessage-Vorschau.
+ * Kein useSearchParams/Suspense — Handshake darf nicht hinter Hydration warten.
+ */
+export default function LayoutPreviewBridge({
   published,
 }: {
-  published: LayoutDocument | null;
+  published?: LayoutDocument | null;
 }) {
-  const searchParams = useSearchParams();
-  const isBuilderPreview =
-    searchParams.get("_preview") === "1" ||
-    searchParams.get("_builder") === "1" ||
-    (typeof window !== "undefined" && window.self !== window.top);
-
   const [override, setOverride] = useState<LayoutDocument | null>(null);
+  const publishedDoc = published ?? null;
 
   // Published layout → CSS vars (live site)
   useEffect(() => {
     if (override) return;
-    if (!published) return;
+    if (!publishedDoc) return;
     const apply = () => {
       const vp = detectViewportWidth(window.innerWidth);
-      applyVars(published, vp);
+      applyVars(publishedDoc, vp);
     };
     apply();
     window.addEventListener("resize", apply);
     return () => window.removeEventListener("resize", apply);
-  }, [published, override]);
+  }, [publishedDoc, override]);
 
   // Instant preview via postMessage (admin iframe)
   useEffect(() => {
-    if (!isBuilderPreview) return;
+    if (!isBuilderPreviewFrame()) return;
 
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data;
       if (!data || typeof data !== "object") return;
-      if ((data as { type?: string }).type !== LAYOUT_PREVIEW_MESSAGE) return;
+      const type = (data as { type?: string }).type;
+
+      if (type === LAYOUT_PREVIEW_PING) {
+        emitReady();
+        return;
+      }
+
+      if (type !== LAYOUT_PREVIEW_MESSAGE) return;
       const doc = normalizeLayoutDocument(
         (data as { document?: unknown }).document
       );
@@ -84,34 +108,18 @@ function BridgeInner({
     };
 
     window.addEventListener("message", onMessage);
-    // Parent wissen lassen, dass die Vorschau bereit ist
-    try {
-      window.parent?.postMessage(
-        { type: LAYOUT_PREVIEW_READY },
-        window.location.origin
-      );
-    } catch {
-      /* ignore */
-    }
+
+    // READY mehrfach senden — Parent kann Listener später registrieren
+    emitReady();
+    const retries = [80, 250, 600, 1200, 2500].map((ms) =>
+      window.setTimeout(emitReady, ms)
+    );
 
     return () => {
       window.removeEventListener("message", onMessage);
-      clearPreviewFlags();
+      for (const id of retries) window.clearTimeout(id);
     };
-  }, [isBuilderPreview]);
+  }, []);
 
   return null;
-}
-
-/** Wendet published Layout-CSS an und hört auf Admin-postMessage-Vorschau. */
-export default function LayoutPreviewBridge({
-  published,
-}: {
-  published?: LayoutDocument | null;
-}) {
-  return (
-    <Suspense fallback={null}>
-      <BridgeInner published={published ?? null} />
-    </Suspense>
-  );
 }

@@ -29,6 +29,7 @@ import { toast } from "react-hot-toast";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import {
   LAYOUT_PREVIEW_MESSAGE,
+  LAYOUT_PREVIEW_PING,
   LAYOUT_PREVIEW_READY,
   VIEWPORT_WIDTHS,
   defaultLayoutDocument,
@@ -43,6 +44,7 @@ import { cn } from "@/lib/cn";
 
 const HISTORY_LIMIT = 40;
 const PREVIEW_PATH = "/?_preview=1&_builder=1";
+const PREVIEW_HANDSHAKE_MS = 14000;
 
 type Bundle = {
   draft: LayoutDocument;
@@ -99,6 +101,19 @@ export default function LayoutBuilderClient() {
     },
     []
   );
+
+  const pingPreview = useCallback(() => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    try {
+      win.postMessage(
+        { type: LAYOUT_PREVIEW_PING },
+        window.location.origin
+      );
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const commit = useCallback(
     (updater: (prev: LayoutDocument) => LayoutDocument) => {
@@ -193,6 +208,17 @@ export default function LayoutBuilderClient() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirtyLocal]);
 
+  // Soft-Nav von anderen Admin-Seiten kann COEP am Document behalten → iframe blockiert.
+  // Einmal hart neu laden, damit Middleware ohne COEP greift.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.crossOriginIsolated) return;
+    const key = "jmle-builder-coep-reload";
+    if (sessionStorage.getItem(key) === "1") return;
+    sessionStorage.setItem(key, "1");
+    window.location.reload();
+  }, []);
+
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -212,17 +238,31 @@ export default function LayoutBuilderClient() {
     pushPreview(doc, viewport);
   }, [viewport, previewReady, doc, pushPreview]);
 
-  // Timeout: wenn iframe nicht antwortet
+  // Handshake: READY ist einzige Erfolgsquelle; Ping bis Timeout
   useEffect(() => {
     if (!previewLoading) return;
-    const t = window.setTimeout(() => {
-      if (!previewReady) {
-        setPreviewError(true);
-        setPreviewLoading(false);
+    const started = Date.now();
+    const pingTimer = window.setInterval(() => {
+      if (Date.now() - started < PREVIEW_HANDSHAKE_MS) {
+        pingPreview();
       }
-    }, 12000);
-    return () => window.clearTimeout(t);
-  }, [previewLoading, previewReady, iframeKey]);
+    }, 400);
+    const failTimer = window.setTimeout(() => {
+      setPreviewReady((ready) => {
+        if (!ready) {
+          setPreviewError(true);
+          setPreviewLoading(false);
+        }
+        return ready;
+      });
+    }, PREVIEW_HANDSHAKE_MS);
+    // sofort erster Ping (iframe kann schon geladen sein)
+    pingPreview();
+    return () => {
+      window.clearInterval(pingTimer);
+      window.clearTimeout(failTimer);
+    };
+  }, [previewLoading, iframeKey, pingPreview]);
 
   const reloadPreview = () => {
     setPreviewReady(false);
@@ -744,17 +784,17 @@ export default function LayoutBuilderClient() {
                 className="h-full w-full border-0 bg-[#fffbeb]"
                 referrerPolicy="same-origin"
                 onLoad={() => {
-                  setPreviewLoading(false);
-                  setPreviewError(false);
-                  setPreviewReady(true);
-                  // postMessage nach kurzem Delay — Bridge muss registriert sein
+                  // onLoad ≠ Bridge bereit — nur anstoßen, READY setzt den State
+                  pingPreview();
                   window.setTimeout(() => {
+                    pingPreview();
                     pushPreview(docRef.current, viewport);
-                  }, 120);
+                  }, 150);
                 }}
                 onError={() => {
                   setPreviewError(true);
                   setPreviewLoading(false);
+                  setPreviewReady(false);
                 }}
               />
             </div>

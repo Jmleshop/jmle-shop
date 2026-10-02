@@ -101,14 +101,19 @@ export default function AdminProductsPage() {
     if (!window.confirm(t("brandResetConfirm"))) return;
     setBrandResetBusy(true);
     try {
-      const res = await fetch("/api/admin/brands/reset", { method: "POST" });
+      // Force-Reset trifft immer die Production-DB (nicht localhost)
+      const res = await fetch("/api/admin/force-reset-brands", {
+        method: "POST",
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         toast.error(String(data.error || t("brandResetFail")));
         return;
       }
       toast.success(
-        `${t("brandResetOk")}: ${data.insertedBrands ?? 71} / ${data.productsMatched ?? 0}`
+        `${t("brandResetOk")}: ${data.insertedBrands ?? data.brandCount ?? 71} / ${data.productsMatched ?? 0}${
+          data.host ? ` @ ${data.host}` : ""
+        }`
       );
       load();
     } catch {

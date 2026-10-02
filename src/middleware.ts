@@ -28,13 +28,13 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Builder braucht eine echte Shop-Vorschau im iframe.
-  // COEP am Parent blockiert Documents ohne COEP → Preview zeigt Fehler-Icon.
-  // Isolation daher nur auf Seiten mit WASM/SharedArrayBuffer (z. B. Produkte).
+  // COEP nur wo WASM/SharedArrayBuffer nötig ist (Hintergrundentfernung).
+  // Nicht global auf /admin — Soft-Nav würde Isolation am Document behalten
+  // und die Builder-Vorschau (iframe ohne COEP) blockieren.
   const needsCrossOriginIsolation =
-    path.startsWith("/admin") &&
-    !path.startsWith("/admin/builder") &&
-    !path.startsWith("/admin/login");
+    path.startsWith("/admin/products") ||
+    path.startsWith("/admin/sliders") ||
+    path.startsWith("/admin/site");
 
   if (needsCrossOriginIsolation) {
     response.headers.set("Cross-Origin-Opener-Policy", "same-origin");

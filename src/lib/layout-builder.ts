@@ -53,6 +53,8 @@ export const LAYOUT_SETTING_KEYS = {
 
 export const LAYOUT_PREVIEW_MESSAGE = "jmle:layout-preview" as const;
 export const LAYOUT_PREVIEW_READY = "jmle:layout-preview-ready" as const;
+/** Parent → iframe: bitte READY erneut senden */
+export const LAYOUT_PREVIEW_PING = "jmle:layout-preview-ping" as const;
 
 export const MAX_LAYOUT_VERSIONS = 20;
 

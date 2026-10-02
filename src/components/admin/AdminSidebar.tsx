@@ -87,16 +87,31 @@ export default function AdminSidebar({
               : href.startsWith("/admin/analytics")
                 ? pathname.startsWith(href)
                 : pathname.startsWith(href);
+          const className = `flex items-center gap-3 px-4 py-3.5 min-h-12 rounded-xl text-sm transition-colors ${
+            active
+              ? "bg-gold text-luxury-black font-medium"
+              : "text-gray-300 hover:bg-white/10 hover:text-white"
+          }`;
+          // Builder: harte Navigation, damit kein COEP von anderen Admin-Seiten kleben bleibt
+          if (href === "/admin/builder") {
+            return (
+              <a
+                key={href}
+                href={href}
+                onClick={onNavigate}
+                className={className}
+              >
+                <Icon size={18} />
+                {t(key)}
+              </a>
+            );
+          }
           return (
             <Link
               key={href}
               href={href}
               onClick={onNavigate}
-              className={`flex items-center gap-3 px-4 py-3.5 min-h-12 rounded-xl text-sm transition-colors ${
-                active
-                  ? "bg-gold text-luxury-black font-medium"
-                  : "text-gray-300 hover:bg-white/10 hover:text-white"
-              }`}
+              className={className}
             >
               <Icon size={18} />
               {t(key)}
