@@ -1,10 +1,13 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
 import type { Category, Product } from "@/types";
 import { ProductPrice } from "@/components/ProductPrice";
 import AddToCartButton from "@/components/AddToCartButton";
 import ProductDetailExtras from "@/components/ProductDetailExtras";
+import TrustBadges from "@/components/TrustBadges";
+import StickyMobileAddToCart from "@/components/StickyMobileAddToCart";
 import { useShopLocale } from "@/components/ShopLocale";
 import { categoryTitle, localizedField, productTitle } from "@/lib/shop-i18n";
 import { formatUnitPriceLabel } from "@/lib/pricing";
@@ -26,6 +29,7 @@ export default function ProductInfo({
   category?: Category;
 }) {
   const { lang, t } = useShopLocale();
+  const atcZoneRef = useRef<HTMLDivElement>(null);
   const title = productTitle(lang, product);
   const description = localizedField(lang, product.description);
   const ingredients = localizedField(lang, product.ingredients);
@@ -122,18 +126,21 @@ export default function ProductInfo({
         <ProductPrice product={product} align="start" showUnitPrice />
       </div>
 
-      <div className="my-6">
+      <div ref={atcZoneRef} className="my-6">
         <AddToCartButton
           productId={product.id}
           stock={product.stock}
           maxOrderQuantity={product.maxOrderQuantity}
           imageUrl={product.image}
         />
+        <TrustBadges />
       </div>
 
       {accordionItems.length > 0 && <Accordion items={accordionItems} allowMultiple />}
 
       <ProductDetailExtras barcode={product.barcode} />
+
+      <StickyMobileAddToCart product={product} observeRef={atcZoneRef} />
     </div>
   );
 }

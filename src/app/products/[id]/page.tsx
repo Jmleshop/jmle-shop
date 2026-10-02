@@ -11,6 +11,12 @@ import ProductGallery from "@/components/ProductGallery";
 import ProductInfo from "@/components/ProductInfo";
 import WishlistButton from "@/components/WishlistButton";
 import { DiscountBadge } from "@/components/ui";
+import JsonLd from "@/components/JsonLd";
+import {
+  breadcrumbJsonLd,
+  productJsonLd,
+} from "@/lib/seo-jsonld";
+import { discountedPrice } from "@/lib/pricing";
 
 export const revalidate = 60;
 
@@ -33,15 +39,28 @@ export async function generateMetadata({
 
   const appUrl = getAppUrl();
   const url = `${appUrl}/products/${product.id}`;
-  const title = `${product.name} — ${site.name}`;
+  const bilingual = product.nameDe
+    ? `${product.name} / ${product.nameDe}`
+    : product.name;
+  const title = `${bilingual} — ${site.name}`;
+  const price = discountedPrice(product.price, product.discountPercent);
   const description =
-    product.description?.slice(0, 160) ||
-    `${product.name}${product.nameDe ? ` / ${product.nameDe}` : ""} من متجر ${site.name}`;
+    product.description?.slice(0, 155) ||
+    `${bilingual} kaufen — arabische Lebensmittel & Feinkost bei ${site.name}. Preis ab ${price.toFixed(2)} €.`;
   const image = product.images[0] || product.image;
+  const keywords = [
+    product.name,
+    product.nameDe,
+    "arabische Lebensmittel",
+    "Falafel",
+    "Gewürze",
+    site.name,
+  ].filter(Boolean) as string[];
 
   return {
     title,
     description,
+    keywords,
     alternates: { canonical: url },
     openGraph: {
       type: "website",
@@ -65,12 +84,19 @@ export async function generateMetadata({
       description,
       images: [image],
     },
+    other: {
+      "product:price:amount": price.toFixed(2),
+      "product:price:currency": "EUR",
+    },
   };
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
-  const product = await getProductByIdAsync(id);
+  const [product, site] = await Promise.all([
+    getProductByIdAsync(id),
+    getSiteConfigAsync(),
+  ]);
 
   if (!product) {
     notFound();
@@ -81,8 +107,29 @@ export default async function ProductPage({ params }: ProductPageProps) {
     : undefined;
   const out = product.stock <= 0;
 
+  const crumbs = [
+    { name: site.name, path: "/" },
+    { name: "Produkte", path: "/products" },
+  ];
+  if (category) {
+    crumbs.push({
+      name: category.name,
+      path: `/categories/${category.id}`,
+    });
+  }
+  crumbs.push({ name: product.name, path: `/products/${product.id}` });
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 animate-fade-up">
+      <JsonLd
+        data={[
+          productJsonLd(product, {
+            siteName: site.name,
+            categoryName: category?.name,
+          }),
+          breadcrumbJsonLd(crumbs),
+        ]}
+      />
       <div className="grid md:grid-cols-2 gap-8 md:gap-12">
         <div className="relative">
           <div className="absolute top-3 start-3 z-10 flex flex-col gap-1.5">

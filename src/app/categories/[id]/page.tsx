@@ -10,6 +10,8 @@ import { ProductGrid } from "@/components/ProductCard";
 import CategoryGrid from "@/components/CategoryGrid";
 import { CategoryHeading } from "@/components/ShopText";
 import { EmptyCategoryNotice } from "@/components/HomeSections";
+import JsonLd from "@/components/JsonLd";
+import { categoryJsonLd } from "@/lib/seo-jsonld";
 
 export const revalidate = 60;
 
@@ -33,14 +35,23 @@ export async function generateMetadata({
 
   const appUrl = getAppUrl();
   const url = `${appUrl}/categories/${category.id}`;
-  const title = `${category.name} — ${site.name}`;
-  const description = `تسوق منتجات ${category.name}${
-    category.nameEn ? ` / ${category.nameEn}` : ""
-  } من متجر ${site.name} للمواد الغذائية العربية`;
+  const bilingual = category.nameEn
+    ? `${category.name} / ${category.nameEn}`
+    : category.name;
+  const title = `${bilingual} — arabische Lebensmittel | ${site.name}`;
+  const description = `${bilingual} online kaufen bei ${site.name}: arabische Lebensmittel, Gewürze & Feinkost — frisch, günstig, schnell geliefert.`;
 
   return {
     title,
     description,
+    keywords: [
+      category.name,
+      category.nameEn,
+      "arabische Lebensmittel",
+      "Falafel",
+      "Online Shop",
+      site.name,
+    ].filter(Boolean) as string[],
     alternates: { canonical: url },
     openGraph: {
       type: "website",
@@ -65,9 +76,10 @@ export async function generateMetadata({
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { id } = await params;
   const decoded = decodeURIComponent(id);
-  const [category, products] = await Promise.all([
+  const [category, products, site] = await Promise.all([
     getCategoryByIdAsync(decoded),
     getProductsByCategoryAsync(decoded),
+    getSiteConfigAsync(),
   ]);
 
   if (!category) {
@@ -76,6 +88,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   return (
     <div>
+      <JsonLd data={categoryJsonLd(category, products, site)} />
       <div className="bg-gradient-to-r from-gold to-jmle-orange-dark text-white py-10 px-4 text-center">
         <CategoryHeading
           category={category}

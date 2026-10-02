@@ -21,29 +21,36 @@ export async function generateMetadata(): Promise<Metadata> {
   const appUrl = getAppUrl();
   const ogImage = site.ogImage || slides[0]?.image;
 
+  const description =
+    site.description ||
+    `${site.name}: arabische Lebensmittel, Falafel, Gewürze & Feinkost online bestellen — authentisch und schnell geliefert.`;
+
   return {
-    title: `${site.name} — ${site.tagline}`,
-    description:
-      site.description ||
-      "متجر jmle للمواد الغذائية العربية الأصيلة",
+    title: `${site.name} — Arabische Lebensmittel & Feinkost`,
+    description,
+    keywords: [
+      "arabische Lebensmittel",
+      "Falafel",
+      "Gewürze",
+      "arabischer Supermarkt online",
+      site.name,
+    ],
     alternates: { canonical: appUrl },
     openGraph: {
       type: "website",
       locale: "ar_DE",
       url: appUrl,
       siteName: site.name,
-      title: `${site.name} — ${site.tagline}`,
-      description:
-        site.description ||
-        "متجر jmle للمواد الغذائية العربية الأصيلة",
+      title: `${site.name} — Arabische Lebensmittel & Feinkost`,
+      description,
       ...(ogImage
         ? { images: [{ url: ogImage, width: 1200, height: 630, alt: site.name }] }
         : {}),
     },
     twitter: {
       card: "summary_large_image",
-      title: `${site.name} — ${site.tagline}`,
-      description: site.description || site.tagline,
+      title: `${site.name} — Arabische Lebensmittel`,
+      description,
       ...(ogImage ? { images: [ogImage] } : {}),
     },
   };

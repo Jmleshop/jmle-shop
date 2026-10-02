@@ -3,6 +3,8 @@ import { getProductsAsync, getSiteConfigAsync } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
 import { ProductGrid } from "@/components/ProductCard";
 import { ShopHeading } from "@/components/ShopText";
+import JsonLd from "@/components/JsonLd";
+import { collectionPageJsonLd } from "@/lib/seo-jsonld";
 
 // Immer serverseitig frisch: neu importierte Produkte sind sofort sichtbar.
 export const revalidate = 60;
@@ -10,12 +12,19 @@ export const revalidate = 60;
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getSiteConfigAsync();
   const appUrl = getAppUrl();
-  const title = `جميع المنتجات — ${site.name}`;
-  const description = "تصفّح جميع منتجات متجر jmle في مكان واحد.";
+  const title = `Alle Produkte — arabische Lebensmittel | ${site.name}`;
+  const description = `Alle Produkte von ${site.name}: arabische Lebensmittel, Falafel, Gewürze, Reis, Öle und Feinkost online entdecken.`;
 
   return {
     title,
     description,
+    keywords: [
+      "arabische Lebensmittel",
+      "Alle Produkte",
+      "Falafel",
+      "Gewürze",
+      site.name,
+    ],
     alternates: { canonical: `${appUrl}/products` },
     openGraph: {
       type: "website",
@@ -29,10 +38,21 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AllProductsPage() {
-  const products = await getProductsAsync();
+  const [products, site] = await Promise.all([
+    getProductsAsync(),
+    getSiteConfigAsync(),
+  ]);
 
   return (
     <div>
+      <JsonLd
+        data={collectionPageJsonLd({
+          name: `Alle Produkte — ${site.name}`,
+          description: `Arabische Lebensmittel und Feinkost bei ${site.name}`,
+          path: "/products",
+          products,
+        })}
+      />
       <div className="bg-gradient-to-r from-gold to-jmle-orange-dark text-white py-10 px-4 text-center">
         <ShopHeading k="allProducts" className="font-display text-2xl md:text-3xl tracking-wide" />
         <ShopHeading

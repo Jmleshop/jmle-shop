@@ -130,6 +130,12 @@ const messages = {
     wishlistError: "تعذر الحفظ في المفضلة",
     halal: "حلال",
     organic: "عضوي",
+    trustBadgesLabel: "مزايا التسوق",
+    trustSecure: "دفع آمن",
+    trustShipping: "شحن سريع",
+    trustFresh: "ضمان الطزاجة",
+    searchViewAll: "عرض كل النتائج لـ «{query}»",
+    searchNoHits: "لا توجد نتائج لـ «{query}»",
   },
   de: {
     home: "Start",
@@ -260,6 +266,12 @@ const messages = {
     wishlistError: "Merkliste konnte nicht gespeichert werden",
     halal: "Halal",
     organic: "Bio",
+    trustBadgesLabel: "Vertrauenssignale",
+    trustSecure: "Sicherer Checkout",
+    trustShipping: "Schnelle Lieferung",
+    trustFresh: "Frischegarantie",
+    searchViewAll: "Alle Ergebnisse für „{query}“",
+    searchNoHits: "Keine Treffer für „{query}“",
   },
 } as const;
 
