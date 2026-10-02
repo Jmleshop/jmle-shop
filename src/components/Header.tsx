@@ -85,9 +85,9 @@ export default function Header({
   ];
 
   /** Farben/Logo kommen aus CSS-Variablen (published + Instant Preview). */
-  const headerStyle = {
-    backgroundColor: "var(--layout-header-bg, transparent)",
-  };
+  const headerStyle = layout.chrome.headerBg
+    ? { backgroundColor: "var(--layout-header-bg)" }
+    : undefined;
 
   const cartLink = (
     <Link
@@ -253,9 +253,11 @@ export default function Header({
         {/* Desktop */}
         <div
           className="hidden lg:grid max-w-7xl mx-auto px-4 h-[108px] grid-cols-[1fr_auto_1fr] items-center gap-2 layout-chrome-navbar"
-          style={{
-            backgroundColor: "var(--layout-navbar-bg, transparent)",
-          }}
+          style={
+            layout.chrome.navbarBg
+              ? { backgroundColor: "var(--layout-navbar-bg)" }
+              : undefined
+          }
         >
           <nav
             className="flex items-center gap-1 justify-start"

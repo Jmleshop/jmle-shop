@@ -15,6 +15,14 @@ import {
 function applyVars(doc: LayoutDocument, viewport: LayoutViewport) {
   const vars = layoutCssVars(doc, viewport);
   const root = document.documentElement;
+  const chromeKeys = [
+    "--layout-header-bg",
+    "--layout-navbar-bg",
+    "--layout-page-bg",
+  ];
+  for (const k of chromeKeys) {
+    if (!(k in vars)) root.style.removeProperty(k);
+  }
   for (const [k, v] of Object.entries(vars)) {
     root.style.setProperty(k, v);
   }

@@ -177,17 +177,19 @@ export function layoutCssVars(
 ): Record<string, string> {
   const chrome = doc.chrome;
   const slider = doc.slider[viewport] ?? doc.slider.desktop;
-  return {
+  const vars: Record<string, string> = {
     "--layout-logo-scale": String(chrome.logoScale),
-    "--layout-header-bg": chrome.headerBg || "transparent",
-    "--layout-navbar-bg": chrome.navbarBg || "transparent",
-    "--layout-page-bg": chrome.pageBg || "transparent",
     "--layout-banner-min-height": slider.heightPx > 0 ? `${slider.heightPx}px` : "0px",
     "--layout-banner-margin-y": `${slider.marginY}px`,
     "--layout-banner-offset-y": `${slider.offsetY}px`,
     "--layout-banner-object-fit": slider.objectFit,
     "--layout-banner-object-position": slider.objectPosition,
   };
+  // Nur setzen wenn gewählt — sonst bleibt Tailwind-Default (jmle-cream).
+  if (chrome.headerBg) vars["--layout-header-bg"] = chrome.headerBg;
+  if (chrome.navbarBg) vars["--layout-navbar-bg"] = chrome.navbarBg;
+  if (chrome.pageBg) vars["--layout-page-bg"] = chrome.pageBg;
+  return vars;
 }
 
 export function detectViewportWidth(width: number): LayoutViewport {
