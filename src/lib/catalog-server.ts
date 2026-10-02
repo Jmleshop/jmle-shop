@@ -47,7 +47,7 @@ const PUBLIC_SELECT =
 
 /** Fallback ohne Spalten, die in älteren products_public Views fehlen können */
 const PUBLIC_SELECT_BASIC =
-  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
+  "id, name_ar, name_de, description, price, currency, category_id, brand_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
 
 type PublicRow = {
   id: string;
@@ -704,42 +704,93 @@ export const getBrandByIdAsync = cache(
   }
 );
 
+async function queryProductsByBrandId(brandId: string): Promise<Product[]> {
+  const supabase = createPublicClient();
+
+  let { data, error } = await supabase
+    .from("products_public")
+    .select(PUBLIC_SELECT)
+    .eq("brand_id", brandId);
+
+  if (error && /column|42703/i.test(error.message)) {
+    const basic = await supabase
+      .from("products_public")
+      .select(PUBLIC_SELECT_BASIC)
+      .eq("brand_id", brandId);
+    data = basic.data as typeof data;
+    error = basic.error;
+  }
+
+  if (!error && data?.length) {
+    return (data as PublicRow[]).map(mapPublicProduct);
+  }
+
+  // Anon auf Basistabelle
+  const anon = await supabase
+    .from("products")
+    .select("*")
+    .is("deleted_at", null)
+    .eq("brand_id", brandId);
+  if (!anon.error && anon.data?.length) {
+    return (anon.data as Array<PublicRow & { status?: string | null }>)
+      .filter((row) => row.status == null || row.status === "published")
+      .map(mapPublicProduct);
+  }
+
+  // Service-Role-Fallback (RLS-/View-Drift)
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return [];
+  try {
+    const { createServiceClient } = await import("@/lib/supabase/admin");
+    const admin = createServiceClient();
+    const srv = await admin
+      .from("products")
+      .select("*")
+      .is("deleted_at", null)
+      .eq("brand_id", brandId);
+    if (!srv.error && srv.data?.length) {
+      return (srv.data as Array<PublicRow & { status?: string | null }>)
+        .filter((row) => row.status == null || row.status === "published")
+        .map(mapPublicProduct);
+    }
+  } catch (e) {
+    console.error("[catalog] getProductsByBrandAsync service:", e);
+  }
+  return [];
+}
+
 export const getProductsByBrandAsync = cache(
   async (brandId: string): Promise<Product[]> => {
     const rawId = decodeURIComponent(String(brandId || "")).trim();
     if (!rawId) return [];
     const brand = await getBrandByIdAsync(rawId);
     const resolvedId = brand?.id ?? rawId;
-    const products = await getProductsAsync();
-    const matched = products.filter((p) => p.brandId === resolvedId);
-    if (matched.length > 0) return matched;
 
-    // Live-Fallback falls Cache/Mapping ohne brand_id läuft
-    try {
-      const supabase = createPublicClient();
-      let { data, error } = await supabase
-        .from("products_public")
-        .select(PUBLIC_SELECT)
-        .eq("brand_id", resolvedId);
-      if (error && /column|42703|brand_id/i.test(error.message)) {
-        return [];
+    // 1) Katalog-Cache (schnell)
+    const products = await getProductsAsync();
+    const fromCache = products.filter(
+      (p) => p.brandId && p.brandId === resolvedId
+    );
+    if (fromCache.length > 0) return fromCache;
+
+    // 2) Direkte DB-Abfrage — zuverlässig auch bei Cache ohne brand_id
+    const live = await queryProductsByBrandId(resolvedId);
+    if (live.length > 0) return live;
+
+    // 3) Falls URL den Markennamen trägt: alle Marken-IDs gleichen Namens prüfen
+    if (brand?.name) {
+      const logos = await getBrandLogosAsync();
+      const sameName = logos.filter(
+        (b) =>
+          b.name.trim().toLowerCase() === brand.name.trim().toLowerCase()
+      );
+      for (const logo of sameName) {
+        if (logo.id === resolvedId) continue;
+        const more = await queryProductsByBrandId(logo.id);
+        if (more.length) return more;
       }
-      if (error) {
-        const retry = await supabase
-          .from("products")
-          .select(PUBLIC_SELECT_BASIC + ", brand_id")
-          .is("deleted_at", null)
-          .eq("brand_id", resolvedId);
-        data = retry.data as typeof data;
-        error = retry.error;
-      }
-      if (!error && data?.length) {
-        return (data as PublicRow[]).map(mapPublicProduct);
-      }
-    } catch (e) {
-      console.error("[catalog] getProductsByBrandAsync:", e);
     }
-    return matched;
+
+    return [];
   }
 );
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { isAuthError, requireStaff } from "@/lib/admin-server";
+import { isAuthError, requireStaff, staffDataClient } from "@/lib/admin-server";
+import { isDuplicateBrandName } from "@/lib/brand-name";
 
 function bust() {
   try {
@@ -12,13 +13,27 @@ function bust() {
   }
 }
 
+const DUPLICATE_BRAND_DE = "Dieser Markenname existiert bereits";
+const DUPLICATE_BRAND_AR = "اسم العلامة التجارية موجود بالفعل";
+
+async function findDuplicateBrandName(
+  db: ReturnType<typeof staffDataClient>,
+  name: string,
+  excludeId?: string
+): Promise<boolean> {
+  const { data, error } = await db.from("brand_logos").select("id, name");
+  if (error || !data) return false;
+  return isDuplicateBrandName(name, data, excludeId);
+}
+
 export async function GET() {
   const auth = await requireStaff();
   if (isAuthError(auth)) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { data, error } = await auth.supabase
+  const db = staffDataClient(auth.supabase);
+  const { data, error } = await db
     .from("brand_logos")
     .select("*")
     .order("sort_order", { ascending: true });
@@ -42,6 +57,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
@@ -54,26 +71,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Logo-Bild ist Pflicht" }, { status: 400 });
   }
 
+  const name = String(body.name ?? "").trim();
+  if (!name) {
+    return NextResponse.json(
+      { error: "Markenname ist Pflicht (nur intern sichtbar)" },
+      { status: 400 }
+    );
+  }
+
   const id =
     String(body.id ?? "").trim() ||
     `brand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
+  const isDuplicate = await findDuplicateBrandName(db, name, id);
+  if (isDuplicate) {
+    return NextResponse.json(
+      { error: DUPLICATE_BRAND_DE, errorAr: DUPLICATE_BRAND_AR },
+      { status: 409 }
+    );
+  }
+
   const payload = {
     id,
-    name: String(body.name ?? "").trim(),
+    name,
     image,
     link_url: String(body.link_url ?? "").trim() || null,
     sort_order: Number(body.sort_order ?? 0) || 0,
     active: body.active !== false,
   };
 
-  const { data, error } = await auth.supabase
+  const { data, error } = await db
     .from("brand_logos")
     .upsert(payload)
     .select()
     .single();
 
   if (error) {
+    if (/duplicate|unique/i.test(error.message)) {
+      return NextResponse.json({ error: DUPLICATE_BRAND_DE }, { status: 409 });
+    }
     return NextResponse.json(
       {
         error: error.message,
@@ -95,6 +131,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
+
   let body: { order?: Array<{ id: string; sort_order: number }> };
   try {
     body = (await request.json()) as typeof body;
@@ -107,7 +145,7 @@ export async function PATCH(request: Request) {
   }
 
   for (const row of body.order) {
-    await auth.supabase
+    await db
       .from("brand_logos")
       .update({ sort_order: row.sort_order })
       .eq("id", row.id);
@@ -122,13 +160,14 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const db = staffDataClient(auth.supabase);
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "id fehlt" }, { status: 400 });
   }
 
-  const { error } = await auth.supabase.from("brand_logos").delete().eq("id", id);
+  const { error } = await db.from("brand_logos").delete().eq("id", id);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

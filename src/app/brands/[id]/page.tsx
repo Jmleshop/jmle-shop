@@ -28,13 +28,14 @@ export async function generateMetadata({
   ]);
 
   if (!brand) {
-    return { title: `Marke nicht gefunden — ${site.name}` };
+    return { title: site.name };
   }
 
   const appUrl = getAppUrl();
-  const url = `${appUrl}/brands/${brand.id}`;
-  const title = `${brand.name} — ${site.name}`;
-  const description = `Alle Produkte der Marke ${brand.name} bei ${site.name}`;
+  const url = `${appUrl}/brands/${encodeURIComponent(brand.id)}`;
+  // Kein Markenname in Meta/OG — nur Logo + Shop-Name
+  const title = site.name;
+  const description = site.description || site.tagline || site.name;
 
   return {
     title,
@@ -48,7 +49,7 @@ export async function generateMetadata({
       title,
       description,
       images: brand.image
-        ? [{ url: brand.image, width: 400, height: 200, alt: brand.name }]
+        ? [{ url: brand.image, width: 400, height: 200, alt: site.name }]
         : undefined,
     },
   };
@@ -69,26 +70,24 @@ export default async function BrandPage({ params }: BrandPageProps) {
   return (
     <div>
       <div className="bg-gradient-to-r from-gold to-jmle-orange-dark text-white py-10 px-4 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-36 items-center justify-center rounded-xl bg-white/95 px-3 shadow-sm md:h-16 md:w-44">
-          <div className="relative h-10 w-full md:h-12">
+        <div className="mx-auto flex h-16 w-44 items-center justify-center rounded-xl bg-white/95 px-3 shadow-sm md:h-20 md:w-52">
+          <div className="relative h-12 w-full md:h-14">
             <Image
               src={originalImageSrc(brand.image)}
-              alt={brand.name}
+              alt=""
               fill
               quality={SHOP_IMAGE_QUALITY}
               className="object-contain"
-              sizes="180px"
+              sizes="200px"
+              priority
             />
           </div>
         </div>
-        <h1 className="font-display text-2xl md:text-3xl tracking-wide">
-          {brand.name}
-        </h1>
         <ShopHeading
           as="p"
           k="productCount"
           vars={{ count: products.length }}
-          className="mt-2 text-sm text-white/90 font-ui"
+          className="mt-4 text-sm text-white/90 font-ui"
         />
       </div>
 

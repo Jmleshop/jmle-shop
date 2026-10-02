@@ -420,7 +420,13 @@ export default function AdminSlidersPage() {
     const data = await res.json();
     setSaving(false);
     if (!res.ok) {
-      setError(data.error || data.hint || "Fehler");
+      const dup =
+        res.status === 409
+          ? lang === "de"
+            ? "Dieser Markenname existiert bereits"
+            : String(data.errorAr || "اسم العلامة التجارية موجود بالفعل")
+          : "";
+      setError(dup || data.error || data.hint || "Fehler");
       return;
     }
     setBrandForm({ id: "", name: "", image: "", link_url: "", active: true });
@@ -991,16 +997,24 @@ export default function AdminSlidersPage() {
                       autoOpenUrl={autoOpenImageUrl}
                       onAutoOpenConsumed={() => setAutoOpenImageUrl(null)}
                     />
-                    <input
-                      className="input-field"
-                      placeholder={
-                        lang === "de" ? "Markenname" : "اسم العلامة"
-                      }
-                      value={brandForm.name}
-                      onChange={(e) =>
-                        setBrandForm({ ...brandForm, name: e.target.value })
-                      }
-                    />
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">
+                        {lang === "de"
+                          ? "Markenname (nur intern, nicht öffentlich)"
+                          : "اسم العلامة (داخلي فقط، غير ظاهر للعملاء)"}
+                      </label>
+                      <input
+                        className="input-field"
+                        required
+                        placeholder={
+                          lang === "de" ? "z. B. Durra" : "مثال: Durra"
+                        }
+                        value={brandForm.name}
+                        onChange={(e) =>
+                          setBrandForm({ ...brandForm, name: e.target.value })
+                        }
+                      />
+                    </div>
                     <input
                       className="input-field"
                       placeholder={
@@ -1013,7 +1027,11 @@ export default function AdminSlidersPage() {
                     />
                     <Button
                       type="submit"
-                      disabled={saving || !brandForm.image}
+                      disabled={
+                        saving ||
+                        !brandForm.image ||
+                        !brandForm.name.trim()
+                      }
                     >
                       <Plus size={16} />
                       {saving ? t("saving") : t("save")}

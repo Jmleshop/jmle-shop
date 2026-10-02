@@ -217,12 +217,6 @@ export default function AdminProductsPage() {
     e.preventDefault();
     setSaving(true);
     setError("");
-    const brandName = form.brand_name.trim();
-    const matchedBrand = brands.find(
-      (b) =>
-        b.id === form.brand_id ||
-        b.name.trim().toLowerCase() === brandName.toLowerCase()
-    );
     const payload = {
       ...form,
       price: parseFloat(form.price),
@@ -230,8 +224,8 @@ export default function AdminProductsPage() {
       vat_rate: Number(form.vat_rate),
       images: form.images,
       image: form.images[0] ?? "",
-      brand_id: matchedBrand?.id || form.brand_id || null,
-      brand_name: matchedBrand ? null : brandName || null,
+      brand_id: form.brand_id.trim() || null,
+      brand_name: null,
       max_order_quantity:
         form.max_order_quantity === "" ||
         form.max_order_quantity === "unlimited" ||
@@ -670,29 +664,30 @@ export default function AdminProductsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm mb-1">{t("brand")}</label>
-                <input
+                <label className="block text-sm mb-1" htmlFor="product-brand">
+                  {t("brand")}
+                </label>
+                <select
+                  id="product-brand"
                   className="input-field"
-                  list="product-brand-options"
-                  placeholder={t("brandHint")}
-                  value={form.brand_name}
+                  value={form.brand_id}
                   onChange={(e) => {
-                    const value = e.target.value;
-                    const match = brands.find(
-                      (b) => b.name.toLowerCase() === value.trim().toLowerCase()
-                    );
+                    const id = e.target.value;
+                    const match = brands.find((b) => b.id === id);
                     setForm({
                       ...form,
-                      brand_name: value,
-                      brand_id: match?.id ?? "",
+                      brand_id: id,
+                      brand_name: match?.name ?? "",
                     });
                   }}
-                />
-                <datalist id="product-brand-options">
+                >
+                  <option value="">{t("brandNone")}</option>
                   {brands.map((b) => (
-                    <option key={b.id} value={b.name} />
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
                   ))}
-                </datalist>
+                </select>
                 <p className="mt-1 text-[11px] text-gray-500">{t("brandHint")}</p>
               </div>
               <ImageUpload
