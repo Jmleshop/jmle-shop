@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   useTransition,
@@ -78,10 +77,11 @@ export default function LayoutBuilderClient() {
   const docRef = useRef(doc);
   docRef.current = doc;
 
-  const previewSrc = useMemo(() => {
-    if (typeof window === "undefined") return PREVIEW_PATH;
-    return `${window.location.origin}${PREVIEW_PATH}`;
-  }, [iframeKey]);
+  // iframeKey remounts the frame; URL itself is stable per origin
+  const previewSrc =
+    typeof window === "undefined"
+      ? PREVIEW_PATH
+      : `${window.location.origin}${PREVIEW_PATH}`;
 
   const dirtyLocal =
     bundle != null && !documentsEqual(doc, bundle.published);
