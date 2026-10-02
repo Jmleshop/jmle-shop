@@ -90,6 +90,12 @@ export function resolveSupabaseTarget(opts?: {
       hint: "SUPABASE_PRODUCTION_*",
     },
     {
+      // Explizit: SUPABASE_URL (+ Service Role) aus .env.local / Runtime
+      url: process.env.SUPABASE_URL,
+      key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hint: "SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY",
+    },
+    {
       url: process.env.NEXT_PUBLIC_SUPABASE_URL,
       key: process.env.SUPABASE_SERVICE_ROLE_KEY,
       hint: "NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY",

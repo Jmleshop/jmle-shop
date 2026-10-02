@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "brand-reset": "node --import tsx scripts/force-reset-from-env.ts"
   },
   "allowScripts": {
     "sharp": true,
