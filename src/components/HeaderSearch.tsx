@@ -169,6 +169,7 @@ export default function HeaderSearch({
             ref={inputRef}
             id={inputId}
             type="search"
+            role="combobox"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
@@ -177,6 +178,7 @@ export default function HeaderSearch({
             aria-autocomplete="list"
             aria-controls={listId}
             aria-expanded={showPanel}
+            aria-haspopup="listbox"
             aria-activedescendant={
               activeIndex >= 0 ? `${listId}-opt-${activeIndex}` : undefined
             }
