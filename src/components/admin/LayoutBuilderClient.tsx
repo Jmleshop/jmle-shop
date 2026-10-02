@@ -19,7 +19,7 @@ import {
   Loader2,
   Save,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "react-hot-toast";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import {
   LAYOUT_PREVIEW_MESSAGE,
