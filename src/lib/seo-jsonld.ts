@@ -1,5 +1,4 @@
 import { BUSINESS_INFO } from "@/lib/business-info";
-import { discountedPrice } from "@/lib/pricing";
 import { getAppUrl } from "@/lib/site-defaults";
 import type { Category, Product, SiteConfig } from "@/types";
 
@@ -67,7 +66,8 @@ export function productJsonLd(
   const images = (product.images?.length ? product.images : [product.image]).filter(
     Boolean
   );
-  const price = discountedPrice(product.price, product.discountPercent);
+  // product.price ist bereits der Verkaufspreis (rabattiert, falls aktiv)
+  const price = Number(product.price);
   const availability =
     product.stock > 0
       ? "https://schema.org/InStock"
@@ -85,6 +85,11 @@ export function productJsonLd(
       name: opts?.siteName || "jmle",
     },
   };
+  if (product.originalPrice != null && product.originalPrice > price) {
+    offer.priceValidUntil = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
+      .toISOString()
+      .slice(0, 10);
+  }
 
   const data: JsonLd = {
     "@context": "https://schema.org",

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { ShoppingBag, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useCartFly } from "@/context/CartFlyContext";
-import { formatEuroDe, discountedPrice, maxBuyQuantity } from "@/lib/pricing";
+import { formatEuroDe, maxBuyQuantity } from "@/lib/pricing";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
 import type { Product } from "@/types";
@@ -30,7 +30,8 @@ export default function StickyMobileAddToCart({
 
   const max = maxBuyQuantity(product.stock, product.maxOrderQuantity);
   const out = product.stock <= 0 || max < 1;
-  const price = discountedPrice(product.price, product.discountPercent);
+  // product.price ist bereits der Verkaufspreis
+  const price = product.price;
   const title = productTitle(lang, product);
 
   useEffect(() => {
@@ -77,9 +78,9 @@ export default function StickyMobileAddToCart({
             </p>
             <p className="text-sm font-ui font-semibold text-gold tabular-nums">
               {formatEuroDe(price)}
-              {product.discountPercent > 0 && (
+              {product.discountPercent > 0 && product.originalPrice != null && (
                 <span className="ms-1.5 text-xs font-normal text-gray-400 line-through">
-                  {formatEuroDe(product.price)}
+                  {formatEuroDe(product.originalPrice)}
                 </span>
               )}
             </p>

@@ -12,7 +12,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Loader2 } from "lucide-react";
-import { discountedPrice, formatEuroDe } from "@/lib/pricing";
+import { formatEuroDe } from "@/lib/pricing";
 import { cn } from "@/lib/cn";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
@@ -198,8 +198,11 @@ export default function HeaderSearch({
               </li>
             )}
             {items.map((item, index) => {
-              const sale = discountedPrice(item.price, item.discountPercent);
+              // API liefert bereits den Verkaufspreis in `price`
               const onSale = item.discountPercent > 0;
+              const listPrice = onSale
+                ? item.price / (1 - item.discountPercent / 100)
+                : item.price;
               return (
                 <li
                   key={item.id}
@@ -245,10 +248,10 @@ export default function HeaderSearch({
                       )}
                     </span>
                     <span className="text-xs font-ui font-semibold text-gold shrink-0 text-end">
-                      {formatEuroDe(sale)}
+                      {formatEuroDe(item.price)}
                       {onSale && (
                         <span className="block text-[10px] font-normal text-gray-400 line-through">
-                          {formatEuroDe(item.price)}
+                          {formatEuroDe(listPrice)}
                         </span>
                       )}
                     </span>

@@ -16,7 +16,6 @@ import {
   breadcrumbJsonLd,
   productJsonLd,
 } from "@/lib/seo-jsonld";
-import { discountedPrice } from "@/lib/pricing";
 
 export const revalidate = 60;
 
@@ -43,7 +42,8 @@ export async function generateMetadata({
     ? `${product.name} / ${product.nameDe}`
     : product.name;
   const title = `${bilingual} — ${site.name}`;
-  const price = discountedPrice(product.price, product.discountPercent);
+  // product.price ist bereits der Verkaufspreis
+  const price = product.price;
   const description =
     product.description?.slice(0, 155) ||
     `${bilingual} kaufen — arabische Lebensmittel & Feinkost bei ${site.name}. Preis ab ${price.toFixed(2)} €.`;
