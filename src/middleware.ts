@@ -26,9 +26,17 @@ export async function middleware(request: NextRequest) {
 
   const response = await updateSession(request);
 
-  // Admin: Cross-Origin Isolation für SharedArrayBuffer / WASM-Threads (Turbo-Freisteller).
-  // credentialless bleibt kompatibel mit Supabase/CDN ohne CORP-Header.
-  if (request.nextUrl.pathname.startsWith("/admin")) {
+  const path = request.nextUrl.pathname;
+
+  // Builder braucht eine echte Shop-Vorschau im iframe.
+  // COEP am Parent blockiert Documents ohne COEP → Preview zeigt Fehler-Icon.
+  // Isolation daher nur auf Seiten mit WASM/SharedArrayBuffer (z. B. Produkte).
+  const needsCrossOriginIsolation =
+    path.startsWith("/admin") &&
+    !path.startsWith("/admin/builder") &&
+    !path.startsWith("/admin/login");
+
+  if (needsCrossOriginIsolation) {
     response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
     response.headers.set("Cross-Origin-Embedder-Policy", "credentialless");
   }

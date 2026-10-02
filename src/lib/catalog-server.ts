@@ -634,10 +634,9 @@ export const getPublishedLayoutAsync = cache(
   async (): Promise<LayoutDocument> => getPublishedLayoutCached()
 );
 
-/** Kategoriebaum ohne synthetische All/Sale-Einträge (für Navigation). */
+/** Kategoriebaum nur aus der DB — keine Fallback-/Demo-Kategorien in der Nav. */
 export const getNavCategoriesAsync = cache(async (): Promise<Category[]> => {
-  const dbTree = await getCategoriesCached();
-  return dbTree.length ? dbTree : FALLBACK_CATEGORIES;
+  return getCategoriesCached();
 });
 
 export const getHomepageSectionsAsync = cache(

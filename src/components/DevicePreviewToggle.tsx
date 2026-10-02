@@ -15,6 +15,7 @@ function DevicePreviewInner() {
 
   const isNestedPreview =
     searchParams.get(PREVIEW_PARAM) === "1" ||
+    searchParams.get("_builder") === "1" ||
     (typeof window !== "undefined" && window.self !== window.top);
 
   useEffect(() => {

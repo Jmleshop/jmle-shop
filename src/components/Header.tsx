@@ -43,7 +43,6 @@ export default function Header({
     registerCartIcon(cartRef.current);
   }, [registerCartIcon, itemCount]);
 
-  // Live-Override aus PreviewBridge (data-layout-cart am html)
   useEffect(() => {
     const read = () => {
       const v = document.documentElement.dataset.layoutCart;
@@ -72,6 +71,16 @@ export default function Header({
     return () => window.removeEventListener("scroll", onScroll);
   }, [onScroll]);
 
+  // Escape schließt Menü
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   const navLinks = [
     { href: "/", label: t("home") },
     { href: "/products", label: t("products") },
@@ -84,10 +93,22 @@ export default function Header({
     },
   ];
 
-  /** Farben/Logo kommen aus CSS-Variablen (published + Instant Preview). */
   const headerStyle = layout.chrome.headerBg
     ? { backgroundColor: "var(--layout-header-bg)" }
     : undefined;
+
+  const menuButton = (
+    <button
+      type="button"
+      onClick={() => setMenuOpen(true)}
+      className="p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
+      aria-label={t("menu")}
+      aria-expanded={menuOpen}
+      aria-controls="shop-burger-menu"
+    >
+      <Menu size={24} />
+    </button>
+  );
 
   const cartLink = (
     <Link
@@ -142,65 +163,35 @@ export default function Header({
     </Link>
   );
 
+  const langButton = (
+    <button
+      type="button"
+      onClick={() => setLang(lang === "ar" ? "de" : "ar")}
+      className="px-2 min-h-11 text-xs font-ui font-semibold text-luxury-charcoal hover:text-brand-orange"
+      aria-label={t("langSwitch")}
+    >
+      {t("langSwitch")}
+    </button>
+  );
+
+  // Burger sitzt links in der Desktop-Nav (einmalig); rechts Icons/Cart
   const desktopTrail =
     cartPos === "start" ? (
       <>
         {cartLink}
-        <button
-          type="button"
-          onClick={() => setLang(lang === "ar" ? "de" : "ar")}
-          className="px-2 min-h-11 text-xs font-ui font-semibold text-luxury-charcoal hover:text-brand-orange"
-          aria-label={t("langSwitch")}
-        >
-          {t("langSwitch")}
-        </button>
+        {langButton}
         {wishLink}
         {accountLink}
       </>
     ) : (
       <>
-        <button
-          type="button"
-          onClick={() => setLang(lang === "ar" ? "de" : "ar")}
-          className="px-2 min-h-11 text-xs font-ui font-semibold text-luxury-charcoal hover:text-brand-orange"
-          aria-label={t("langSwitch")}
-        >
-          {t("langSwitch")}
-        </button>
+        {langButton}
         {wishLink}
         {accountLink}
         {cartLink}
       </>
     );
 
-  const mobileTrail =
-    cartPos === "start" ? (
-      <>
-        {cartLink}
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          className="p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
-          aria-label={t("menu")}
-        >
-          <Menu size={24} />
-        </button>
-      </>
-    ) : (
-      <>
-        {cartLink}
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          className="p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
-          aria-label={t("menu")}
-        >
-          <Menu size={24} />
-        </button>
-      </>
-    );
-
-  // Bei cartPosition=start: Warenkorb auf die andere Seite des Logos (mobile)
   const mobileStart =
     cartPos === "start" ? (
       <div className="flex justify-start items-center gap-0.5">{cartLink}</div>
@@ -212,17 +203,13 @@ export default function Header({
     cartPos === "start" ? (
       <div className="flex items-center justify-end gap-0.5">
         {accountLink}
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          className="p-2.5 min-h-11 min-w-11 text-luxury-charcoal hover:text-brand-orange transition-colors rounded-xl"
-          aria-label={t("menu")}
-        >
-          <Menu size={24} />
-        </button>
+        {menuButton}
       </div>
     ) : (
-      <div className="flex items-center justify-end gap-0.5">{mobileTrail}</div>
+      <div className="flex items-center justify-end gap-0.5">
+        {cartLink}
+        {menuButton}
+      </div>
     );
 
   return (
@@ -250,7 +237,7 @@ export default function Header({
           {mobileEnd}
         </div>
 
-        {/* Desktop */}
+        {/* Desktop — Burger immer sichtbar */}
         <div
           className="hidden lg:grid max-w-7xl mx-auto px-4 h-[108px] grid-cols-[1fr_auto_1fr] items-center gap-2 layout-chrome-navbar"
           style={
@@ -263,7 +250,8 @@ export default function Header({
             className="flex items-center gap-1 justify-start"
             aria-label={t("mainNav")}
           >
-            {navLinks.slice(0, 3).map((link) => (
+            {menuButton}
+            {navLinks.slice(0, 2).map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -287,18 +275,20 @@ export default function Header({
         </div>
       </header>
 
+      {/* Burger-Menü: Mobile + Desktop */}
       {menuOpen && (
         <div
-          className="fixed inset-0 z-[60] lg:hidden"
+          className="fixed inset-0 z-[60]"
           role="dialog"
           aria-modal="true"
           aria-label={t("menu")}
+          id="shop-burger-menu"
         >
           <div
             className="absolute inset-0 bg-jmle-mahogany/40 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
           />
-          <aside className="absolute top-0 end-0 h-full w-[min(100%,20rem)] bg-jmle-cream border-s border-orange-200/50 shadow-boutique p-5 animate-fade-up flex flex-col">
+          <aside className="absolute top-0 end-0 h-full w-[min(100%,22rem)] bg-jmle-cream border-s border-orange-200/50 shadow-boutique p-5 animate-fade-up flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <BrandMark
                 logoUrl={logoUrl}
@@ -315,7 +305,7 @@ export default function Header({
               </button>
             </div>
 
-            <div className="mb-4">
+            <div className="mb-4 lg:hidden">
               <p className="text-xs font-ui text-gray-500 mb-2 flex items-center gap-1.5">
                 <Search size={14} /> {t("quickSearch")}
               </p>

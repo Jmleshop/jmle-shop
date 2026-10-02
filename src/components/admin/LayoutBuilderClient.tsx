@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -18,6 +19,11 @@ import {
   History,
   Loader2,
   Save,
+  RefreshCw,
+  AlertTriangle,
+  ExternalLink,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
@@ -36,6 +42,7 @@ import {
 import { cn } from "@/lib/cn";
 
 const HISTORY_LIMIT = 40;
+const PREVIEW_PATH = "/?_preview=1&_builder=1";
 
 type Bundle = {
   draft: LayoutDocument;
@@ -58,10 +65,21 @@ export default function LayoutBuilderClient() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [previewReady, setPreviewReady] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(true);
+  const [iframeKey, setIframeKey] = useState(0);
+  const [panelOpen, setPanelOpen] = useState(true);
   const [history, setHistory] = useState<LayoutDocument[]>([]);
   const [future, setFuture] = useState<LayoutDocument[]>([]);
   const [, startTransition] = useTransition();
   const skipHistory = useRef(false);
+  const docRef = useRef(doc);
+  docRef.current = doc;
+
+  const previewSrc = useMemo(() => {
+    if (typeof window === "undefined") return PREVIEW_PATH;
+    return `${window.location.origin}${PREVIEW_PATH}`;
+  }, [iframeKey]);
 
   const dirtyLocal =
     bundle != null && !documentsEqual(doc, bundle.published);
@@ -180,17 +198,38 @@ export default function LayoutBuilderClient() {
       if (event.origin !== window.location.origin) return;
       if ((event.data as { type?: string })?.type === LAYOUT_PREVIEW_READY) {
         setPreviewReady(true);
-        pushPreview(doc, viewport);
+        setPreviewError(false);
+        setPreviewLoading(false);
+        pushPreview(docRef.current, viewport);
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [doc, viewport, pushPreview]);
+  }, [viewport, pushPreview]);
 
   useEffect(() => {
     if (!previewReady) return;
     pushPreview(doc, viewport);
   }, [viewport, previewReady, doc, pushPreview]);
+
+  // Timeout: wenn iframe nicht antwortet
+  useEffect(() => {
+    if (!previewLoading) return;
+    const t = window.setTimeout(() => {
+      if (!previewReady) {
+        setPreviewError(true);
+        setPreviewLoading(false);
+      }
+    }, 12000);
+    return () => window.clearTimeout(t);
+  }, [previewLoading, previewReady, iframeKey]);
+
+  const reloadPreview = () => {
+    setPreviewReady(false);
+    setPreviewError(false);
+    setPreviewLoading(true);
+    setIframeKey((k) => k + 1);
+  };
 
   const api = async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -226,6 +265,7 @@ export default function LayoutBuilderClient() {
     try {
       await api({ action: "publish", document: doc });
       toast.success(de ? "Veröffentlicht — Live-Seite aktualisiert" : "تم النشر");
+      reloadPreview();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Fehler");
     }
@@ -262,6 +302,7 @@ export default function LayoutBuilderClient() {
     try {
       await api({ action: "rollback", versionId });
       toast.success(de ? "Version wiederhergestellt" : "تمت الاستعادة");
+      reloadPreview();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Fehler");
     }
@@ -292,359 +333,428 @@ export default function LayoutBuilderClient() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh] text-gray-500 gap-2">
+      <div className="flex items-center justify-center min-h-[60vh] text-zinc-500 gap-2">
         <Loader2 className="animate-spin" size={20} />
-        {de ? "Builder wird geladen…" : "جاري التحميل…"}
+        {de ? "Page-Builder wird geladen…" : "جاري التحميل…"}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 min-h-[calc(100vh-6rem)]">
-      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white border border-gray-200 px-4 py-3 shadow-sm">
-        <div>
-          <h1 className="text-lg font-semibold text-luxury-ink">
-            {de ? "Visueller Page-Builder" : "منشئ الصفحات"}
-          </h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {de
-              ? "Änderungen bleiben Entwurf, bis du veröffentlichst."
-              : "التغييرات تبقى مسودة حتى النشر."}
-            {dirtyLocal && (
-              <span className="ms-2 text-amber-600 font-medium">
-                {de ? "• Ungespeicherte Änderungen" : "• تغييرات غير محفوظة"}
-              </span>
-            )}
-          </p>
+    <div className="-m-4 sm:-m-6 min-h-[calc(100vh-3.5rem)] flex flex-col bg-zinc-50 text-zinc-900">
+      {/* Top bar — Shopify/Webflow style */}
+      <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-white/95 px-4 py-2.5 backdrop-blur">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={() => setPanelOpen((v) => !v)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+            title={panelOpen ? "Panel ausblenden" : "Panel einblenden"}
+          >
+            {panelOpen ? <PanelLeftClose size={16} /> : <PanelLeft size={16} />}
+          </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-semibold tracking-tight truncate">
+                {de ? "Page-Builder" : "منشئ الصفحات"}
+              </h1>
+              {dirtyLocal ? (
+                <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
+                  {de ? "Entwurf" : "مسودة"}
+                </span>
+              ) : (
+                <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">
+                  {de ? "Live-Sync" : "متزامن"}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-zinc-500 truncate">
+              {de
+                ? "Änderungen gelten erst nach Veröffentlichen"
+                : "التغييرات تُطبَّق بعد النشر فقط"}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             onClick={undo}
             disabled={!history.length || busy}
-            className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border text-sm disabled:opacity-40"
-            title="Strg+Z"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:opacity-35"
+            title="Ctrl+Z"
           >
-            <Undo2 size={16} /> {de ? "Rückgängig" : "تراجع"}
+            <Undo2 size={14} />
+            <span className="hidden sm:inline">{de ? "Rückgängig" : "تراجع"}</span>
           </button>
           <button
             type="button"
             onClick={redo}
             disabled={!future.length || busy}
-            className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border text-sm disabled:opacity-40"
-            title="Strg+Y"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:opacity-35"
+            title="Ctrl+Y"
           >
-            <Redo2 size={16} /> {de ? "Wiederholen" : "إعادة"}
+            <Redo2 size={14} />
+            <span className="hidden sm:inline">{de ? "Wiederholen" : "إعادة"}</span>
           </button>
+          <div className="mx-1 hidden h-5 w-px bg-zinc-200 sm:block" />
           <button
             type="button"
             onClick={saveDraft}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border border-gray-300 text-sm hover:bg-gray-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
           >
-            <Save size={16} /> {de ? "Entwurf speichern" : "حفظ المسودة"}
+            <Save size={14} />
+            {de ? "Entwurf" : "مسودة"}
           </button>
           <button
             type="button"
             onClick={discard}
             disabled={busy || !dirtyLocal}
-            className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border border-red-200 text-red-700 text-sm hover:bg-red-50 disabled:opacity-40"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-35"
           >
-            <RotateCcw size={16} /> {de ? "Verwerfen" : "تجاهل"}
+            <RotateCcw size={14} />
+            {de ? "Verwerfen" : "تجاهل"}
           </button>
           <button
             type="button"
             onClick={publish}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 min-h-10 px-4 rounded-xl bg-gold text-luxury-black text-sm font-medium hover:brightness-105 disabled:opacity-50"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-50"
           >
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+            {busy ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Upload size={14} />
+            )}
             {de ? "Veröffentlichen" : "نشر"}
           </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4 flex-1 min-h-0">
-        <aside className="rounded-2xl bg-white border border-gray-200 p-4 space-y-5 overflow-y-auto max-h-[calc(100vh-10rem)]">
-          <section className="space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              {de ? "Logo & Kopfleiste" : "الشعار والترويسة"}
-            </h2>
-            <label className="block text-sm">
-              <span className="text-gray-600">
-                {de ? "Logo-Größe" : "حجم الشعار"} ({doc.chrome.logoScale.toFixed(2)}×)
-              </span>
-              <input
-                type="range"
-                min={0.5}
-                max={2.5}
-                step={0.05}
-                value={doc.chrome.logoScale}
-                onChange={(e) => patchChrome("logoScale", Number(e.target.value))}
-                className="w-full mt-1"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-gray-600">{de ? "Header-Hintergrund" : "خلفية الترويسة"}</span>
-              <div className="flex gap-2 mt-1">
-                <input
-                  type="color"
-                  value={doc.chrome.headerBg || "#fff7ed"}
-                  onChange={(e) => patchChrome("headerBg", e.target.value)}
-                  className="h-10 w-12 rounded border"
-                />
-                <input
-                  type="text"
-                  value={doc.chrome.headerBg}
-                  placeholder="#fff7ed oder leer"
-                  onChange={(e) => patchChrome("headerBg", e.target.value)}
-                  className="flex-1 min-h-10 px-2 rounded-lg border text-sm"
-                />
-              </div>
-            </label>
-            <label className="block text-sm">
-              <span className="text-gray-600">{de ? "Navbar-Farbe" : "لون الشريط"}</span>
-              <div className="flex gap-2 mt-1">
-                <input
-                  type="color"
-                  value={doc.chrome.navbarBg || "#fff7ed"}
-                  onChange={(e) => patchChrome("navbarBg", e.target.value)}
-                  className="h-10 w-12 rounded border"
-                />
-                <input
-                  type="text"
-                  value={doc.chrome.navbarBg}
-                  placeholder="leer = Standard"
-                  onChange={(e) => patchChrome("navbarBg", e.target.value)}
-                  className="flex-1 min-h-10 px-2 rounded-lg border text-sm"
-                />
-              </div>
-            </label>
-            <label className="block text-sm">
-              <span className="text-gray-600">{de ? "Seiten-Hintergrund" : "خلفية الصفحة"}</span>
-              <div className="flex gap-2 mt-1">
-                <input
-                  type="color"
-                  value={doc.chrome.pageBg || "#fffbeb"}
-                  onChange={(e) => patchChrome("pageBg", e.target.value)}
-                  className="h-10 w-12 rounded border"
-                />
-                <input
-                  type="text"
-                  value={doc.chrome.pageBg}
-                  placeholder="leer = Standard"
-                  onChange={(e) => patchChrome("pageBg", e.target.value)}
-                  className="flex-1 min-h-10 px-2 rounded-lg border text-sm"
-                />
-              </div>
-            </label>
-            <fieldset className="text-sm">
-              <legend className="text-gray-600 mb-1">
-                {de ? "Warenkorb-Position" : "موضع السلة"}
-              </legend>
-              <div className="flex gap-2">
+      <div className="flex flex-1 min-h-0">
+        {/* Controls panel */}
+        {panelOpen && (
+          <aside className="w-full max-w-[320px] shrink-0 border-e border-zinc-200 bg-white overflow-y-auto">
+            <div className="space-y-6 p-4 pb-10">
+              <section className="space-y-3">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  {de ? "Logo & Kopfleiste" : "الشعار والترويسة"}
+                </h2>
+                <label className="block text-xs">
+                  <span className="text-zinc-600">
+                    {de ? "Logo-Größe" : "حجم الشعار"}{" "}
+                    <span className="tabular-nums text-zinc-400">
+                      {doc.chrome.logoScale.toFixed(2)}×
+                    </span>
+                  </span>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={2.5}
+                    step={0.05}
+                    value={doc.chrome.logoScale}
+                    onChange={(e) =>
+                      patchChrome("logoScale", Number(e.target.value))
+                    }
+                    className="mt-2 w-full accent-zinc-900"
+                  />
+                </label>
                 {(
                   [
-                    ["end", de ? "Rechts / Ende" : "النهاية"],
-                    ["start", de ? "Links / Anfang" : "البداية"],
+                    ["headerBg", de ? "Header-Hintergrund" : "خلفية الترويسة"],
+                    ["navbarBg", de ? "Navbar-Farbe" : "لون الشريط"],
+                    ["pageBg", de ? "Seiten-Hintergrund" : "خلفية الصفحة"],
                   ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => patchChrome("cartPosition", value)}
-                    className={cn(
-                      "flex-1 min-h-10 rounded-xl border text-sm",
-                      doc.chrome.cartPosition === value
-                        ? "bg-gold/30 border-gold font-medium"
-                        : "hover:bg-gray-50"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          </section>
-
-          <section className="space-y-3 border-t pt-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              {de ? `Slider (${viewport})` : `السلايدر (${viewport})`}
-            </h2>
-            <label className="block text-sm">
-              <span className="text-gray-600">
-                {de ? "Höhe (px, 0 = auto)" : "الارتفاع"}: {slider.heightPx}
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={720}
-                step={8}
-                value={slider.heightPx}
-                onChange={(e) => patchSlider("heightPx", Number(e.target.value))}
-                className="w-full mt-1"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-gray-600">
-                {de ? "Abstand vertikal" : "الهامش العمودي"}: {slider.marginY}px
-              </span>
-              <input
-                type="range"
-                min={-40}
-                max={120}
-                step={2}
-                value={slider.marginY}
-                onChange={(e) => patchSlider("marginY", Number(e.target.value))}
-                className="w-full mt-1"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-gray-600">
-                {de ? "Vertikal verschieben" : "إزاحة عمودية"}: {slider.offsetY}px
-              </span>
-              <input
-                type="range"
-                min={-120}
-                max={120}
-                step={2}
-                value={slider.offsetY}
-                onChange={(e) => patchSlider("offsetY", Number(e.target.value))}
-                className="w-full mt-1"
-              />
-            </label>
-            <fieldset className="text-sm">
-              <legend className="text-gray-600 mb-1">
-                {de ? "Bildanpassung" : "ملاءمة الصورة"}
-              </legend>
-              <div className="flex gap-2">
-                {(["contain", "cover"] as const).map((fit) => (
-                  <button
-                    key={fit}
-                    type="button"
-                    onClick={() => patchSlider("objectFit", fit)}
-                    className={cn(
-                      "flex-1 min-h-10 rounded-xl border text-sm capitalize",
-                      slider.objectFit === fit
-                        ? "bg-gold/30 border-gold font-medium"
-                        : "hover:bg-gray-50"
-                    )}
-                  >
-                    {fit}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <label className="block text-sm">
-              <span className="text-gray-600">
-                {de ? "Bildposition" : "موضع الصورة"}
-              </span>
-              <select
-                value={slider.objectPosition}
-                onChange={(e) => patchSlider("objectPosition", e.target.value)}
-                className="w-full mt-1 min-h-10 px-2 rounded-lg border text-sm"
-              >
-                {[
-                  "center center",
-                  "center top",
-                  "center bottom",
-                  "left center",
-                  "right center",
-                  "50% 20%",
-                  "50% 80%",
-                ].map((pos) => (
-                  <option key={pos} value={pos}>
-                    {pos}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </section>
-
-          <section className="space-y-2 border-t pt-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
-              <History size={14} /> {de ? "Versionen / Rollback" : "الإصدارات"}
-            </h2>
-            {!bundle?.versions.length ? (
-              <p className="text-xs text-gray-400">
-                {de
-                  ? "Noch keine Releases. Nach dem ersten Veröffentlichen erscheinen Snapshots hier."
-                  : "لا إصدارات بعد."}
-              </p>
-            ) : (
-              <ul className="space-y-2 max-h-48 overflow-y-auto">
-                {bundle.versions.map((v) => (
-                  <li
-                    key={v.id}
-                    className="flex items-start justify-between gap-2 rounded-xl border px-3 py-2 text-xs"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{v.label}</p>
-                      <p className="text-gray-400">
-                        {new Date(v.publishedAt).toLocaleString(
-                          de ? "de-DE" : "ar"
-                        )}
-                      </p>
+                ).map(([key, label]) => (
+                  <label key={key} className="block text-xs">
+                    <span className="text-zinc-600">{label}</span>
+                    <div className="mt-1.5 flex gap-2">
+                      <input
+                        type="color"
+                        value={doc.chrome[key] || "#ffffff"}
+                        onChange={(e) => patchChrome(key, e.target.value)}
+                        className="h-9 w-10 cursor-pointer rounded-md border border-zinc-200 bg-white p-0.5"
+                      />
+                      <input
+                        type="text"
+                        value={doc.chrome[key]}
+                        placeholder={de ? "leer = Standard" : "فارغ = افتراضي"}
+                        onChange={(e) => patchChrome(key, e.target.value)}
+                        className="h-9 flex-1 rounded-md border border-zinc-200 px-2.5 text-xs outline-none focus:border-zinc-400"
+                      />
                     </div>
+                  </label>
+                ))}
+                <fieldset className="text-xs">
+                  <legend className="mb-1.5 text-zinc-600">
+                    {de ? "Warenkorb-Position" : "موضع السلة"}
+                  </legend>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(
+                      [
+                        ["end", de ? "Ende / Rechts" : "النهاية"],
+                        ["start", de ? "Anfang / Links" : "البداية"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => patchChrome("cartPosition", value)}
+                        className={cn(
+                          "h-9 rounded-md border text-xs font-medium transition-colors",
+                          doc.chrome.cartPosition === value
+                            ? "border-zinc-900 bg-zinc-900 text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              </section>
+
+              <section className="space-y-3 border-t border-zinc-100 pt-5">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  {de ? `Slider · ${viewport}` : `السلايدر · ${viewport}`}
+                </h2>
+                {(
+                  [
+                    ["heightPx", de ? "Höhe (0 = auto)" : "الارتفاع", 0, 720, 8],
+                    ["marginY", de ? "Abstand vertikal" : "الهامش", -40, 120, 2],
+                    ["offsetY", de ? "Verschieben" : "إزاحة", -120, 120, 2],
+                  ] as const
+                ).map(([key, label, min, max, step]) => (
+                  <label key={key} className="block text-xs">
+                    <span className="text-zinc-600">
+                      {label}:{" "}
+                      <span className="tabular-nums text-zinc-400">
+                        {slider[key]}
+                        {key === "heightPx" ? "px" : "px"}
+                      </span>
+                    </span>
+                    <input
+                      type="range"
+                      min={min}
+                      max={max}
+                      step={step}
+                      value={slider[key]}
+                      onChange={(e) =>
+                        patchSlider(key, Number(e.target.value))
+                      }
+                      className="mt-2 w-full accent-zinc-900"
+                    />
+                  </label>
+                ))}
+                <fieldset className="text-xs">
+                  <legend className="mb-1.5 text-zinc-600">
+                    {de ? "Bildanpassung" : "ملاءمة الصورة"}
+                  </legend>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(["contain", "cover"] as const).map((fit) => (
+                      <button
+                        key={fit}
+                        type="button"
+                        onClick={() => patchSlider("objectFit", fit)}
+                        className={cn(
+                          "h-9 rounded-md border text-xs font-medium capitalize",
+                          slider.objectFit === fit
+                            ? "border-zinc-900 bg-zinc-900 text-white"
+                            : "border-zinc-200 bg-white hover:bg-zinc-50"
+                        )}
+                      >
+                        {fit}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <label className="block text-xs">
+                  <span className="text-zinc-600">
+                    {de ? "Bildposition" : "موضع الصورة"}
+                  </span>
+                  <select
+                    value={slider.objectPosition}
+                    onChange={(e) =>
+                      patchSlider("objectPosition", e.target.value)
+                    }
+                    className="mt-1.5 h-9 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs outline-none focus:border-zinc-400"
+                  >
+                    {[
+                      "center center",
+                      "center top",
+                      "center bottom",
+                      "left center",
+                      "right center",
+                      "50% 20%",
+                      "50% 80%",
+                    ].map((pos) => (
+                      <option key={pos} value={pos}>
+                        {pos}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </section>
+
+              <section className="space-y-2 border-t border-zinc-100 pt-5">
+                <h2 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  <History size={12} /> {de ? "Versionen" : "الإصدارات"}
+                </h2>
+                {!bundle?.versions.length ? (
+                  <p className="text-[11px] leading-relaxed text-zinc-400">
+                    {de
+                      ? "Nach dem ersten Veröffentlichen erscheinen hier Snapshots zum Rollback."
+                      : "بعد أول نشر تظهر هنا نسخ للاستعادة."}
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5 max-h-52 overflow-y-auto">
+                    {bundle.versions.map((v) => (
+                      <li
+                        key={v.id}
+                        className="flex items-start justify-between gap-2 rounded-lg border border-zinc-100 bg-zinc-50/80 px-2.5 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-medium">{v.label}</p>
+                          <p className="text-[10px] text-zinc-400">
+                            {new Date(v.publishedAt).toLocaleString(
+                              de ? "de-DE" : "ar"
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => rollback(v.id)}
+                          className="shrink-0 h-8 rounded-md border border-zinc-200 bg-white px-2 text-[10px] font-medium hover:bg-white"
+                        >
+                          {de ? "Zurück" : "استعادة"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          </aside>
+        )}
+
+        {/* Preview canvas */}
+        <section className="flex min-w-0 flex-1 flex-col">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-white px-3 py-2">
+            <div className="inline-flex rounded-lg border border-zinc-200 p-0.5 bg-zinc-50">
+              {(
+                [
+                  ["desktop", Monitor, de ? "Desktop" : "سطح المكتب"],
+                  ["tablet", Tablet, de ? "Tablet" : "لوحة"],
+                  ["mobile", Smartphone, de ? "Mobile" : "جوال"],
+                ] as const
+              ).map(([key, Icon, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setViewport(key)}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
+                    viewport === key
+                      ? "bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200"
+                      : "text-zinc-500 hover:text-zinc-800"
+                  )}
+                >
+                  <Icon size={14} />
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] tabular-nums text-zinc-400">
+                {viewport === "desktop" ? "Fluid" : `${frameWidth}px`}
+              </span>
+              <button
+                type="button"
+                onClick={reloadPreview}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 text-xs text-zinc-600 hover:bg-zinc-50"
+              >
+                <RefreshCw size={13} />
+                {de ? "Neu laden" : "إعادة"}
+              </button>
+              <a
+                href={PREVIEW_PATH}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 text-xs text-zinc-600 hover:bg-zinc-50"
+              >
+                <ExternalLink size={13} />
+                {de ? "Neues Tab" : "تبويب"}
+              </a>
+            </div>
+          </div>
+
+          <div className="relative flex flex-1 items-stretch justify-center overflow-auto bg-[radial-gradient(#e4e4e7_1px,transparent_1px)] [background-size:16px_16px] p-4 sm:p-6">
+            {(previewLoading || previewError) && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                {previewLoading && !previewError && (
+                  <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs text-zinc-600 shadow-md ring-1 ring-zinc-200">
+                    <Loader2 size={14} className="animate-spin" />
+                    {de ? "Vorschau wird geladen…" : "جاري تحميل المعاينة…"}
+                  </div>
+                )}
+                {previewError && (
+                  <div className="pointer-events-auto mx-4 max-w-sm rounded-xl bg-white p-4 text-center shadow-lg ring-1 ring-zinc-200">
+                    <AlertTriangle
+                      className="mx-auto mb-2 text-amber-500"
+                      size={22}
+                    />
+                    <p className="text-sm font-medium text-zinc-800">
+                      {de
+                        ? "Vorschau konnte nicht geladen werden"
+                        : "تعذّر تحميل المعاينة"}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {de
+                        ? "Bitte neu laden. Falls der Fehler bleibt, Seite einmal hart refreshen."
+                        : "أعد التحميل أو حدّث الصفحة."}
+                    </p>
                     <button
                       type="button"
-                      disabled={busy}
-                      onClick={() => rollback(v.id)}
-                      className="shrink-0 min-h-9 px-2 rounded-lg border hover:bg-gray-50"
+                      onClick={reloadPreview}
+                      className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg bg-zinc-900 px-3 text-xs font-medium text-white"
                     >
-                      {de ? "Wiederherstellen" : "استعادة"}
+                      <RefreshCw size={13} />
+                      {de ? "Erneut versuchen" : "إعادة المحاولة"}
                     </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </aside>
-
-        <section className="rounded-2xl bg-zinc-100 border border-gray-200 flex flex-col min-h-[560px] overflow-hidden">
-          <div className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-b">
-            {(
-              [
-                ["desktop", Monitor, de ? "Desktop" : "سطح المكتب"],
-                ["tablet", Tablet, de ? "Tablet" : "لوحة"],
-                ["mobile", Smartphone, de ? "Mobile" : "جوال"],
-              ] as const
-            ).map(([key, Icon, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setViewport(key)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl text-sm border",
-                  viewport === key
-                    ? "bg-luxury-ink text-white border-luxury-ink"
-                    : "bg-white hover:bg-gray-50"
+                  </div>
                 )}
-              >
-                <Icon size={16} /> {label}
-              </button>
-            ))}
-            <span className="text-[11px] text-gray-400 ms-2">
-              {frameWidth}px · Instant Preview
-            </span>
-          </div>
-          <div className="flex-1 flex items-start justify-center p-4 overflow-auto">
+              </div>
+            )}
+
             <div
-              className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-300 transition-[width] duration-300 ease-out"
+              className="relative mx-auto overflow-hidden rounded-xl border border-zinc-300 bg-white shadow-xl transition-[width,max-width] duration-300 ease-out"
               style={{
                 width: viewport === "desktop" ? "100%" : frameWidth,
                 maxWidth: "100%",
-                height: "min(780px, calc(100vh - 12rem))",
+                height: "min(820px, calc(100vh - 9rem))",
               }}
             >
               <iframe
+                key={iframeKey}
                 ref={iframeRef}
-                title="Layout-Vorschau"
-                src="/?_preview=1&_builder=1"
-                className="w-full h-full border-0 bg-jmle-cream"
+                title="Shop-Vorschau"
+                src={previewSrc}
+                className="h-full w-full border-0 bg-[#fffbeb]"
+                referrerPolicy="same-origin"
                 onLoad={() => {
+                  setPreviewLoading(false);
+                  setPreviewError(false);
                   setPreviewReady(true);
-                  pushPreview(doc, viewport);
+                  // postMessage nach kurzem Delay — Bridge muss registriert sein
+                  window.setTimeout(() => {
+                    pushPreview(docRef.current, viewport);
+                  }, 120);
+                }}
+                onError={() => {
+                  setPreviewError(true);
+                  setPreviewLoading(false);
                 }}
               />
             </div>

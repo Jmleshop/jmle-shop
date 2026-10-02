@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import type { Category } from "@/types";
 import { useShopLocale } from "@/components/ShopLocale";
 import { categoryTitle } from "@/lib/shop-i18n";
 import { cn } from "@/lib/cn";
+import { isAllCategoryId, isSaleCategoryId } from "@/lib/category-special";
 
 function CategoryBranch({
   category,
@@ -23,6 +24,24 @@ function CategoryBranch({
   const [open, setOpen] = useState(false);
   const label = categoryTitle(lang, category);
 
+  // Unterkategorien: nur Link (kein Auto-Expand)
+  if (!hasChildren) {
+    return (
+      <Link
+        href={`/categories/${category.id}`}
+        onClick={onNavigate}
+        className={cn(
+          "block px-3 py-3 min-h-11 text-sm font-ui font-medium text-luxury-charcoal",
+          "hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors",
+          depth > 0 && "ms-3 border-s border-orange-100/80 ps-3"
+        )}
+      >
+        {label}
+      </Link>
+    );
+  }
+
+  // Hauptkategorie mit Kindern: Klick klappt auf — Navigation separat
   return (
     <div className="w-full">
       <div
@@ -31,36 +50,37 @@ function CategoryBranch({
           depth > 0 && "ms-3 border-s border-orange-100/80 ps-2"
         )}
       >
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            "flex-1 flex items-center justify-between gap-2 px-3 py-3 min-h-11 text-start",
+            "text-sm font-ui font-medium text-luxury-charcoal",
+            "hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
+          )}
+          aria-expanded={open}
+        >
+          <span>{label}</span>
+          <ChevronDown
+            size={18}
+            className={cn(
+              "shrink-0 transition-transform duration-200",
+              open && "rotate-180"
+            )}
+            aria-hidden
+          />
+        </button>
         <Link
           href={`/categories/${category.id}`}
           onClick={onNavigate}
-          className={cn(
-            "flex-1 px-3 py-3 min-h-11 text-sm font-ui font-medium text-luxury-charcoal",
-            "hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
-          )}
+          className="shrink-0 px-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl text-gray-400 hover:bg-brand-orange/15 hover:text-brand-orange"
+          aria-label={label}
+          title={label}
         >
-          {label}
+          <ExternalLink size={16} aria-hidden />
         </Link>
-        {hasChildren && (
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="shrink-0 px-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl text-luxury-charcoal hover:bg-brand-orange/15 hover:text-brand-orange"
-            aria-expanded={open}
-            aria-label={open ? "Zuklappen" : "Aufklappen"}
-          >
-            <ChevronDown
-              size={18}
-              className={cn(
-                "transition-transform duration-200",
-                open && "rotate-180"
-              )}
-              aria-hidden
-            />
-          </button>
-        )}
       </div>
-      {hasChildren && open && (
+      {open && (
         <div className="mt-0.5 space-y-0.5" role="group">
           {children.map((child) => (
             <CategoryBranch
@@ -76,7 +96,7 @@ function CategoryBranch({
   );
 }
 
-/** Ausklappbarer Kategorien-Baum für Burger-Menü. */
+/** Ausklappbarer Kategorien-Baum — nur echte DB-Hauptkategorien. */
 export default function CategoryNavTree({
   categories,
   onNavigate,
@@ -86,11 +106,18 @@ export default function CategoryNavTree({
 }) {
   const { t } = useShopLocale();
   const [open, setOpen] = useState(false);
-  /** Server liefert bereits den Wurzelbaum inkl. children. */
+
   const roots = useMemo(() => {
-    const hasNested = categories.some((c) => (c.children?.length ?? 0) > 0);
-    if (hasNested || categories.every((c) => !c.parentId)) return categories;
-    return categories.filter((c) => !c.parentId);
+    const cleaned = categories.filter(
+      (c) => !isAllCategoryId(c.id) && !isSaleCategoryId(c.id)
+    );
+    // Server liefert i. d. R. bereits den Wurzelbaum
+    const nested = cleaned.some((c) => (c.children?.length ?? 0) > 0);
+    if (nested) {
+      return cleaned.filter((c) => !c.parentId);
+    }
+    const tops = cleaned.filter((c) => !c.parentId);
+    return tops.length ? tops : cleaned;
   }, [categories]);
 
   if (!roots.length) {
@@ -129,13 +156,6 @@ export default function CategoryNavTree({
       </button>
       {open && (
         <div className="mt-1 space-y-0.5 ps-1" role="tree">
-          <Link
-            href="/categories"
-            onClick={onNavigate}
-            className="block px-3 py-2.5 min-h-10 text-xs font-ui text-gray-500 hover:text-brand-orange rounded-lg"
-          >
-            {t("allProducts")}
-          </Link>
           {roots.map((cat) => (
             <CategoryBranch
               key={cat.id}
