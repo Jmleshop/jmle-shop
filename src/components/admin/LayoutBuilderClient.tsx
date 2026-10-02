@@ -212,12 +212,18 @@ export default function LayoutBuilderClient() {
   // Einmal hart neu laden, damit Middleware ohne COEP greift.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!window.crossOriginIsolated) return;
     const key = "jmle-builder-coep-reload";
+    if (!window.crossOriginIsolated) {
+      sessionStorage.removeItem(key);
+      return;
+    }
     if (sessionStorage.getItem(key) === "1") return;
     sessionStorage.setItem(key, "1");
     window.location.reload();
   }, []);
+
+  const previewReadyRef = useRef(false);
+  previewReadyRef.current = previewReady;
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -248,15 +254,11 @@ export default function LayoutBuilderClient() {
       }
     }, 400);
     const failTimer = window.setTimeout(() => {
-      setPreviewReady((ready) => {
-        if (!ready) {
-          setPreviewError(true);
-          setPreviewLoading(false);
-        }
-        return ready;
-      });
+      if (!previewReadyRef.current) {
+        setPreviewError(true);
+        setPreviewLoading(false);
+      }
     }, PREVIEW_HANDSHAKE_MS);
-    // sofort erster Ping (iframe kann schon geladen sein)
     pingPreview();
     return () => {
       window.clearInterval(pingTimer);
