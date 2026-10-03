@@ -46,4 +46,23 @@ describe("layout-builder", () => {
     assert.equal(versions.length, 1);
     assert.equal(versions[0].id, "v1");
   });
+
+  it("emits banner height/aspect and logo scale CSS vars", async () => {
+    const { layoutCssVars } = await import("./layout-builder");
+    const doc = defaultLayoutDocument();
+    doc.chrome.logoScale = 1.95;
+    doc.slider.desktop.heightPx = 320;
+    doc.slider.desktop.marginY = -8;
+    doc.slider.desktop.objectFit = "cover";
+    const vars = layoutCssVars(doc, "desktop");
+    assert.equal(vars["--layout-logo-scale"], "1.95");
+    assert.equal(vars["--layout-banner-height"], "320px");
+    assert.equal(vars["--layout-banner-aspect"], "auto");
+    assert.equal(vars["--layout-banner-margin-y"], "-8px");
+    assert.equal(vars["--layout-banner-object-fit"], "cover");
+
+    const auto = layoutCssVars(defaultLayoutDocument(), "desktop");
+    assert.equal(auto["--layout-banner-height"], "auto");
+    assert.equal(auto["--layout-banner-aspect"], "2.4 / 1");
+  });
 });

@@ -37,7 +37,7 @@ export function BannerSection({
 }) {
   if (!slides.length) return null;
   return (
-    <div className="w-full">
+    <div className="w-full" data-home-section="banner">
       <OptionalSectionTitle title={title} />
       <CompactBannerSlider slides={slides} single={single} />
     </div>
@@ -83,7 +83,7 @@ export function HomepageSectionsRenderer({
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <>
+    <div className="home-sections-stack w-full">
       {ordered.map((section) => {
         const title = sectionHeading(section, lang);
         if (section.type === "slider" || section.type === "single") {
@@ -130,6 +130,6 @@ export function HomepageSectionsRenderer({
         }
         return null;
       })}
-    </>
+    </div>
   );
 }

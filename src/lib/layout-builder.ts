@@ -179,9 +179,13 @@ export function layoutCssVars(
 ): Record<string, string> {
   const chrome = doc.chrome;
   const slider = doc.slider[viewport] ?? doc.slider.desktop;
+  const hasFixedHeight = slider.heightPx > 0;
   const vars: Record<string, string> = {
     "--layout-logo-scale": String(chrome.logoScale),
-    "--layout-banner-min-height": slider.heightPx > 0 ? `${slider.heightPx}px` : "0px",
+    // Feste Höhe ersetzt Aspect-Ratio; 0 = auto über aspect 2.4/1
+    "--layout-banner-height": hasFixedHeight ? `${slider.heightPx}px` : "auto",
+    "--layout-banner-min-height": hasFixedHeight ? `${slider.heightPx}px` : "0px",
+    "--layout-banner-aspect": hasFixedHeight ? "auto" : "2.4 / 1",
     "--layout-banner-margin-y": `${slider.marginY}px`,
     "--layout-banner-offset-y": `${slider.offsetY}px`,
     "--layout-banner-object-fit": slider.objectFit,

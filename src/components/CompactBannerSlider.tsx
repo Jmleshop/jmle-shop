@@ -19,11 +19,11 @@ interface CompactBannerSliderProps {
 }
 
 /**
- * Responsives Seitenverhältnis; Page-Builder kann Höhe/Abstand/Fit
- * über CSS-Variablen (--layout-banner-*) steuern.
+ * Banner-Rahmen: Aspect/Höhe/Abstand kommen aus CSS-Variablen
+ * (--layout-banner-*), gesteuert vom Page-Builder.
  */
 export const BANNER_FRAME_CLASS =
-  "relative w-full aspect-[2.4/1] min-h-0 bg-jmle-cream layout-banner-frame";
+  "relative w-full min-h-0 overflow-hidden bg-jmle-cream layout-banner-frame";
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;
@@ -54,7 +54,7 @@ function BannerSlideContent({
   const media =
     mediaType === "video" && slide.videoUrl ? (
       <video
-        className="h-auto w-full object-contain object-center layout-banner-media"
+        className="absolute inset-0 h-full w-full layout-banner-media"
         src={slide.videoUrl}
         poster={slide.image}
         autoPlay
@@ -67,11 +67,10 @@ function BannerSlideContent({
       <Image
         src={slide.image}
         alt={title || slideTitle(lang, slide) || "Banner"}
-        width={1920}
-        height={800}
+        fill
         quality={SHOP_IMAGE_QUALITY}
         priority={priority}
-        className="h-auto w-full object-contain object-center layout-banner-media"
+        className="layout-banner-media"
         sizes="100vw"
         draggable={false}
       />
@@ -81,7 +80,7 @@ function BannerSlideContent({
     <>
       {media}
       {showCaption && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent p-3 sm:p-4 md:p-5 text-start">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/55 via-black/10 to-transparent p-3 sm:p-4 md:p-5 text-start">
           {title ? (
             <h2 className="font-display text-base sm:text-xl md:text-2xl text-white drop-shadow-sm text-balance">
               {title}
@@ -103,7 +102,7 @@ function BannerSlideContent({
     return (
       <Link
         href={href}
-        className="relative block w-full"
+        className="absolute inset-0 block"
         draggable={false}
         {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       >
@@ -112,7 +111,7 @@ function BannerSlideContent({
     );
   }
 
-  return <div className="relative w-full">{inner}</div>;
+  return <div className="absolute inset-0">{inner}</div>;
 }
 
 export default function CompactBannerSlider({
@@ -155,7 +154,7 @@ export default function CompactBannerSlider({
   return (
     <section
       className={cn(
-        "w-full overflow-hidden select-none touch-pan-y",
+        "w-full select-none touch-pan-y",
         BANNER_FRAME_CLASS,
         className
       )}
@@ -201,7 +200,7 @@ export default function CompactBannerSlider({
         <div
           key={slide.id}
           className={cn(
-            "absolute inset-0 flex items-center justify-center transition-opacity duration-700 ease-boutique",
+            "absolute inset-0 transition-opacity duration-700 ease-boutique",
             index === current || single
               ? "opacity-100 z-[1]"
               : "opacity-0 z-0 pointer-events-none"

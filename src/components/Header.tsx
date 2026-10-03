@@ -225,8 +225,8 @@ export default function Header({
         )}
         style={headerStyle}
       >
-        {/* Mobile */}
-        <div className="lg:hidden max-w-7xl mx-auto px-3 h-20 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        {/* Mobile — Höhe folgt --layout-logo-scale */}
+        <div className="lg:hidden max-w-7xl mx-auto px-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 layout-header-row-mobile">
           {mobileStart}
           <BrandMark
             logoUrl={logoUrl}
@@ -237,9 +237,9 @@ export default function Header({
           {mobileEnd}
         </div>
 
-        {/* Desktop — Burger immer sichtbar */}
+        {/* Desktop — Burger immer sichtbar; Höhe folgt --layout-logo-scale */}
         <div
-          className="hidden lg:grid max-w-7xl mx-auto px-4 h-[108px] grid-cols-[1fr_auto_1fr] items-center gap-2 layout-chrome-navbar"
+          className="hidden lg:grid max-w-7xl mx-auto px-4 grid-cols-[1fr_auto_1fr] items-center gap-2 layout-chrome-navbar layout-header-row-desktop"
           style={
             layout.chrome.navbarBg
               ? { backgroundColor: "var(--layout-navbar-bg)" }

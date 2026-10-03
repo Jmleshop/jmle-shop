@@ -65,7 +65,12 @@ export default function BrandLogoTicker({
 
   return (
     <section
-      className={cn(heading ? "pt-3 sm:pt-4 pb-2 sm:pb-3" : "py-2 sm:py-3", className)}
+      data-home-section="brands"
+      className={cn(
+        // Ohne Titel: minimaler Abstand — Banner können nahtlos anschließen
+        heading ? "pt-3 sm:pt-4 pb-2 sm:pb-3" : "py-0",
+        className
+      )}
       aria-label={heading || t("brandPartners")}
     >
       {heading ? (

@@ -5,7 +5,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useTransition,
 } from "react";
 import {
   Monitor,
@@ -72,7 +71,6 @@ export default function LayoutBuilderClient() {
   const [panelOpen, setPanelOpen] = useState(true);
   const [history, setHistory] = useState<LayoutDocument[]>([]);
   const [future, setFuture] = useState<LayoutDocument[]>([]);
-  const [, startTransition] = useTransition();
   const skipHistory = useRef(false);
   const docRef = useRef(doc);
   docRef.current = doc;
@@ -125,7 +123,8 @@ export default function LayoutBuilderClient() {
           setFuture([]);
         }
         skipHistory.current = false;
-        startTransition(() => pushPreview(next, viewport));
+        // Sofort an die Vorschau — Regler müssen reaktiv greifen
+        pushPreview(next, viewport);
         return next;
       });
     },
@@ -139,7 +138,7 @@ export default function LayoutBuilderClient() {
       setDoc((current) => {
         setFuture((f) => [cloneDoc(current), ...f].slice(0, HISTORY_LIMIT));
         skipHistory.current = true;
-        startTransition(() => pushPreview(prev, viewport));
+        pushPreview(prev, viewport);
         return cloneDoc(prev);
       });
       return h.slice(0, -1);
@@ -153,7 +152,7 @@ export default function LayoutBuilderClient() {
       setDoc((current) => {
         setHistory((h) => [...h, cloneDoc(current)].slice(-HISTORY_LIMIT));
         skipHistory.current = true;
-        startTransition(() => pushPreview(next, viewport));
+        pushPreview(next, viewport);
         return cloneDoc(next);
       });
       return rest;
