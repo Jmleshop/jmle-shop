@@ -33,11 +33,14 @@ export default function HeaderSearch({
   open,
   onClose,
   persistent = false,
+  /** Kompakt in der Header-Zeile (Desktop/Mobile) */
+  inline = false,
 }: {
   open: boolean;
   onClose: () => void;
-  /** Immer sichtbar (Tablet/Desktop-Leiste) — kein Auto-Focus */
+  /** Immer sichtbar — kein Auto-Focus */
   persistent?: boolean;
+  inline?: boolean;
 }) {
   const { lang, t } = useShopLocale();
   const [query, setQuery] = useState("");
@@ -145,24 +148,33 @@ export default function HeaderSearch({
   return (
     <div
       className={cn(
-        "px-4 relative z-[55]",
-        persistent ? "py-2.5 max-w-3xl mx-auto w-full" : "pb-3 animate-fade-up"
+        "relative z-[55] w-full",
+        inline
+          ? "min-w-0 px-0 py-0"
+          : persistent
+            ? "px-4 py-2.5 max-w-3xl mx-auto"
+            : "px-4 pb-3 animate-fade-up"
       )}
     >
       <form
         onSubmit={handleSubmit}
-        className={cn("relative", persistent ? "w-full" : "max-w-lg mx-auto")}
+        className={cn("relative w-full", !inline && !persistent && "max-w-lg mx-auto")}
         role="search"
       >
         <label htmlFor={inputId} className="sr-only">
           {t("searchLabel")}
         </label>
         <div className="relative">
-          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-gold/80">
+          <span
+            className={cn(
+              "pointer-events-none absolute inset-y-0 start-2.5 flex items-center text-gold/80",
+              inline ? "start-2.5" : "start-3"
+            )}
+          >
             {loading ? (
-              <Loader2 size={18} className="animate-spin" aria-hidden />
+              <Loader2 size={inline ? 16 : 18} className="animate-spin" aria-hidden />
             ) : (
-              <Search size={18} aria-hidden />
+              <Search size={inline ? 16 : 18} aria-hidden />
             )}
           </span>
           <input
@@ -182,7 +194,12 @@ export default function HeaderSearch({
             aria-activedescendant={
               activeIndex >= 0 ? `${listId}-opt-${activeIndex}` : undefined
             }
-            className="w-full min-h-12 ps-10 pe-4 py-2.5 text-sm bg-white border border-amber-200/50 rounded-full focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20"
+            className={cn(
+              "w-full bg-white border border-amber-200/60 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20",
+              inline
+                ? "min-h-9 sm:min-h-10 ps-9 pe-3 py-1.5 text-sm rounded-full shadow-sm"
+                : "min-h-12 ps-10 pe-4 py-2.5 text-sm rounded-full"
+            )}
           />
         </div>
 
@@ -190,15 +207,17 @@ export default function HeaderSearch({
           <ul
             id={listId}
             role="listbox"
-            className="absolute inset-x-0 top-full mt-2 max-h-80 overflow-y-auto rounded-2xl border border-amber-200/50 bg-white shadow-boutique z-[60]"
+            className={cn(
+              "absolute inset-x-0 top-full mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-amber-200/50 bg-white shadow-boutique z-[60]",
+              inline && "min-w-[min(100%,22rem)] sm:min-w-[20rem]"
+            )}
           >
             {!loading && searched && items.length === 0 && (
-              <li className="px-4 py-4 text-sm text-gray-500 font-ui text-center">
+              <li className="px-4 py-3 text-sm text-gray-500 font-ui text-center">
                 {t("searchNoHits", { query: qTrim })}
               </li>
             )}
             {items.map((item, index) => {
-              // API liefert bereits den Verkaufspreis in `price`
               const onSale = item.discountPercent > 0;
               const listPrice = onSale
                 ? item.price / (1 - item.discountPercent / 100)
@@ -217,13 +236,13 @@ export default function HeaderSearch({
                     }}
                     onMouseEnter={() => setActiveIndex(index)}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 min-h-14 transition-colors",
+                      "flex items-center gap-3 px-3 py-2 min-h-12 transition-colors",
                       activeIndex === index
                         ? "bg-jmle-warm"
                         : "hover:bg-jmle-warm"
                     )}
                   >
-                    <span className="relative w-11 h-11 shrink-0 rounded-lg overflow-hidden bg-jmle-warm">
+                    <span className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-jmle-warm">
                       <Image
                         src={originalImageSrc(item.image)}
                         alt=""
@@ -231,7 +250,7 @@ export default function HeaderSearch({
                         unoptimized
                         quality={SHOP_IMAGE_QUALITY}
                         className="object-contain"
-                        sizes="44px"
+                        sizes="40px"
                       />
                     </span>
                     <span className="min-w-0 flex-1 text-start">
@@ -263,7 +282,7 @@ export default function HeaderSearch({
               <li className="border-t border-amber-100">
                 <button
                   type="submit"
-                  className="w-full text-center py-3 text-sm font-ui text-gold hover:bg-jmle-warm min-h-12"
+                  className="w-full text-center py-2.5 text-sm font-ui text-gold hover:bg-jmle-warm min-h-11"
                 >
                   {t("searchViewAll", { query: qTrim })}
                 </button>

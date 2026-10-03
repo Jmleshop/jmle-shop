@@ -173,30 +173,31 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: calc(3.5rem * var(--layout-logo-scale, 1));
+  /* Kompaktere Default-Höhe für integrierte Header-Suche */
+  height: calc(2.5rem * var(--layout-logo-scale, 1));
   width: auto;
-  max-width: min(16rem, 72vw);
+  max-width: min(9rem, 42vw);
   overflow: visible;
   transform-origin: center center;
   transition: height 120ms ease-out;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: calc(5rem * var(--layout-logo-scale, 1));
-    max-width: 22rem;
+    height: calc(3rem * var(--layout-logo-scale, 1));
+    max-width: 11rem;
   }
 }
 
-/* Header-Zeilen wachsen mit Logo-Skalierung — kein Clipping bei >1× */
+/* Header-Zeilen: kompakt für E-Commerce-Leiste, Logo-Skalierung bleibt möglich */
 .layout-header-row-mobile {
-  min-height: max(5rem, calc(3.5rem * var(--layout-logo-scale, 1) + 0.75rem));
-  height: auto;
-  padding-block: 0.25rem;
-}
-.layout-header-row-desktop {
-  min-height: max(6.75rem, calc(5rem * var(--layout-logo-scale, 1) + 1rem));
+  min-height: max(3.25rem, calc(2.75rem * var(--layout-logo-scale, 1) + 0.5rem));
   height: auto;
   padding-block: 0.35rem;
+}
+.layout-header-row-desktop {
+  min-height: max(3.75rem, calc(3.25rem * var(--layout-logo-scale, 1) + 0.5rem));
+  height: auto;
+  padding-block: 0.5rem;
 }
 
 /* Page-Builder Banner- & Chrome-Steuerung — echte Höhe/Abstand/Fit */
@@ -259,13 +260,13 @@
   image-rendering: auto;
 }
 .brand-mark-text {
-  font-size: calc(2.25rem * var(--layout-logo-scale, 1)) !important;
+  font-size: calc(1.65rem * var(--layout-logo-scale, 1)) !important;
   line-height: 1 !important;
   letter-spacing: 0.08em;
 }
 @media (min-width: 1024px) {
   .brand-mark-text {
-    font-size: calc(3rem * var(--layout-logo-scale, 1)) !important;
+    font-size: calc(1.85rem * var(--layout-logo-scale, 1)) !important;
   }
 }
 
