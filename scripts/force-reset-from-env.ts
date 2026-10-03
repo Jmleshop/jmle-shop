@@ -1,17 +1,20 @@
 /**
- * Marken-Reset direkt aus .env.local — ohne MCP/Plugin-Auth.
+ * Marken-Reset aus Runtime-Env — ohne MCP/Plugin-Auth.
  *
- * Liest (in dieser Reihenfolge):
- *   SUPABASE_URL | NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
+ * Credentials (Standard):
+ *   NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+ * Optional:
+ *   PRODUCTION_SUPABASE_* / SUPABASE_URL
  *
  * Usage:
+ *   npm run brand-reset
  *   node --import tsx scripts/force-reset-from-env.ts
  */
 import { createClient } from "@supabase/supabase-js";
 import { existsSync, readFileSync } from "fs";
 import { resetAndImportBrands } from "../src/lib/brand-reset";
 import { brandCatalogCount } from "../src/lib/brand-catalog";
+import { resolveRuntimeSupabaseTarget } from "../src/lib/supabase-target";
 
 function loadEnvLocal() {
   for (const file of [".env.local", ".env"]) {
@@ -28,7 +31,6 @@ function loadEnvLocal() {
       ) {
         v = v.slice(1, -1);
       }
-      // .env.local hat Vorrang für dieses Skript
       process.env[k] = v;
     }
   }
@@ -37,32 +39,35 @@ function loadEnvLocal() {
 async function main() {
   loadEnvLocal();
 
-  const url = (
-    process.env.SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    ""
-  ).trim();
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  const target = resolveRuntimeSupabaseTarget();
+  const host = new URL(target.url).hostname;
 
-  if (!url || !key) {
-    throw new Error(
-      "SUPABASE_URL (oder NEXT_PUBLIC_SUPABASE_URL) und SUPABASE_SERVICE_ROLE_KEY fehlen in .env.local"
-    );
-  }
-
-  const host = new URL(url).hostname;
-  console.log(`▶ Force-reset from .env.local → ${host}`);
+  console.log(`▶ Brand reset → ${host}`);
+  console.log(`▶ Credentials: ${target.hint}`);
   console.log(`▶ Expected brands: ${brandCatalogCount()}`);
 
-  const supabase = createClient(url, key, {
+  const supabase = createClient(target.url, target.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
   const result = await resetAndImportBrands(supabase, {
-    targetLabel: `env.local:${host}`,
+    targetLabel: `env:${host}`,
   });
 
-  console.log(JSON.stringify({ ok: true, host, expectedBrands: brandCatalogCount(), ...result }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        host,
+        label: target.label,
+        hint: target.hint,
+        expectedBrands: brandCatalogCount(),
+        ...result,
+      },
+      null,
+      2
+    )
+  );
   console.log("✓ Done");
 }
 

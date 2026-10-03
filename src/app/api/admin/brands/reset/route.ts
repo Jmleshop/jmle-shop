@@ -4,10 +4,10 @@ import { createClient } from "@supabase/supabase-js";
 import {
   isAuthError,
   requireAdmin,
-  staffDataClient,
 } from "@/lib/admin-server";
 import { resetAndImportBrands } from "@/lib/brand-reset";
-import { resolveSupabaseTarget } from "@/lib/supabase-target";
+import { resolveRuntimeSupabaseTarget } from "@/lib/supabase-target";
+import { brandCatalogCount } from "@/lib/brand-catalog";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -38,11 +38,8 @@ function tokenAuthorized(request: Request): boolean {
 }
 
 /**
- * Marken-Reset auf der DB dieses Deployments (auf Vercel = Production).
- *
- * Auth:
- * - Admin-Session (requireAdmin), oder
- * - Header `x-brand-reset-token` / `Authorization: Bearer …` = BRAND_RESET_TOKEN|CRON_SECRET
+ * Marken-Reset auf der Runtime-DB dieses Deployments.
+ * Standard-Credentials: NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
  */
 export async function POST(request: Request) {
   const byToken = tokenAuthorized(request);
@@ -54,66 +51,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    let target;
-    try {
-      target = resolveSupabaseTarget({ production: true });
-    } catch (e) {
-      // Fallback: Admin-Session mit Staff-Client, aber nur wenn Runtime nicht localhost ist
-      const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
-      let host = "";
-      try {
-        host = new URL(url).hostname;
-      } catch {
-        host = "";
-      }
-      if (host === "127.0.0.1" || host === "localhost" || !host) {
-        return NextResponse.json(
-          {
-            error:
-              e instanceof Error
-                ? e.message
-                : "Keine Produktions-Supabase-URL (localhost wird abgelehnt).",
-          },
-          { status: 400 }
-        );
-      }
-      if (!byToken) {
-        const auth = await requireAdmin();
-        if (isAuthError(auth)) {
-          return NextResponse.json(
-            { error: auth.error },
-            { status: auth.status }
-          );
-        }
-        const staff = staffDataClient(auth.supabase);
-        const result = await resetAndImportBrands(staff, {
-          targetLabel: `runtime:${host}`,
-        });
-        bust();
-        return NextResponse.json({ ok: true, host, ...result });
-      }
-      return NextResponse.json(
-        {
-          error:
-            e instanceof Error
-              ? e.message
-              : "Keine Produktions-Credentials für Token-Reset.",
-        },
-        { status: 400 }
-      );
-    }
-
+    const target = resolveRuntimeSupabaseTarget();
     const host = new URL(target.url).hostname;
-    if (host === "127.0.0.1" || host === "localhost") {
-      return NextResponse.json(
-        {
-          error:
-            "Reset abgelehnt: Runtime zeigt auf localhost. Bitte gegen Production-Deploy ausführen.",
-        },
-        { status: 400 }
-      );
-    }
-
     const client = createClient(target.url, target.serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -122,7 +61,14 @@ export async function POST(request: Request) {
       targetLabel: `runtime:${host}`,
     });
     bust();
-    return NextResponse.json({ ok: true, host, ...result });
+    return NextResponse.json({
+      ok: true,
+      host,
+      label: target.label,
+      hint: target.hint,
+      expectedBrands: brandCatalogCount(),
+      ...result,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Reset fehlgeschlagen";
     console.error("[brands/reset]", message);

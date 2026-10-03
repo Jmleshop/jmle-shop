@@ -6,10 +6,7 @@ import {
   requireAdmin,
 } from "@/lib/admin-server";
 import { resetAndImportBrands } from "@/lib/brand-reset";
-import {
-  KNOWN_PRODUCTION_SUPABASE_HOST,
-  resolveSupabaseTarget,
-} from "@/lib/supabase-target";
+import { resolveRuntimeSupabaseTarget } from "@/lib/supabase-target";
 import { brandCatalogCount } from "@/lib/brand-catalog";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +39,8 @@ function tokenAuthorized(request: Request): boolean {
 }
 
 /**
- * GET — Status der Marken auf dem Production-Ziel (ohne Mutation).
+ * GET — Status der Marken auf dem Runtime-Ziel (ohne Mutation).
+ * Credentials: PRODUCTION_* falls gesetzt, sonst NEXT_PUBLIC_SUPABASE_URL + SERVICE_ROLE.
  */
 export async function GET(request: Request) {
   const byToken = tokenAuthorized(request);
@@ -54,7 +52,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const target = resolveSupabaseTarget({ production: true });
+    const target = resolveRuntimeSupabaseTarget();
     const host = new URL(target.url).hostname;
     const supabase = createClient(target.url, target.serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -74,10 +72,11 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       host,
+      label: target.label,
+      hint: target.hint,
       expectedBrands: brandCatalogCount(),
       brandCount: count ?? 0,
       sample: sample ?? [],
-      knownHost: KNOWN_PRODUCTION_SUPABASE_HOST,
       matchesCatalog: (count ?? 0) === brandCatalogCount(),
     });
   } catch (e) {
@@ -87,13 +86,15 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST — Unwiderruflicher Marken-Reset auf der Production-DB:
+ * POST — Marken-Reset auf der Runtime-DB:
  * löscht alle brand_logos, inseriert exakt 71 Katalog-Marken, rematcht Produkte.
  *
  * Auth: Admin-Session ODER Header x-brand-reset-token / Bearer
- *       (= BRAND_RESET_TOKEN | CRON_SECRET | FORCE_BRAND_RESET_TOKEN)
  *
- * Auf Vercel Production greifen NEXT_PUBLIC_SUPABASE_URL + SERVICE_ROLE (Live).
+ * Credentials (Standard):
+ *   NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+ * Optional:
+ *   PRODUCTION_SUPABASE_URL + PRODUCTION_SUPABASE_SERVICE_ROLE_KEY
  */
 export async function POST(request: Request) {
   const byToken = tokenAuthorized(request);
@@ -105,39 +106,28 @@ export async function POST(request: Request) {
   }
 
   try {
-    const target = resolveSupabaseTarget({ production: true });
+    const target = resolveRuntimeSupabaseTarget();
     const host = new URL(target.url).hostname;
-
-    if (host === "127.0.0.1" || host === "localhost") {
-      return NextResponse.json(
-        {
-          error:
-            "Force-Reset abgelehnt: Ziel ist localhost. Production-Credentials setzen.",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!host.endsWith(".supabase.co")) {
-      return NextResponse.json(
-        { error: `Force-Reset abgelehnt: ungültiger Host ${host}` },
-        { status: 400 }
-      );
-    }
 
     const client = createClient(target.url, target.serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    console.info("[force-reset-brands] starting on", host);
+    console.info(
+      "[force-reset-brands] starting on",
+      host,
+      `(${target.hint})`
+    );
     const result = await resetAndImportBrands(client, {
-      targetLabel: `force-production:${host}`,
+      targetLabel: `runtime:${host}`,
     });
     bust();
 
     return NextResponse.json({
       ok: true,
       host,
+      label: target.label,
+      hint: target.hint,
       expectedBrands: brandCatalogCount(),
       ...result,
     });
