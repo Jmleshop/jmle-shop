@@ -32,7 +32,7 @@ export default function BrandMark({
       href="/"
       prefetch
       className={cn(
-        "relative z-20 inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center pointer-events-auto transition-opacity hover:opacity-90",
+        "relative z-20 inline-flex min-h-9 shrink-0 cursor-pointer items-center justify-center pointer-events-auto transition-opacity hover:opacity-90",
         className
       )}
       aria-label={`${name} – Home`}

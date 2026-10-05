@@ -109,6 +109,9 @@ export async function POST(request: Request) {
   }
 
   const resolved = await resolveProductBrand(db, parsed.data);
+  if (resolved.error) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
+  }
   const payload = {
     ...stripBrandName(parsed.data),
     brand_id: resolved.brand_id,
@@ -127,23 +130,39 @@ export async function POST(request: Request) {
     .select(PRODUCT_SELECT)
     .single();
 
-  if (error && /(status|badges|custom_note|brand_id)/i.test(error.message)) {
+  if (error && /brand_id/i.test(error.message)) {
+    return NextResponse.json(
+      {
+        error: `Marke konnte nicht gespeichert werden: ${error.message}. Prüfen Sie, ob die Spalte brand_id existiert (Migration product_brand_id).`,
+      },
+      { status: 500 }
+    );
+  }
+
+  if (error && /(status|badges|custom_note)/i.test(error.message)) {
     const {
       status: _s,
       badges: _b,
       custom_note: _c,
-      brand_id: _brand,
       ...withoutOptional
     } = payload;
     void _s;
     void _b;
     void _c;
-    void _brand;
+    // brand_id bleibt im Insert-Payload
     const retry = await db
       .from("products")
       .insert(withoutOptional)
       .select(PRODUCT_SELECT_BASE)
       .single();
+    if (retry.error && /brand_id/i.test(retry.error.message)) {
+      return NextResponse.json(
+        {
+          error: `Marke konnte nicht gespeichert werden: ${retry.error.message}`,
+        },
+        { status: 500 }
+      );
+    }
     data = retry.data as typeof data;
     error = retry.error;
   }
