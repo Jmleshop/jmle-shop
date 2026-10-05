@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import type { FoodCategory } from "@/types";
 import { categoryCreateSchema } from "@/lib/validations/product";
 import { parseJsonBody } from "@/lib/validations";
+
+function bustCatalogCache() {
+  try {
+    revalidateTag("catalog");
+    revalidateTag("categories");
+    revalidateTag("products");
+  } catch {
+    /* ignore */
+  }
+}
 
 function slugify(value: string) {
   return value
@@ -124,5 +135,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  bustCatalogCache();
   return NextResponse.json({ category: data }, { status: 201 });
 }
