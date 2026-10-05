@@ -167,47 +167,45 @@
   }
 }
 
-/* Header-Logo: mobil 56px, Desktop 80px — contain, zentriert, Originalqualität.
-   Page-Builder: --layout-logo-scale skaliert stufenlos. */
+/* Header-Logo: schlank, contain, zentriert — Page-Builder: --layout-logo-scale. */
 .brand-mark-frame {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* Kompaktere Default-Höhe für integrierte Header-Suche */
-  height: calc(2.5rem * var(--layout-logo-scale, 1));
+  height: calc(2.25rem * var(--layout-logo-scale, 1));
   width: auto;
-  max-width: min(9rem, 42vw);
+  max-width: min(8.5rem, 40vw);
   overflow: visible;
   transform-origin: center center;
   transition: height 120ms ease-out;
 }
 @media (min-width: 1024px) {
   .brand-mark-frame {
-    height: calc(3rem * var(--layout-logo-scale, 1));
-    max-width: 11rem;
+    height: calc(2.5rem * var(--layout-logo-scale, 1));
+    max-width: 10rem;
   }
 }
 
-/* Header-Zeilen: kompakt für E-Commerce-Leiste, Logo-Skalierung bleibt möglich */
+/* Slim Header: niedrige Zeilenhöhe, Logo passt ohne dicke Leiste */
 .layout-header-row-mobile {
   min-height: max(
-    3.25rem,
+    2.75rem,
     var(--layout-header-min-height, 0px),
-    calc(2.75rem * var(--layout-logo-scale, 1) + 0.5rem)
+    calc(2.25rem * var(--layout-logo-scale, 1) + 0.25rem)
   );
   height: auto;
-  padding-block: var(--layout-header-pad-y, 0.35rem);
-  gap: var(--layout-header-gap, 0.25rem);
+  padding-block: var(--layout-header-pad-y, 0.15rem);
+  gap: var(--layout-header-gap, 0.15rem);
 }
 .layout-header-row-desktop {
   min-height: max(
-    3.75rem,
+    3rem,
     var(--layout-header-min-height, 0px),
-    calc(3.25rem * var(--layout-logo-scale, 1) + 0.5rem)
+    calc(2.5rem * var(--layout-logo-scale, 1) + 0.25rem)
   );
   height: auto;
-  padding-block: var(--layout-header-pad-y, 0.5rem);
-  gap: var(--layout-header-gap, 0.75rem);
+  padding-block: var(--layout-header-pad-y, 0.2rem);
+  gap: var(--layout-header-gap, 0.5rem);
 }
 
 /* Marken-Ticker — Page-Builder CSS vars */
@@ -274,9 +272,41 @@
 .home-sections-stack > * {
   margin-block: 0;
 }
-/* Aufeinanderfolgende Banner: kein doppelter Außenabstand */
-.home-sections-stack > [data-home-section="banner"] + [data-home-section="banner"] .layout-banner-frame {
+/* Banner an Banner: kein Weißraum dazwischen */
+.home-sections-stack > [data-home-section="banner"] .layout-banner-frame {
+  margin-block-end: 0;
+}
+.home-sections-stack
+  > [data-home-section="banner"]
+  + [data-home-section="banner"]
+  .layout-banner-frame {
+  margin-block: 0;
+}
+/* Banner direkt vor/nach Marken-Ticker: kein doppelter Außenabstand */
+.home-sections-stack
+  > [data-home-section="banner"]
+  + [data-home-section="brands"] {
   margin-block-start: 0;
+}
+.home-sections-stack
+  > [data-home-section="banner"]
+  + [data-home-section="brands"].layout-brands-frame {
+  padding-block: 0;
+}
+.home-sections-stack
+  > [data-home-section="brands"]
+  + [data-home-section="banner"]
+  .layout-banner-frame {
+  margin-block-start: 0;
+}
+/* Banner-Rahmen: kein Extra-Weißraum unter dem Slide-Inhalt */
+.home-sections-stack > [data-home-section="banner"] .layout-banner-frame {
+  margin-block: 0;
+  display: block;
+  line-height: 0;
+}
+.home-sections-stack > [data-home-section="banner"] .layout-section-title-wrap {
+  line-height: normal;
 }
 /* Footer/Hero-Mark über dem Slogan — groß & markant */
 .brand-mark-frame--footer {

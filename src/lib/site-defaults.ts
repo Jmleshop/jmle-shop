@@ -20,6 +20,11 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   homepageSections: DEFAULT_HOMEPAGE_SECTIONS,
   description:
     "متجر jmle للمواد الغذائية العربية الأصيلة — بهارات، أرز، زيوت والمزيد",
+  productWatermarkEnabled: false,
+  productWatermarkLogo: "",
+  productWatermarkOpacity: 0.38,
+  productWatermarkScale: 0.22,
+  productWatermarkPosition: "bottom-right",
 };
 
 export const DEFAULT_HERO_SLIDES: Slide[] = [
