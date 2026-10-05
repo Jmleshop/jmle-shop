@@ -10,6 +10,7 @@ export const SITE_SETTING_ROW_IDS: Record<string, string> = {
   layout_draft: "00000000-0000-4000-8000-000000000003",
   layout_published: "00000000-0000-4000-8000-000000000004",
   layout_versions: "00000000-0000-4000-8000-000000000005",
+  builder_content_draft: "00000000-0000-4000-8000-000000000006",
 };
 
 export function siteSettingRowId(key: string): string {

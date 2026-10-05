@@ -190,14 +190,63 @@
 
 /* Header-Zeilen: kompakt für E-Commerce-Leiste, Logo-Skalierung bleibt möglich */
 .layout-header-row-mobile {
-  min-height: max(3.25rem, calc(2.75rem * var(--layout-logo-scale, 1) + 0.5rem));
+  min-height: max(
+    3.25rem,
+    var(--layout-header-min-height, 0px),
+    calc(2.75rem * var(--layout-logo-scale, 1) + 0.5rem)
+  );
   height: auto;
-  padding-block: 0.35rem;
+  padding-block: var(--layout-header-pad-y, 0.35rem);
+  gap: var(--layout-header-gap, 0.25rem);
 }
 .layout-header-row-desktop {
-  min-height: max(3.75rem, calc(3.25rem * var(--layout-logo-scale, 1) + 0.5rem));
+  min-height: max(
+    3.75rem,
+    var(--layout-header-min-height, 0px),
+    calc(3.25rem * var(--layout-logo-scale, 1) + 0.5rem)
+  );
   height: auto;
-  padding-block: 0.5rem;
+  padding-block: var(--layout-header-pad-y, 0.5rem);
+  gap: var(--layout-header-gap, 0.75rem);
+}
+
+/* Marken-Ticker — Page-Builder CSS vars */
+.layout-brands-frame {
+  padding-block: var(--layout-brands-pad-y, 0px);
+}
+.layout-brands-logo {
+  height: calc(2.5rem * var(--layout-brands-logo-scale, 1));
+  width: calc(5rem * var(--layout-brands-logo-scale, 1));
+}
+@media (min-width: 768px) {
+  .layout-brands-logo {
+    height: calc(3.5rem * var(--layout-brands-logo-scale, 1));
+    width: calc(7rem * var(--layout-brands-logo-scale, 1));
+  }
+}
+.layout-brands-item {
+  padding-inline: calc(0.5rem + var(--layout-brands-gap, 8px) * 0.5);
+}
+.jmle-marquee-track {
+  gap: var(--layout-brands-gap, 0.25rem);
+}
+
+/* Section titles — Typografie aus Layout */
+.section-title {
+  color: var(--layout-heading-color, inherit);
+  font-size: calc(1em * var(--layout-heading-scale, 1));
+  text-align: var(--layout-title-align, center);
+}
+.layout-section-title-wrap {
+  text-align: var(--layout-title-align, center);
+}
+.gold-divider {
+  background-image: linear-gradient(
+    to left,
+    transparent,
+    var(--layout-accent, #ea580c),
+    transparent
+  );
 }
 
 /* Page-Builder Banner- & Chrome-Steuerung — echte Höhe/Abstand/Fit */

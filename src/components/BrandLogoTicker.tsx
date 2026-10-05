@@ -17,7 +17,6 @@ interface BrandLogoTickerProps {
 /** Kundenansicht: immer zur Marken-Produktseite — Name bleibt intern. */
 function brandHref(logo: BrandLogo): string {
   const custom = (logo.linkUrl || "").trim();
-  // Nur echte externe URLs respektieren; interne Pfade führen immer zu /brands/:id
   if (custom.startsWith("http://") || custom.startsWith("https://")) return custom;
   return `/brands/${encodeURIComponent(logo.id)}`;
 }
@@ -27,7 +26,7 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
   const href = brandHref(logo);
   const external = href.startsWith("http");
   const img = (
-    <div className="relative h-10 md:h-14 w-20 md:w-28 shrink-0 opacity-90 transition-opacity hover:opacity-100">
+    <div className="layout-brands-logo relative shrink-0 opacity-90 transition-opacity hover:opacity-100">
       <Image
         src={originalImageSrc(logo.image)}
         alt=""
@@ -42,7 +41,7 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
   return (
     <Link
       href={href}
-      className="px-3 md:px-4"
+      className="layout-brands-item"
       aria-label={t("brandPartners")}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
     >
@@ -61,28 +60,28 @@ export default function BrandLogoTicker({
 
   const heading = (title ?? "").trim();
   const loop = logos.length === 1 ? logos : [...logos, ...logos];
-  const duration = Math.max(18, logos.length * 4);
+  const baseDuration = Math.max(18, logos.length * 4);
 
   return (
     <section
       data-home-section="brands"
-      className={cn(
-        // Ohne Titel: minimaler Abstand — Banner können nahtlos anschließen
-        heading ? "pt-3 sm:pt-4 pb-2 sm:pb-3" : "py-0",
-        className
-      )}
+      className={cn("layout-brands-frame", className)}
       aria-label={heading || t("brandPartners")}
     >
       {heading ? (
-        <div className="text-center mb-2 sm:mb-3 px-4">
+        <div className="layout-section-title-wrap mb-2 sm:mb-3 px-4">
           <h2 className="section-title text-base sm:text-lg">{heading}</h2>
         </div>
       ) : null}
       <div
         className="jmle-marquee overflow-hidden bg-transparent"
-        style={{ ["--marquee-duration" as string]: `${duration}s` }}
+        style={
+          {
+            ["--marquee-duration" as string]: `calc(${baseDuration}s / var(--layout-brands-speed, 1))`,
+          } as React.CSSProperties
+        }
       >
-        <div className="jmle-marquee-track items-center gap-1 md:gap-2">
+        <div className="jmle-marquee-track items-center">
           {loop.map((logo, i) => (
             <LogoItem key={`${logo.id}-${i}`} logo={logo} />
           ))}

@@ -5,6 +5,7 @@ import {
   LAYOUT_PREVIEW_MESSAGE,
   LAYOUT_PREVIEW_PING,
   LAYOUT_PREVIEW_READY,
+  LAYOUT_PREVIEW_STRUCTURE,
   detectViewportWidth,
   layoutCssVars,
   normalizeLayoutDocument,
@@ -15,12 +16,15 @@ import {
 function applyVars(doc: LayoutDocument, viewport: LayoutViewport) {
   const vars = layoutCssVars(doc, viewport);
   const root = document.documentElement;
-  const chromeKeys = [
+  const optionalKeys = [
     "--layout-header-bg",
     "--layout-navbar-bg",
     "--layout-page-bg",
+    "--layout-heading-color",
+    "--layout-body-color",
+    "--layout-accent",
   ];
-  for (const k of chromeKeys) {
+  for (const k of optionalKeys) {
     if (!(k in vars)) root.style.removeProperty(k);
   }
   for (const [k, v] of Object.entries(vars)) {
@@ -32,6 +36,11 @@ function applyVars(doc: LayoutDocument, viewport: LayoutViewport) {
   } else {
     document.body.style.removeProperty("background-color");
   }
+  if (doc.typography.bodyColor) {
+    document.body.style.color = doc.typography.bodyColor;
+  } else {
+    document.body.style.removeProperty("color");
+  }
 }
 
 function isBuilderPreviewFrame(): boolean {
@@ -39,7 +48,6 @@ function isBuilderPreviewFrame(): boolean {
   try {
     if (window.self !== window.top) return true;
   } catch {
-    // cross-origin parent → treat as iframe
     return true;
   }
   const q = window.location.search;
@@ -59,7 +67,6 @@ function emitReady() {
 
 /**
  * Wendet published Layout-CSS an und hört auf Admin-postMessage-Vorschau.
- * Kein useSearchParams/Suspense — Handshake darf nicht hinter Hydration warten.
  */
 export default function LayoutPreviewBridge({
   published,
@@ -69,7 +76,6 @@ export default function LayoutPreviewBridge({
   const [override, setOverride] = useState<LayoutDocument | null>(null);
   const publishedDoc = published ?? null;
 
-  // Published layout → CSS vars (live site)
   useEffect(() => {
     if (override) return;
     if (!publishedDoc) return;
@@ -82,7 +88,6 @@ export default function LayoutPreviewBridge({
     return () => window.removeEventListener("resize", apply);
   }, [publishedDoc, override]);
 
-  // Instant preview via postMessage (admin iframe)
   useEffect(() => {
     if (!isBuilderPreviewFrame()) return;
 
@@ -97,6 +102,11 @@ export default function LayoutPreviewBridge({
         return;
       }
 
+      if (type === LAYOUT_PREVIEW_STRUCTURE) {
+        // HomeSections hört selbst auf STRUCTURE — Bridge bleibt schlank
+        return;
+      }
+
       if (type !== LAYOUT_PREVIEW_MESSAGE) return;
       const doc = normalizeLayoutDocument(
         (data as { document?: unknown }).document
@@ -108,8 +118,6 @@ export default function LayoutPreviewBridge({
     };
 
     window.addEventListener("message", onMessage);
-
-    // READY mehrfach senden — Parent kann Listener später registrieren
     emitReady();
     const retries = [80, 250, 600, 1200, 2500].map((ms) =>
       window.setTimeout(emitReady, ms)
