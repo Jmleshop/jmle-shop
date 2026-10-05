@@ -44,6 +44,19 @@ export interface SiteConfig {
   homepageSections?: HomepageSection[];
   description?: string;
   ogImage?: string;
+  /** Produktbilder serverseitig mit Logo-Wasserzeichen schützen */
+  productWatermarkEnabled?: boolean;
+  /** Optionales Wasserzeichen-Logo (sonst Shop-Logo) */
+  productWatermarkLogo?: string;
+  /** 0.1–0.85 */
+  productWatermarkOpacity?: number;
+  /** Anteil der Bildbreite 0.08–0.4 */
+  productWatermarkScale?: number;
+  productWatermarkPosition?:
+    | "bottom-right"
+    | "bottom-left"
+    | "center"
+    | "tile";
 }
 
 export interface Slide {

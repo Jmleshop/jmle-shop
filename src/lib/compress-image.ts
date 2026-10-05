@@ -109,13 +109,39 @@ export async function canvasToCompressedFile(
 }
 
 /**
+ * Serverseitiges Produkt-Wasserzeichen (wenn in Site-Einstellungen aktiv).
+ * Bei Fehler/Deaktiviert: Original zurück — Upload darf nicht scheitern.
+ */
+export async function maybeApplyProductWatermark(file: File): Promise<File> {
+  try {
+    const body = new FormData();
+    body.append("file", file, file.name || "product.webp");
+    const res = await fetch("/api/admin/apply-product-watermark", {
+      method: "POST",
+      body,
+    });
+    if (!res.ok) return file;
+    const applied = res.headers.get("X-Watermark-Applied") === "1";
+    if (!applied) return file;
+    const blob = await res.blob();
+    if (!blob.size) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, ".webp") || "product.webp", {
+      type: "image/webp",
+    });
+  } catch {
+    return file;
+  }
+}
+
+/**
  * Upload → immer komprimiertes WebP in Supabase Storage.
+ * Produkte: optional serverseitiges Logo-Wasserzeichen vor dem Speichern.
  * Keine Original-Riesenfiles, keine lokalen Temp-Dateien.
  */
 export async function uploadProductImage(
   file: File,
   folder = "products",
-  options?: { alreadyEncoded?: boolean; skipCenter?: boolean }
+  options?: { alreadyEncoded?: boolean; skipCenter?: boolean; skipWatermark?: boolean }
 ): Promise<string> {
   const { createClient } = await import("@/lib/supabase/client");
   const maxEdge = maxEdgeForFolder(folder);
@@ -135,9 +161,14 @@ export async function uploadProductImage(
 
   const quality = isLogoFolder(folder) ? LOGO_WEBP_QUALITY : STORAGE_WEBP_QUALITY;
   // Bereits vom Anpasser/Editor optimiertes WebP nicht nochmals verlustreich kodieren
-  const compressed = options?.alreadyEncoded
+  let compressed = options?.alreadyEncoded
     ? working
     : await compressImageFile(working, maxEdge, quality);
+
+  // Wasserzeichen nur für Produktbilder (nicht Logos/Banner/Marken)
+  if (folder === "products" && !options?.skipWatermark) {
+    compressed = await maybeApplyProductWatermark(compressed);
+  }
 
   const supabase = createClient();
   const path = `${folder}/${crypto.randomUUID()}.webp`;
