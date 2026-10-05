@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useShopLocale } from "@/components/ShopLocale";
 import CompactBannerSlider from "@/components/CompactBannerSlider";
 import BrandLogoTicker from "@/components/BrandLogoTicker";
-import CategoryGrid from "@/components/CategoryGrid";
+import { HomepageCategoryHierarchy } from "@/components/CategoryHierarchy";
 import OffersCarousel from "@/components/OffersCarousel";
 import { cn } from "@/lib/cn";
 import {
@@ -195,7 +195,7 @@ export function HomepageSectionsRenderer({
         }
         if (section.type === "categories") {
           return (
-            <CategoryGrid
+            <HomepageCategoryHierarchy
               key={section.id}
               categories={categories}
               title={title || undefined}

@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import { CATEGORY_MAX_DEPTH } from "@/lib/category-dnd";
 import type { FoodCategory } from "@/types";
 import { categoryReorderSchema } from "@/lib/validations/product";
 import { parseJsonBody } from "@/lib/validations";
+
+function bustCatalogCache() {
+  try {
+    revalidateTag("catalog");
+    revalidateTag("categories");
+    revalidateTag("products");
+  } catch {
+    /* ignore */
+  }
+}
 
 export async function PUT(request: Request) {
   const auth = await requireStaff();
@@ -66,5 +77,6 @@ export async function PUT(request: Request) {
       })
       .eq("id", row.id);
   }
+  bustCatalogCache();
   return NextResponse.json({ success: true });
 }

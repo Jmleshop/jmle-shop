@@ -2,12 +2,38 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronDown, ExternalLink } from "lucide-react";
 import type { Category } from "@/types";
 import { useShopLocale } from "@/components/ShopLocale";
 import { categoryTitle } from "@/lib/shop-i18n";
 import { cn } from "@/lib/cn";
 import { isAllCategoryId, isSaleCategoryId } from "@/lib/category-special";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+
+function CategoryThumb({
+  category,
+  size = 36,
+}: {
+  category: Category;
+  size?: number;
+}) {
+  return (
+    <span
+      className="relative shrink-0 overflow-hidden rounded-lg bg-jmle-warm ring-1 ring-orange-100/80"
+      style={{ width: size, height: size }}
+    >
+      <Image
+        src={originalImageSrc(category.image)}
+        alt=""
+        fill
+        quality={SHOP_IMAGE_QUALITY}
+        className="object-cover"
+        sizes={`${size}px`}
+      />
+    </span>
+  );
+}
 
 function CategoryBranch({
   category,
@@ -24,24 +50,23 @@ function CategoryBranch({
   const [open, setOpen] = useState(false);
   const label = categoryTitle(lang, category);
 
-  // Unterkategorien: nur Link (kein Auto-Expand)
   if (!hasChildren) {
     return (
       <Link
         href={`/categories/${category.id}`}
         onClick={onNavigate}
         className={cn(
-          "block px-3 py-3 min-h-11 text-sm font-ui font-medium text-luxury-charcoal",
+          "flex items-center gap-2.5 px-3 py-2.5 min-h-11 text-sm font-ui font-medium text-luxury-charcoal",
           "hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors",
           depth > 0 && "ms-3 border-s border-orange-100/80 ps-3"
         )}
       >
-        {label}
+        <CategoryThumb category={category} size={depth > 0 ? 32 : 36} />
+        <span className="min-w-0 truncate">{label}</span>
       </Link>
     );
   }
 
-  // Hauptkategorie mit Kindern: Klick klappt auf — Navigation separat
   return (
     <div className="w-full">
       <div
@@ -54,13 +79,14 @@ function CategoryBranch({
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            "flex-1 flex items-center justify-between gap-2 px-3 py-3 min-h-11 text-start",
+            "flex-1 flex items-center gap-2.5 px-3 py-2.5 min-h-11 text-start",
             "text-sm font-ui font-medium text-luxury-charcoal",
             "hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
           )}
           aria-expanded={open}
         >
-          <span>{label}</span>
+          <CategoryThumb category={category} size={36} />
+          <span className="min-w-0 flex-1 truncate">{label}</span>
           <ChevronDown
             size={18}
             className={cn(
@@ -96,7 +122,7 @@ function CategoryBranch({
   );
 }
 
-/** Ausklappbarer Kategorien-Baum — nur echte DB-Hauptkategorien. */
+/** Ausklappbarer Kategorien-Baum mit Thumbnails — nur Live-DB-Kategorien. */
 export default function CategoryNavTree({
   categories,
   onNavigate,
@@ -111,13 +137,16 @@ export default function CategoryNavTree({
     const cleaned = categories.filter(
       (c) => !isAllCategoryId(c.id) && !isSaleCategoryId(c.id)
     );
-    // Server liefert i. d. R. bereits den Wurzelbaum
     const nested = cleaned.some((c) => (c.children?.length ?? 0) > 0);
     if (nested) {
-      return cleaned.filter((c) => !c.parentId);
+      return cleaned
+        .filter((c) => !c.parentId)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }
     const tops = cleaned.filter((c) => !c.parentId);
-    return tops.length ? tops : cleaned;
+    return (tops.length ? tops : cleaned).sort(
+      (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+    );
   }, [categories]);
 
   if (!roots.length) {

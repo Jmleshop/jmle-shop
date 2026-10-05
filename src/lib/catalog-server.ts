@@ -504,7 +504,7 @@ async function fetchBrandLogos(): Promise<BrandLogo[]> {
 
 const getCategoriesCached = unstable_cache(
   fetchAllCategories,
-  ["catalog-categories-v4"],
+  ["catalog-categories-v5"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "categories"] }
 );
 
@@ -597,13 +597,21 @@ export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
   return [all, sale, ...tree];
 });
 
-/** Nur Hauptkategorien (Oberkategorien) auf der Startseite — keine Unterkategorien. */
+/**
+ * Startseiten-Kategorien: Live-DB-Hauptkategorien inkl. Unterkategorien (mit Bildern).
+ * Fallback nur wenn die DB wirklich leer ist.
+ */
 export const getHomepageCategoriesAsync = cache(async (): Promise<Category[]> => {
   const tree = await getCategoriesCached();
   const source = tree.length ? tree : FALLBACK_CATEGORIES;
   return source
     .filter((c) => !c.parentId && c.showOnHomepage !== false)
-    .map((c) => ({ ...c, children: [] }));
+    .map((c) => ({
+      ...c,
+      children: [...(c.children ?? [])].sort(
+        (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+      ),
+    }));
 });
 
 export const getSiteConfigAsync = cache(async (): Promise<SiteConfig> => {

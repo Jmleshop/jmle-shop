@@ -35,6 +35,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import ImageUpload from "@/components/admin/ImageUpload";
 import SwipeToDeleteRow from "@/components/admin/SwipeToDeleteRow";
@@ -48,6 +49,7 @@ import {
   type FlatCategory,
 } from "@/lib/category-dnd";
 import { categoryDepth, categoryLabel } from "@/lib/category-tree";
+import { originalImageSrc } from "@/lib/sharp-image";
 import type { FoodCategory } from "@/types";
 
 type ExcelImportResult = {
@@ -68,6 +70,7 @@ function SortableCategoryRow({
   open,
   toggle,
   onEdit,
+  onEditImage,
   onArchive,
   onSwipeTrash,
   trashLabel,
@@ -80,6 +83,7 @@ function SortableCategoryRow({
   open: boolean;
   toggle: (id: string) => void;
   onEdit: (c: FoodCategory) => void;
+  onEditImage: (c: FoodCategory) => void;
   onArchive: (id: string) => void;
   onSwipeTrash: (c: FoodCategory) => boolean | void | Promise<boolean | void>;
   trashLabel: string;
@@ -90,6 +94,7 @@ function SortableCategoryRow({
     id: item.id,
   });
   const depth = projectedDepth ?? item.depth;
+  const thumbSrc = originalImageSrc(item.image || "");
 
   return (
     <div
@@ -107,7 +112,7 @@ function SortableCategoryRow({
         label={trashLabel}
         onSwipeDelete={() => onSwipeTrash(item)}
       >
-        <div className="flex items-center gap-2 py-3 pr-2 bg-white min-h-[52px]">
+        <div className="flex items-center gap-2 py-2.5 pr-2 bg-white min-h-[56px]">
           <input
             type="checkbox"
             checked={selected}
@@ -137,9 +142,45 @@ function SortableCategoryRow({
           ) : (
             <span className="w-4" />
           )}
-          <span className="flex-1 font-medium text-sm">{categoryLabel(item)}</span>
+          <button
+            type="button"
+            onClick={() => onEditImage(item)}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={`relative shrink-0 overflow-hidden bg-jmle-warm ring-1 ring-orange-100/80 hover:ring-2 hover:ring-brand-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50 ${
+              depth > 0 ? "h-11 w-11 rounded-full" : "h-12 w-12 rounded-xl"
+            }`}
+            aria-label={`${categoryLabel(item)} Bild bearbeiten`}
+            title="Bild bearbeiten / ausrichten"
+          >
+            {thumbSrc ? (
+              <Image
+                src={thumbSrc}
+                alt=""
+                fill
+                unoptimized
+                className="object-cover"
+                sizes="48px"
+              />
+            ) : (
+              <span className="absolute inset-0 flex items-center justify-center text-[10px] text-gray-400">
+                —
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            className="flex-1 text-start min-w-0"
+            onClick={() => onEdit(item)}
+          >
+            <span className="block font-medium text-sm truncate">
+              {categoryLabel(item)}
+            </span>
+            <span className="block text-[11px] text-gray-400 truncate" dir="rtl">
+              {item.name_ar}
+            </span>
+          </button>
           <span
-            className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+            className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
               item.show_on_homepage !== false
                 ? "bg-brand-orange/15 text-brand-orange"
                 : "bg-gray-100 text-gray-400"
@@ -148,11 +189,8 @@ function SortableCategoryRow({
           >
             {item.show_on_homepage !== false ? "Home" : "—"}
           </span>
-          <span className="text-[11px] text-gray-400 hidden sm:inline">
+          <span className="text-[11px] text-gray-400 hidden sm:inline shrink-0">
             Pos. {(item.sort_order ?? 0) + 1} · Ebene {depth + 1}
-          </span>
-          <span className="text-xs text-gray-400 hidden md:inline" dir="rtl">
-            {item.name_ar}
           </span>
           <button
             type="button"
@@ -198,6 +236,7 @@ export default function AdminCategoriesPage() {
   const [excelBusy, setExcelBusy] = useState(false);
   const [excelDragOver, setExcelDragOver] = useState(false);
   const [excelResult, setExcelResult] = useState<ExcelImportResult | null>(null);
+  const [autoOpenImageUrl, setAutoOpenImageUrl] = useState<string | null>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
 
   const toggleSelect = (id: string) =>
@@ -301,7 +340,10 @@ export default function AdminCategoriesPage() {
     return `${"— ".repeat(d - 1)}${categoryLabel(c)}`;
   };
 
-  const openEdit = (c?: FoodCategory) => {
+  const openEdit = (
+    c?: FoodCategory,
+    opts?: { openImageEditor?: boolean }
+  ) => {
     if (c) {
       setEditingId(c.id);
       setForm({
@@ -312,6 +354,9 @@ export default function AdminCategoriesPage() {
         kind: c.parent_id ? "sub" : "main",
         show_on_homepage: c.show_on_homepage !== false,
       });
+      setAutoOpenImageUrl(
+        opts?.openImageEditor ? c.image || null : null
+      );
     } else {
       setEditingId(null);
       setForm({
@@ -322,6 +367,7 @@ export default function AdminCategoriesPage() {
         kind: "main",
         show_on_homepage: true,
       });
+      setAutoOpenImageUrl(null);
     }
     setShowForm(true);
     setError("");
@@ -347,6 +393,7 @@ export default function AdminCategoriesPage() {
       return;
     }
     setShowForm(false);
+    setAutoOpenImageUrl(null);
     load();
   };
 
@@ -576,7 +623,13 @@ export default function AdminCategoriesPage() {
           <form onSubmit={save} className="bg-white rounded-2xl p-6 w-full max-w-lg space-y-4">
             <div className="flex justify-between">
               <h2 className="font-semibold">{editingId ? t("edit") : t("newCategory")}</h2>
-              <button type="button" onClick={() => setShowForm(false)}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForm(false);
+                  setAutoOpenImageUrl(null);
+                }}
+              >
                 <X size={18} />
               </button>
             </div>
@@ -647,6 +700,8 @@ export default function AdminCategoriesPage() {
               }
               folder="categories"
               enableEditor
+              autoOpenUrl={autoOpenImageUrl}
+              onAutoOpenConsumed={() => setAutoOpenImageUrl(null)}
             />
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button className="btn-primary w-full">{t("save")}</button>
@@ -705,6 +760,7 @@ export default function AdminCategoriesPage() {
                   });
                 }}
                 onEdit={openEdit}
+                onEditImage={(c) => openEdit(c, { openImageEditor: true })}
                 onArchive={async (id) => {
                   if (!confirm(t("moveToTrashConfirm"))) return;
                   await fetch(`/api/admin/categories/${id}`, {
