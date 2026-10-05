@@ -49,6 +49,10 @@ const PUBLIC_SELECT =
 const PUBLIC_SELECT_BASIC =
   "id, name_ar, name_de, description, price, currency, category_id, brand_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
 
+/** Älteste View ohne brand_id (vor product_brand_id Migration) */
+const PUBLIC_SELECT_NO_BRAND =
+  "id, name_ar, name_de, description, price, currency, category_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, deleted_at, created_at";
+
 type PublicRow = {
   id: string;
   name_ar?: string | null;
@@ -268,6 +272,15 @@ async function fetchAllPublicProducts(): Promise<Product[]> {
       .order("created_at", { ascending: false });
     data = basic.data as typeof data;
     error = basic.error;
+  }
+
+  if (error && /brand_id|column|42703/i.test(error.message)) {
+    const legacy = await supabase
+      .from("products_public")
+      .select(PUBLIC_SELECT_NO_BRAND)
+      .order("created_at", { ascending: false });
+    data = legacy.data as typeof data;
+    error = legacy.error;
   }
 
   if (!error && data && data.length > 0) {
@@ -705,17 +718,20 @@ export const getBrandByIdAsync = cache(
 
 async function queryProductsByBrandId(brandId: string): Promise<Product[]> {
   const supabase = createPublicClient();
+  const id = String(brandId || "").trim();
+  if (!id) return [];
 
+  // 1) products_public mit brand_id
   let { data, error } = await supabase
     .from("products_public")
     .select(PUBLIC_SELECT)
-    .eq("brand_id", brandId);
+    .eq("brand_id", id);
 
   if (error && /column|42703/i.test(error.message)) {
     const basic = await supabase
       .from("products_public")
       .select(PUBLIC_SELECT_BASIC)
-      .eq("brand_id", brandId);
+      .eq("brand_id", id);
     data = basic.data as typeof data;
     error = basic.error;
   }
@@ -724,20 +740,28 @@ async function queryProductsByBrandId(brandId: string): Promise<Product[]> {
     return (data as PublicRow[]).map(mapPublicProduct);
   }
 
-  // Anon auf Basistabelle
+  // 2) Anon auf Basistabelle — zuverlässig auch wenn View brand_id fehlt
   const anon = await supabase
     .from("products")
     .select("*")
     .is("deleted_at", null)
-    .eq("brand_id", brandId);
+    .eq("brand_id", id);
   if (!anon.error && anon.data?.length) {
     return (anon.data as Array<PublicRow & { status?: string | null }>)
       .filter((row) => row.status == null || row.status === "published")
       .map(mapPublicProduct);
   }
 
-  // Service-Role-Fallback (RLS-/View-Drift)
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return [];
+  // 3) Service-Role-Fallback (RLS-/View-Drift)
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (anon.error && /brand_id|column|42703/i.test(anon.error.message)) {
+      console.error(
+        "[catalog] brand_id Spalte fehlt — Migration product_brand_id nötig:",
+        anon.error.message
+      );
+    }
+    return [];
+  }
   try {
     const { createServiceClient } = await import("@/lib/supabase/admin");
     const admin = createServiceClient();
@@ -745,11 +769,17 @@ async function queryProductsByBrandId(brandId: string): Promise<Product[]> {
       .from("products")
       .select("*")
       .is("deleted_at", null)
-      .eq("brand_id", brandId);
+      .eq("brand_id", id);
     if (!srv.error && srv.data?.length) {
       return (srv.data as Array<PublicRow & { status?: string | null }>)
         .filter((row) => row.status == null || row.status === "published")
         .map(mapPublicProduct);
+    }
+    if (srv.error && /brand_id|column|42703/i.test(srv.error.message)) {
+      console.error(
+        "[catalog] brand_id Spalte fehlt — Migration product_brand_id nötig:",
+        srv.error.message
+      );
     }
   } catch (e) {
     console.error("[catalog] getProductsByBrandAsync service:", e);

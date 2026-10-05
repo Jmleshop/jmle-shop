@@ -8,7 +8,6 @@ import {
 import {
   PRODUCT_SELECT,
   PRODUCT_SELECT_BASE,
-  PRODUCT_SELECT_NO_BRAND,
   parseProductBody,
 } from "@/lib/admin-payloads";
 import { productArchiveSchema } from "@/lib/validations/product";
@@ -26,10 +25,14 @@ function bustCatalogCache() {
   try {
     revalidateTag("catalog");
     revalidateTag("products");
+    revalidateTag("brands");
   } catch {
     /* ignore */
   }
 }
+
+const PRODUCT_SELECT_WITH_BRAND_NO_OPTIONAL =
+  "id, name_ar, name_de, description, price, currency, category_id, brand_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, purchase_price, discount_percent, barcode, product_number, max_order_quantity, stock_quantity, deleted_at, created_at, updated_at, category:categories(id, name_ar, name_de)";
 
 export async function PUT(request: Request, { params }: RouteParams) {
   const auth = await requireStaff();
@@ -51,6 +54,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
   const resolved = await resolveProductBrand(db, parsed.data);
+  if (resolved.error) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
+  }
   const payload = {
     ...stripBrandName(parsed.data),
     brand_id: resolved.brand_id,
@@ -63,17 +69,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
     .select(PRODUCT_SELECT)
     .single();
 
+  // brand_id nie stillschweigend verwerfen
   if (error && /brand_id/i.test(error.message)) {
-    const { brand_id: _brand, ...withoutBrand } = payload;
-    void _brand;
-    const retry = await db
-      .from("products")
-      .update(withoutBrand)
-      .eq("id", id)
-      .select(PRODUCT_SELECT_NO_BRAND)
-      .single();
-    data = retry.data as typeof data;
-    error = retry.error;
+    return NextResponse.json(
+      {
+        error: `Marke konnte nicht gespeichert werden: ${error.message}. Prüfen Sie, ob die Spalte brand_id existiert (Migration product_brand_id).`,
+      },
+      { status: 500 }
+    );
   }
 
   if (error && /(status|badges|custom_note)/i.test(error.message)) {
@@ -81,21 +84,49 @@ export async function PUT(request: Request, { params }: RouteParams) {
       status: _s,
       badges: _b,
       custom_note: _c,
-      brand_id: _brand,
       ...withoutOptional
     } = payload;
     void _s;
     void _b;
     void _c;
-    void _brand;
+    // brand_id bleibt im Update-Payload
     const retry = await db
       .from("products")
       .update(withoutOptional)
       .eq("id", id)
-      .select(PRODUCT_SELECT_BASE)
+      .select(PRODUCT_SELECT_WITH_BRAND_NO_OPTIONAL)
       .single();
-    data = retry.data as typeof data;
-    error = retry.error;
+
+    if (retry.error && /brand_id/i.test(retry.error.message)) {
+      return NextResponse.json(
+        {
+          error: `Marke konnte nicht gespeichert werden: ${retry.error.message}`,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (retry.error) {
+      const base = await db
+        .from("products")
+        .update(withoutOptional)
+        .eq("id", id)
+        .select(PRODUCT_SELECT_BASE)
+        .single();
+      if (base.error && /brand_id/i.test(base.error.message)) {
+        return NextResponse.json(
+          {
+            error: `Marke konnte nicht gespeichert werden: ${base.error.message}`,
+          },
+          { status: 500 }
+        );
+      }
+      data = base.data as typeof data;
+      error = base.error;
+    } else {
+      data = retry.data as typeof data;
+      error = retry.error;
+    }
   }
 
   if (error) {
