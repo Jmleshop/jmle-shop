@@ -553,7 +553,7 @@ const getAllSlidesCached = unstable_cache(
 
 const getBrandLogosCached = unstable_cache(
   fetchBrandLogos,
-  ["catalog-brand-logos-v1"],
+  ["catalog-brand-logos-v2"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "slides", "brands"] }
 );
 
@@ -706,13 +706,37 @@ export const getBrandByIdAsync = cache(
     const rawId = decodeURIComponent(String(id || "")).trim();
     if (!rawId) return undefined;
     const logos = await getBrandLogosAsync();
-    return (
+    const fromList =
       logos.find((b) => b.id === rawId) ||
       logos.find((b) => b.id.toLowerCase() === rawId.toLowerCase()) ||
       logos.find(
         (b) => b.name.trim().toLowerCase() === rawId.toLowerCase()
-      )
-    );
+      );
+    if (fromList) return fromList;
+
+    // Direkte DB-Abfrage — umgeht leeren/veralteten Marken-Cache
+    const supabase = createPublicClient();
+    const byId = await supabase
+      .from("brand_logos")
+      .select("id, name, image, link_url, sort_order, active")
+      .eq("id", rawId)
+      .eq("active", true)
+      .maybeSingle();
+    if (!byId.error && byId.data) {
+      return mapBrandLogo(byId.data as BrandLogoRow);
+    }
+
+    const byName = await supabase
+      .from("brand_logos")
+      .select("id, name, image, link_url, sort_order, active")
+      .ilike("name", rawId)
+      .eq("active", true)
+      .limit(1)
+      .maybeSingle();
+    if (!byName.error && byName.data) {
+      return mapBrandLogo(byName.data as BrandLogoRow);
+    }
+    return undefined;
   }
 );
 
