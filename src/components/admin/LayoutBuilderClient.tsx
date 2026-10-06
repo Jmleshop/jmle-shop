@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Monitor,
   Smartphone,
@@ -22,10 +23,14 @@ import {
   Image as ImageIcon,
   Type,
   LayoutTemplate,
+  Settings2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import BuilderStructurePanel from "@/components/admin/BuilderStructurePanel";
+import BuilderSitePanel from "@/components/admin/BuilderSitePanel";
+import BuilderSlidePanel from "@/components/admin/BuilderSlidePanel";
+import BuilderBrandsPanel from "@/components/admin/BuilderBrandsPanel";
 import {
   LAYOUT_PREVIEW_MESSAGE,
   LAYOUT_PREVIEW_PING,
@@ -47,7 +52,21 @@ const HISTORY_LIMIT = 40;
 const PREVIEW_PATH = "/?_preview=1&_builder=1";
 const PREVIEW_HANDSHAKE_MS = 14000;
 
-type TabId = "structure" | "header" | "banner" | "brands" | "colors";
+type TabId = "site" | "structure" | "header" | "banner" | "brands" | "colors";
+
+const TAB_IDS: TabId[] = [
+  "site",
+  "structure",
+  "header",
+  "banner",
+  "brands",
+  "colors",
+];
+
+function parseTabParam(raw: string | null): TabId | null {
+  if (!raw) return null;
+  return TAB_IDS.includes(raw as TabId) ? (raw as TabId) : null;
+}
 
 type ContentBundle = {
   contentDraft: {
@@ -77,6 +96,7 @@ function cloneDoc(doc: LayoutDocument): LayoutDocument {
 export default function LayoutBuilderClient() {
   const { lang } = useAdminI18n();
   const de = lang === "de";
+  const searchParams = useSearchParams();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [bundle, setBundle] = useState<ContentBundle | null>(null);
   const [doc, setDoc] = useState<LayoutDocument>(defaultLayoutDocument());
@@ -84,7 +104,9 @@ export default function LayoutBuilderClient() {
   const [slideOrders, setSlideOrders] = useState<Record<string, string[]>>({});
   const [slides, setSlides] = useState<ContentBundle["slides"]>([]);
   const [structureDirty, setStructureDirty] = useState(false);
-  const [tab, setTab] = useState<TabId>("structure");
+  const [tab, setTab] = useState<TabId>(
+    () => parseTabParam(searchParams.get("tab")) ?? "structure"
+  );
   const [viewport, setViewport] = useState<LayoutViewport>("desktop");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -203,6 +225,26 @@ export default function LayoutBuilderClient() {
     });
   }, [pushPreview, viewport]);
 
+  const refreshSlidesMeta = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/builder/content");
+      const data = (await res.json()) as ContentBundle & { error?: string };
+      if (!res.ok) return;
+      setSlides(data.slides || []);
+      setSlideOrders((prev) => {
+        const next = { ...prev };
+        for (const slide of data.slides || []) {
+          const zone = slide.slider_zone || "banner1";
+          if (!next[zone]) next[zone] = [];
+          if (!next[zone].includes(slide.id)) next[zone].push(slide.id);
+        }
+        return next;
+      });
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -227,6 +269,11 @@ export default function LayoutBuilderClient() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const fromUrl = parseTabParam(searchParams.get("tab"));
+    if (fromUrl) setTab(fromUrl);
+  }, [searchParams]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -483,7 +530,13 @@ export default function LayoutBuilderClient() {
   const slider = doc.slider[viewport];
   const frameWidth = VIEWPORT_WIDTHS[viewport];
 
+  const onLiveContentChanged = useCallback(async () => {
+    await refreshSlidesMeta();
+    reloadPreview();
+  }, [refreshSlidesMeta]);
+
   const tabs: { id: TabId; label: string; icon: typeof Layers }[] = [
+    { id: "site", label: de ? "Site" : "الموقع", icon: Settings2 },
     { id: "structure", label: de ? "Struktur" : "الهيكل", icon: Layers },
     { id: "header", label: de ? "Kopfleiste" : "الترويسة", icon: LayoutTemplate },
     { id: "banner", label: de ? "Banner" : "البانر", icon: ImageIcon },
@@ -495,7 +548,7 @@ export default function LayoutBuilderClient() {
     return (
       <div className="flex items-center justify-center min-h-[60vh] text-zinc-500 gap-2">
         <Loader2 className="animate-spin" size={20} />
-        {de ? "Page-Builder wird geladen…" : "جاري التحميل…"}
+        {de ? "Shop-Editor wird geladen…" : "جاري التحميل…"}
       </div>
     );
   }
@@ -514,7 +567,7 @@ export default function LayoutBuilderClient() {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-semibold tracking-tight truncate">
-                {de ? "Live Page-Builder" : "منشئ الصفحات المباشر"}
+                {de ? "Shop-Editor" : "محرر المتجر"}
               </h1>
               {dirtyLocal ? (
                 <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">
@@ -528,8 +581,8 @@ export default function LayoutBuilderClient() {
             </div>
             <p className="text-[11px] text-zinc-500 truncate">
               {de
-                ? "Styles + Reihenfolge — live erst nach Veröffentlichen"
-                : "الأنماط والترتيب — يظهر للعملاء بعد النشر"}
+                ? "All-in-One: Site, Banner, Layout — Inhalte sofort, Styles nach Publish"
+                : "الكل في واحد: الموقع والبانر والتخطيط — المحتوى فوري والأنماط بعد النشر"}
             </p>
           </div>
         </div>
@@ -608,6 +661,10 @@ export default function LayoutBuilderClient() {
             </div>
 
             <div className="space-y-5 p-4 pb-10">
+              {tab === "site" && (
+                <BuilderSitePanel de={de} onSaved={onLiveContentChanged} />
+              )}
+
               {tab === "structure" && (
                 <BuilderStructurePanel
                   de={de}
@@ -711,8 +768,10 @@ export default function LayoutBuilderClient() {
 
               {tab === "banner" && (
                 <section className="space-y-3">
-                  <p className="text-[11px] text-zinc-500">
-                    {de ? `Viewport: ${viewport}` : `العرض: ${viewport}`}
+                  <p className="text-[11px] leading-relaxed text-zinc-500">
+                    {de
+                      ? `Viewport: ${viewport}. Styles = Entwurf; Banner-Bilder unten = sofort live.`
+                      : `العرض: ${viewport}. الأنماط مسودة؛ صور البانر أدناه مباشرة.`}
                   </p>
                   {(
                     [
@@ -758,6 +817,11 @@ export default function LayoutBuilderClient() {
                       </button>
                     ))}
                   </div>
+                  <BuilderSlidePanel
+                    de={de}
+                    sections={sections}
+                    onSlidesChanged={onLiveContentChanged}
+                  />
                 </section>
               )}
 
@@ -792,6 +856,10 @@ export default function LayoutBuilderClient() {
                       />
                     </label>
                   ))}
+                  <BuilderBrandsPanel
+                    de={de}
+                    onChanged={onLiveContentChanged}
+                  />
                 </section>
               )}
 

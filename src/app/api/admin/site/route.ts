@@ -13,6 +13,7 @@ function bust() {
   try {
     revalidateTag("catalog");
     revalidateTag("site");
+    revalidateTag("slides");
   } catch {
     /* ignore */
   }

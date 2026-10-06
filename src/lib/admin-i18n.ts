@@ -24,7 +24,7 @@ export const adminMessages = {
     restore: "Wiederherstellen",
     trash: "Papierkorb",
     sliders: "Slider & Banner",
-    pageBuilder: "Page-Builder",
+    pageBuilder: "Shop-Editor",
     siteSettings: "Site-Einstellungen",
     siteLogo: "Marken-Logo",
     siteLogoHint:
@@ -124,7 +124,7 @@ export const adminMessages = {
     restore: "استعادة",
     trash: "سلة المهملات",
     sliders: "السلايدر واللافتات",
-    pageBuilder: "منشئ الصفحات",
+    pageBuilder: "محرر المتجر",
     siteSettings: "إعدادات الموقع",
     siteLogo: "شعار العلامة",
     siteLogoHint:

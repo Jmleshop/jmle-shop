@@ -4,6 +4,7 @@ import {
   defaultLayoutDocument,
   documentsEqual,
   layoutCssVars,
+  layoutCssVarsResponsive,
   normalizeBuilderContentDraft,
   normalizeLayoutDocument,
   normalizeLayoutVersions,
@@ -106,5 +107,20 @@ describe("layout-builder", () => {
     });
     assert.equal(draft.homepageSections.length, 2);
     assert.deepEqual(draft.slideOrders.banner1, ["s1", "s2"]);
+  });
+
+  it("emits responsive media-query CSS for banner viewports", () => {
+    const doc = defaultLayoutDocument();
+    doc.slider.desktop.objectFit = "contain";
+    doc.slider.tablet.objectFit = "cover";
+    doc.slider.mobile.heightPx = 180;
+    doc.slider.mobile.objectFit = "cover";
+    const css = layoutCssVarsResponsive(doc);
+    assert.match(css, /:root\{/);
+    assert.match(css, /@media \(max-width:1023px\)/);
+    assert.match(css, /@media \(max-width:767px\)/);
+    assert.match(css, /--layout-banner-object-fit:contain/);
+    assert.match(css, /--layout-banner-height:180px/);
+    assert.match(css, /--layout-cart:/);
   });
 });
