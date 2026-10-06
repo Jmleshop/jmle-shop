@@ -18,9 +18,18 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
+import {
+  GripVertical,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeOff,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { HomepageSection } from "@/types";
+import { createHomepageSection } from "@/lib/homepage-sections";
+import type { HomepageSection, HomepageSectionType } from "@/types";
 
 type SlideMeta = {
   id: string;
@@ -36,6 +45,7 @@ function SortableSectionRow({
   onToggle,
   onMove,
   onToggleActive,
+  onRemove,
   children,
 }: {
   section: HomepageSection;
@@ -44,6 +54,7 @@ function SortableSectionRow({
   onToggle: () => void;
   onMove: (dir: -1 | 1) => void;
   onToggleActive: () => void;
+  onRemove?: () => void;
   children?: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -111,6 +122,17 @@ function SortableSectionRow({
         >
           <ChevronDown size={14} />
         </button>
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="p-1 text-red-400 hover:text-red-600"
+            aria-label="Delete"
+            title={de ? "Sektion entfernen" : "إزالة القسم"}
+          >
+            <Trash2 size={13} />
+          </button>
+        ) : null}
       </div>
       {expanded && children ? (
         <div className="border-t border-zinc-100 bg-zinc-50/80 px-2 py-2 space-y-1">
@@ -192,13 +214,70 @@ export default function BuilderStructurePanel({
     onChangeSlideOrders({ ...slideOrders, [zone]: swapped });
   };
 
+  const addSection = (type: HomepageSectionType) => {
+    const created = createHomepageSection(type, ordered.length);
+    if (type === "slider" || type === "single") {
+      created.title = de ? "Neue Banner-Sektion" : "قسم بانر جديد";
+    } else if (type === "brands") {
+      created.title = de ? "Marken" : "العلامات";
+    } else if (type === "categories") {
+      created.title = de ? "Kategorien" : "الفئات";
+    } else {
+      created.title = de ? "Angebote" : "عروض";
+    }
+    onChangeSections([...ordered, created]);
+  };
+
+  const removeSection = (id: string) => {
+    if (ordered.length <= 1) return;
+    if (
+      !confirm(
+        de
+          ? "Sektion aus dem Entwurf entfernen? (Live erst nach Veröffentlichen)"
+          : "إزالة القسم من المسودة؟ (يظهر بعد النشر)"
+      )
+    ) {
+      return;
+    }
+    onChangeSections(
+      ordered.filter((s) => s.id !== id).map((s, i) => ({ ...s, sortOrder: i }))
+    );
+  };
+
   return (
     <div className="space-y-3">
       <p className="text-[11px] leading-relaxed text-zinc-500">
         {de
-          ? "Sektionen per Drag-and-Drop oder Pfeilen sortieren. Slides innerhalb einer Banner-Zone ebenfalls."
-          : "أعد ترتيب الأقسام بالسحب أو الأسهم، وكذلك الشرائح داخل كل بانر."}
+          ? "Sektionen per Drag-and-Drop sortieren. Neu/Löschen wirkt nach Veröffentlichen. Banner-Bilder im Tab Banner."
+          : "رتّب الأقسام بالسحب. الإضافة/الحذف بعد النشر. صور البانر من تبويب البانر."}
       </p>
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={() => addSection("slider")}
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 text-[11px] font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          <Plus size={12} />
+          {de ? "Banner" : "بانر"}
+        </button>
+        <select
+          className="h-8 rounded-md border border-zinc-200 bg-white px-2 text-[11px]"
+          defaultValue=""
+          onChange={(e) => {
+            const v = e.target.value as HomepageSectionType | "";
+            if (v) addSection(v);
+            e.target.value = "";
+          }}
+        >
+          <option value="" disabled>
+            {de ? "Andere…" : "أخرى…"}
+          </option>
+          <option value="single">{de ? "Einzelbanner" : "بانر واحد"}</option>
+          <option value="brands">{de ? "Marken" : "علامات"}</option>
+          <option value="products">{de ? "Produkte" : "منتجات"}</option>
+          <option value="categories">{de ? "Kategorien" : "فئات"}</option>
+        </select>
+      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -238,6 +317,11 @@ export default function BuilderStructurePanel({
                       )
                     );
                   }}
+                  onRemove={
+                    ordered.length > 1
+                      ? () => removeSection(section.id)
+                      : undefined
+                  }
                 >
                   <div className="space-y-2">
                     <label className="block text-[11px] text-zinc-600">

@@ -398,6 +398,47 @@ export function layoutCssVars(
   return vars;
 }
 
+/** Banner-Vars für einen Viewport (für Media-Query-Blöcke). */
+export function layoutBannerCssVars(
+  doc: LayoutDocument,
+  viewport: LayoutViewport
+): Record<string, string> {
+  const slider = doc.slider[viewport] ?? doc.slider.desktop;
+  const hasFixedHeight = slider.heightPx > 0;
+  return {
+    "--layout-banner-height": hasFixedHeight ? `${slider.heightPx}px` : "auto",
+    "--layout-banner-min-height": hasFixedHeight ? `${slider.heightPx}px` : "0px",
+    "--layout-banner-aspect": hasFixedHeight ? "auto" : "2.4 / 1",
+    "--layout-banner-margin-y": `${slider.marginY}px`,
+    "--layout-banner-offset-y": `${slider.offsetY}px`,
+    "--layout-banner-object-fit": slider.objectFit,
+    "--layout-banner-object-position": slider.objectPosition,
+  };
+}
+
+function cssDecls(vars: Record<string, string>): string {
+  return Object.entries(vars)
+    .map(([k, v]) => `${k}:${v}`)
+    .join(";");
+}
+
+/**
+ * Live-Shop CSS: Desktop als Default, Tablet/Mobile per Media Query.
+ * Ein Banner-Bild skaliert über object-fit auf allen Viewports.
+ */
+export function layoutCssVarsResponsive(doc: LayoutDocument): string {
+  const root = layoutCssVars(doc, "desktop");
+  const tablet = layoutBannerCssVars(doc, "tablet");
+  const mobile = layoutBannerCssVars(doc, "mobile");
+  const cart = `html{--layout-cart:${doc.chrome.cartPosition}}`;
+  return [
+    `:root{${cssDecls(root)}}`,
+    cart,
+    `@media (max-width:1023px){:root{${cssDecls(tablet)}}}`,
+    `@media (max-width:767px){:root{${cssDecls(mobile)}}}`,
+  ].join("");
+}
+
 export function detectViewportWidth(width: number): LayoutViewport {
   if (width < 768) return "mobile";
   if (width < 1024) return "tablet";

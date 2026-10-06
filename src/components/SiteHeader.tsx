@@ -5,7 +5,7 @@ import {
   getPublishedLayoutAsync,
   getSiteConfigAsync,
 } from "@/lib/catalog-server";
-import { layoutCssVars } from "@/lib/layout-builder";
+import { layoutCssVarsResponsive } from "@/lib/layout-builder";
 
 /** Server-Wrapper: lädt Logo/Name/Layout/Kategorien für Header + Live-Chrome. */
 export default async function SiteHeader() {
@@ -14,18 +14,11 @@ export default async function SiteHeader() {
     getPublishedLayoutAsync(),
     getNavCategoriesAsync(),
   ]);
-  const vars = layoutCssVars(layout, "desktop");
-  const cssText = Object.entries(vars)
-    .map(([k, v]) => `${k}:${v}`)
-    .join(";");
+  const cssText = layoutCssVarsResponsive(layout);
 
   return (
     <>
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `:root{${cssText}}html{--layout-cart:${layout.chrome.cartPosition}}`,
-        }}
-      />
+      <style dangerouslySetInnerHTML={{ __html: cssText }} />
       <LayoutPreviewBridge published={layout} />
       <Header
         logoUrl={site.logo || ""}

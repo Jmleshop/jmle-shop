@@ -14,8 +14,6 @@ import {
   Wallet,
   Boxes,
   Globe2,
-  Images,
-  Settings2,
   PencilRuler,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -41,9 +39,7 @@ export default function AdminSidebar({
     { href: "/admin/dashboard", icon: LayoutDashboard, key: "dashboard" },
     { href: "/admin/products", icon: Package, key: "products" },
     { href: "/admin/categories", icon: FolderTree, key: "categories" },
-    { href: "/admin/sliders", icon: Images, key: "sliders" },
     { href: "/admin/builder", icon: PencilRuler, key: "pageBuilder" },
-    { href: "/admin/site", icon: Settings2, key: "siteSettings" },
     { href: "/admin/inventory", icon: Warehouse, key: "inventory" },
     { href: "/admin/trash", icon: Trash2, key: "trash" },
   ];

@@ -3,7 +3,8 @@
  * Kleinere Kanten + WebP q78 → deutlich weniger Storage (Vercel/Supabase).
  */
 export const MAX_EDGE_PRODUCT = 800;
-export const MAX_EDGE_BANNER = 1280;
+/** Banner: ein HD-Upload für Desktop/Tablet/Mobile (CSS object-fit skaliert). */
+export const MAX_EDGE_BANNER = 2048;
 /** Logos: höhere Kante für scharfe Header-Darstellung, Datei bleibt klein. */
 export const MAX_EDGE_LOGO = 1600;
 /** WebP-Qualität: kompakt, aber gestochen scharf (kein Verpixeln). */
