@@ -16,6 +16,8 @@ interface BrandLogoTickerProps {
   title?: string;
 }
 
+const NUDGE_PAUSE_MS = 1600;
+
 /** Kundenansicht: immer zur internen Marken-Produktseite (keine externen Ablenkungen). */
 function brandHref(logo: BrandLogo): string {
   return `/brands/${encodeURIComponent(logo.id)}`;
@@ -54,6 +56,7 @@ export default function BrandLogoTicker({
   const { t } = useShopLocale();
   const trackRef = useRef<HTMLDivElement>(null);
   const shiftRef = useRef(0);
+  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const nudge = useCallback((dir: -1 | 1) => {
     const track = trackRef.current;
@@ -62,6 +65,10 @@ export default function BrandLogoTicker({
     const step = Math.max(64, item?.offsetWidth || 96);
     const loopWidth = track.scrollWidth > 0 ? track.scrollWidth / 2 : 0;
 
+    // Marquee kurz pausieren, damit der manuelle Sprung nicht „hackt“
+    track.style.animationPlayState = "paused";
+    if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+
     // dir -1 = vorwärts (Track nach links), +1 = zurück
     shiftRef.current += dir * step;
     if (loopWidth > 0) {
@@ -69,6 +76,12 @@ export default function BrandLogoTicker({
       while (shiftRef.current > 0) shiftRef.current -= loopWidth;
     }
     track.style.setProperty("--marquee-shift", `${shiftRef.current}px`);
+
+    pauseTimerRef.current = setTimeout(() => {
+      if (trackRef.current) {
+        trackRef.current.style.animationPlayState = "";
+      }
+    }, NUDGE_PAUSE_MS);
   }, []);
 
   if (!logos.length) return null;

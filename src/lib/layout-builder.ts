@@ -193,7 +193,9 @@ function asString(v: unknown, fallback: string): string {
 }
 
 function asFit(v: unknown): BannerObjectFit {
-  return v === "cover" ? "cover" : "contain";
+  // Default cover — nur explizites "contain" behält Letterboxing
+  if (v === "contain") return "contain";
+  return "cover";
 }
 
 function asCart(v: unknown): CartPosition {
@@ -208,10 +210,12 @@ function asAlign(v: unknown): SectionTitleAlign {
 function normalizeSlider(raw: unknown): LayoutSliderStyle {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
-    heightPx: clamp(Number(o.heightPx ?? 0), 0, 1200),
+    // 0 = Aspect-Ratio statt starrer Pixelhöhe (responsiv Desktop/Mobile)
+    heightPx: clamp(Number(o.heightPx ?? DEFAULT_SLIDER.heightPx), 0, 1200),
     marginY: clamp(Number(o.marginY ?? 0), -80, 160),
     offsetY: clamp(Number(o.offsetY ?? 0), -200, 200),
-    objectFit: asFit(o.objectFit),
+    objectFit:
+      o.objectFit == null ? DEFAULT_SLIDER.objectFit : asFit(o.objectFit),
     objectPosition:
       asString(o.objectPosition, "center center").slice(0, 64) || "center center",
   };

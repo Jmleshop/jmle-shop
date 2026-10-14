@@ -33,16 +33,35 @@ type ArabicSortable = {
   name_ar?: string | null;
 };
 
-/** Primär `name_ar` / gemapptes `name`, sonst DE/EN-Fallback. */
+/**
+ * Sortierschlüssel: strikt `name_ar` zuerst, dann gemapptes Storefront-`name`
+ * (bereits name_ar||name_de), zuletzt deutscher/englischer Fallback.
+ */
 export function arabicSortKey(item: ArabicSortable): string {
-  return String(
-    item.name_ar || item.name || item.nameDe || item.nameEn || ""
-  ).trim();
+  const ar = String(item.name_ar ?? "").trim();
+  if (ar) return ar;
+  const mapped = String(item.name ?? "").trim();
+  if (mapped) return mapped;
+  return String(item.nameDe || item.nameEn || "").trim();
+}
+
+/** True wenn kein arabischer Name gesetzt ist (Sortierung fällt auf DE zurück). */
+export function missingArabicName(item: ArabicSortable): boolean {
+  const ar = String(item.name_ar ?? "").trim();
+  if (ar) return false;
+  const mapped = String(item.name ?? "").trim();
+  // Storefront: `name` ist name_ar||name_de — nur arabische Schrift zählt
+  if (mapped && ARABIC_LETTER.test(mapped)) return false;
+  return true;
 }
 
 /** Shop-Standard: Produkte nach arabischem Namen (أ → ي) via localeCompare('ar'). */
 export function sortByArabicName<T extends ArabicSortable>(items: T[]): T[] {
-  return [...items].sort((a, b) =>
-    compareAlpha(arabicSortKey(a), arabicSortKey(b), "ar", "az")
-  );
+  return [...items].sort((a, b) => {
+    const aMissing = missingArabicName(a);
+    const bMissing = missingArabicName(b);
+    // Produkte ohne name_ar ans Ende, danach alphabetisch
+    if (aMissing !== bMissing) return aMissing ? 1 : -1;
+    return compareAlpha(arabicSortKey(a), arabicSortKey(b), "ar", "az");
+  });
 }

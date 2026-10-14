@@ -26,7 +26,7 @@ import { originalImageSrc } from "@/lib/sharp-image";
 import type { NumberPlan } from "@/lib/product-numbers";
 import BarcodeScanModal from "@/components/admin/BarcodeScanModal";
 import { downloadPriceLabels } from "@/components/admin/PriceLabelPdf";
-import { compareAlpha } from "@/lib/locale-sort";
+import { compareAlpha, missingArabicName } from "@/lib/locale-sort";
 import type { FoodCategory, FoodProduct } from "@/types";
 
 type SortKey = "newest" | "oldest" | "priceAsc" | "priceDesc" | "az" | "za";
@@ -1066,6 +1066,18 @@ export default function AdminProductsPage() {
                       </span>
                       {p.name_de && (
                         <span className="truncate block text-xs text-gray-400">{p.name_de}</span>
+                      )}
+                      {missingArabicName(p) && (
+                        <span
+                          className="text-[11px] tracking-wide text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded"
+                          title={
+                            lang === "de"
+                              ? "Arabischer Name fehlt — Sortierung nutzt den deutschen Fallback"
+                              : "الاسم العربي مفقود — يتم الترتيب بالاسم الألماني"
+                          }
+                        >
+                          {lang === "de" ? "name_ar fehlt" : "بدون اسم عربي"}
+                        </span>
                       )}
                       {p.status === "draft" && (
                         <span className="text-[11px] uppercase tracking-wide text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
