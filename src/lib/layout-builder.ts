@@ -118,8 +118,16 @@ const DEFAULT_SLIDER: LayoutSliderStyle = {
   heightPx: 0,
   marginY: 0,
   offsetY: 0,
-  objectFit: "contain",
+  /** cover füllt den Rahmen auf allen Viewports ohne Letterboxing */
+  objectFit: "cover",
   objectPosition: "center center",
+};
+
+/** Standard-Seitenverhältnisse — responsive ohne manuelle px-Höhe */
+const DEFAULT_BANNER_ASPECT: Record<LayoutViewport, string> = {
+  desktop: "2.4 / 1",
+  tablet: "2.2 / 1",
+  mobile: "16 / 10",
 };
 
 const DEFAULT_HEADER: LayoutHeaderStyle = {
@@ -380,10 +388,12 @@ export function layoutCssVars(
     "--layout-brands-speed": String(brands.speed),
     "--layout-heading-scale": String(typo.headingScale),
     "--layout-title-align": typo.sectionTitleAlign,
-    // Feste Höhe ersetzt Aspect-Ratio; 0 = auto über aspect 2.4/1
+    // Feste Höhe ersetzt Aspect-Ratio; 0 = viewport-spezifisches Aspect
     "--layout-banner-height": hasFixedHeight ? `${slider.heightPx}px` : "auto",
     "--layout-banner-min-height": hasFixedHeight ? `${slider.heightPx}px` : "0px",
-    "--layout-banner-aspect": hasFixedHeight ? "auto" : "2.4 / 1",
+    "--layout-banner-aspect": hasFixedHeight
+      ? "auto"
+      : DEFAULT_BANNER_ASPECT[viewport] ?? DEFAULT_BANNER_ASPECT.desktop,
     "--layout-banner-margin-y": `${slider.marginY}px`,
     "--layout-banner-offset-y": `${slider.offsetY}px`,
     "--layout-banner-object-fit": slider.objectFit,

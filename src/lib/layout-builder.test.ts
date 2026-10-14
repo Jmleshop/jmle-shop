@@ -17,7 +17,7 @@ describe("layout-builder", () => {
     assert.equal(doc.version, 2);
     assert.equal(doc.chrome.logoScale, 1.5);
     assert.equal(doc.chrome.cartPosition, "start");
-    assert.equal(doc.slider.mobile.objectFit, "contain");
+    assert.equal(doc.slider.mobile.objectFit, "cover");
     assert.equal(doc.header.scale, 1);
     assert.equal(doc.brands.logoScale, 1);
     assert.equal(doc.typography.sectionTitleAlign, "center");
@@ -97,6 +97,11 @@ describe("layout-builder", () => {
     const auto = layoutCssVars(defaultLayoutDocument(), "desktop");
     assert.equal(auto["--layout-banner-height"], "auto");
     assert.equal(auto["--layout-banner-aspect"], "2.4 / 1");
+    assert.equal(auto["--layout-banner-object-fit"], "cover");
+
+    const mobile = layoutCssVars(defaultLayoutDocument(), "mobile");
+    assert.equal(mobile["--layout-banner-aspect"], "16 / 10");
+    assert.equal(mobile["--layout-banner-object-fit"], "cover");
   });
 
   it("normalizes builder content draft", () => {

@@ -26,16 +26,23 @@ export function compareAlpha(
   return direction === "za" ? -cmp : cmp;
 }
 
-/** Shop-Standard: Produkte nach arabischem Namen (أ → ي). */
-export function sortByArabicName<T extends { name?: string; nameEn?: string }>(
-  items: T[]
-): T[] {
+type ArabicSortable = {
+  name?: string | null;
+  nameEn?: string | null;
+  nameDe?: string | null;
+  name_ar?: string | null;
+};
+
+/** Primär `name_ar` / gemapptes `name`, sonst DE/EN-Fallback. */
+export function arabicSortKey(item: ArabicSortable): string {
+  return String(
+    item.name_ar || item.name || item.nameDe || item.nameEn || ""
+  ).trim();
+}
+
+/** Shop-Standard: Produkte nach arabischem Namen (أ → ي) via localeCompare('ar'). */
+export function sortByArabicName<T extends ArabicSortable>(items: T[]): T[] {
   return [...items].sort((a, b) =>
-    compareAlpha(
-      String(a.name || a.nameEn || ""),
-      String(b.name || b.nameEn || ""),
-      "ar",
-      "az"
-    )
+    compareAlpha(arabicSortKey(a), arabicSortKey(b), "ar", "az")
   );
 }

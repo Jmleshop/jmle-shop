@@ -74,7 +74,7 @@ export default async function BrandPage({ params }: BrandPageProps) {
           <div className="relative h-12 w-full md:h-14">
             <Image
               src={originalImageSrc(brand.image)}
-              alt=""
+              alt={brand.name || ""}
               fill
               quality={SHOP_IMAGE_QUALITY}
               className="object-contain"

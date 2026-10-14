@@ -21,6 +21,7 @@ import {
   OriginBadge,
   SealBadge,
 } from "@/components/ui";
+import { sortByArabicName } from "@/lib/locale-sort";
 
 /** Max. Produkte pro Seite (Kategorie / Alle / Suche). */
 export const PRODUCTS_PAGE_SIZE = 30;
@@ -210,7 +211,8 @@ export function ProductGrid({
   const { t } = useShopLocale();
   const sectionRef = useRef<HTMLElement>(null);
   const [page, setPage] = useState(1);
-  const pageCount = Math.max(1, Math.ceil(products.length / pageSize));
+  const sorted = useMemo(() => sortByArabicName(products), [products]);
+  const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
 
   useEffect(() => {
     setPage(1);
@@ -218,8 +220,8 @@ export function ProductGrid({
 
   const pageItems = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return products.slice(start, start + pageSize);
-  }, [products, page, pageSize]);
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, page, pageSize]);
 
   const goPage = (next: number) => {
     const clamped = Math.max(1, Math.min(pageCount, next));
@@ -227,7 +229,7 @@ export function ProductGrid({
     sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  if (products.length === 0) return null;
+  if (sorted.length === 0) return null;
   const heading = titleKey ? t(titleKey) : title;
 
   return (

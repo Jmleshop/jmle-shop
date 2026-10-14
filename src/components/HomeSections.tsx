@@ -164,9 +164,16 @@ export function HomepageSectionsRenderer({
 
   const activeSections = useMemo(() => {
     const list = overrideSections ?? sections;
+    let brandsSeen = false;
     return [...list]
       .filter((s) => s.active !== false)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .filter((s) => {
+        if (s.type !== "brands") return true;
+        if (brandsSeen) return false;
+        brandsSeen = true;
+        return true;
+      });
   }, [overrideSections, sections]);
 
   return (

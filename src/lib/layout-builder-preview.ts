@@ -12,6 +12,7 @@ export {
 } from "@/lib/layout-builder";
 
 import type { HomepageSection, HomepageSectionType } from "@/types";
+import { dedupeBrandsSections } from "@/lib/homepage-sections";
 
 /** Minimale Normalisierung für Builder-Preview (Client-sicher). */
 export function normalizeHomepageSectionsSafe(
@@ -50,5 +51,5 @@ export function normalizeHomepageSectionsSafe(
       active: row.active !== false,
     });
   }
-  return out;
+  return dedupeBrandsSections(out.sort((a, b) => a.sortOrder - b.sortOrder));
 }

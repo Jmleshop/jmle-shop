@@ -256,6 +256,12 @@ export default function AdminSlidersPage() {
       await addBannerSection(type);
       return;
     }
+    // Genau eine Marken-Leiste — keine Duplikate anlegen
+    if (type === "brands" && sections.some((s) => s.type === "brands")) {
+      const existing = sections.find((s) => s.type === "brands");
+      if (existing) setSelectedId(existing.id);
+      return;
+    }
     const created = createHomepageSection(type, sections.length);
     created.title =
       type === "brands"

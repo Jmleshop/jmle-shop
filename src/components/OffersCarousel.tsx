@@ -9,6 +9,7 @@ import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle, type ShopMsgKey } from "@/lib/shop-i18n";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import type { Product } from "@/types";
+import { sortByArabicName } from "@/lib/locale-sort";
 
 interface OffersCarouselProps {
   products: Product[];
@@ -81,7 +82,7 @@ export default function OffersCarousel({
   // Leerer Titel = Überschrift ausblenden (kein i18n-Fallback auf der Startseite)
   const heading = (title ?? "").trim() || (titleKey ? t(titleKey) : "");
   // Never mount the entire catalog twice — keep a small, seamless track.
-  const visible = products.slice(0, MARQUEE_MAX_ITEMS);
+  const visible = sortByArabicName(products).slice(0, MARQUEE_MAX_ITEMS);
   const loop =
     visible.length > 1 ? [...visible, ...visible] : visible;
   const duration = Math.max(20, visible.length * 6);
