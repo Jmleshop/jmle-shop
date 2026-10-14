@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import {
   isAuthError,
   requireStaff,
@@ -16,6 +17,15 @@ import {
   stripBrandName,
 } from "@/lib/resolve-product-brand";
 import type { FoodProduct } from "@/types";
+
+function bustProductCache(opts?: { brands?: boolean }) {
+  try {
+    revalidateTag("products");
+    if (opts?.brands) revalidateTag("brands");
+  } catch {
+    /* ignore */
+  }
+}
 
 type Db = ReturnType<typeof staffDataClient>;
 
@@ -115,9 +125,12 @@ export async function POST(request: Request) {
   };
 
   if (!payload.product_number) {
-    const existing = await db.from("products").select("product_number");
+    // Nur die Spalte product_number (kein Join/Full-Row) — schnell genug für Max+1
+    const { data: numberRows } = await db
+      .from("products")
+      .select("product_number");
     payload.product_number = nextProductNumber(
-      (existing.data ?? []).map((row) => row.product_number as string | null)
+      (numberRows ?? []).map((row) => row.product_number as string | null)
     );
   }
 
@@ -152,5 +165,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  bustProductCache({ brands: Boolean(resolved.brand_id) });
   return NextResponse.json({ product: data }, { status: 201 });
 }

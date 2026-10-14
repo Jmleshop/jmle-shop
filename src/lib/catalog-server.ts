@@ -28,6 +28,8 @@ import {
   type LayoutDocument,
 } from "@/lib/layout-builder";
 import { originalImageSrc } from "@/lib/sharp-image";
+import { sortByArabicName } from "@/lib/locale-sort";
+import { textContainsAlias } from "@/lib/brand-match";
 import type {
   BrandLogo,
   Category,
@@ -271,7 +273,7 @@ async function fetchAllPublicProducts(): Promise<Product[]> {
   }
 
   if (!error && data && data.length > 0) {
-    return (data as PublicRow[]).map(mapPublicProduct);
+    return sortByArabicName((data as PublicRow[]).map(mapPublicProduct));
   }
 
   if (error) {
@@ -323,13 +325,15 @@ async function fetchProductsFromBaseTable(
     return [];
   }
 
-  return (data as Array<PublicRow & { status?: string | null }>)
-    .filter((row) => {
-      // Nur veröffentlichte Produkte; fehlende status-Spalte = veröffentlicht.
-      const status = row.status;
-      return status == null || status === "published";
-    })
-    .map(mapPublicProduct);
+  return sortByArabicName(
+    (data as Array<PublicRow & { status?: string | null }>)
+      .filter((row) => {
+        // Nur veröffentlichte Produkte; fehlende status-Spalte = veröffentlicht.
+        const status = row.status;
+        return status == null || status === "published";
+      })
+      .map(mapPublicProduct)
+  );
 }
 
 async function fetchAllCategories(): Promise<Category[]> {
@@ -548,10 +552,11 @@ const getProductsCached = unstable_cache(
   async (): Promise<Product[]> => {
     const products = await fetchAllPublicProducts();
     // Nie eine leere Seite: wenn die DB (noch) nichts liefert, Demo-Katalog zeigen.
-    return products.length ? products : FALLBACK_PRODUCTS;
+    const list = products.length ? products : FALLBACK_PRODUCTS;
+    return sortByArabicName(list);
   },
-  ["catalog-products-v2"],
-  { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "products"] }
+  ["catalog-products-v3-ar-sort"],
+  { revalidate: REVALIDATE_SECONDS, tags: ["products"] }
 );
 
 /** Request-dedupe + ISR/tag cache for the public product catalog. */
@@ -757,6 +762,43 @@ async function queryProductsByBrandId(brandId: string): Promise<Product[]> {
   return [];
 }
 
+function productMatchesBrandText(p: Product, brandName: string): boolean {
+  const name = brandName.trim();
+  if (!name) return false;
+  const blob = [p.name, p.nameDe, p.description, p.ingredients]
+    .filter(Boolean)
+    .join("\n");
+  return textContainsAlias(blob, name);
+}
+
+/** Persistiert gefundene Marken-Zuordnungen (nur fehlende brand_id). */
+async function persistBrandIdMatches(
+  brandId: string,
+  productIds: string[]
+): Promise<void> {
+  if (!productIds.length || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
+  try {
+    const { createServiceClient } = await import("@/lib/supabase/admin");
+    const { revalidateTag } = await import("next/cache");
+    const admin = createServiceClient();
+    for (let i = 0; i < productIds.length; i += 100) {
+      const chunk = productIds.slice(i, i + 100);
+      await admin
+        .from("products")
+        .update({ brand_id: brandId })
+        .in("id", chunk)
+        .is("brand_id", null);
+    }
+    try {
+      revalidateTag("products");
+    } catch {
+      /* ignore */
+    }
+  } catch (e) {
+    console.error("[catalog] persistBrandIdMatches:", e);
+  }
+}
+
 export const getProductsByBrandAsync = cache(
   async (brandId: string): Promise<Product[]> => {
     const rawId = decodeURIComponent(String(brandId || "")).trim();
@@ -766,16 +808,16 @@ export const getProductsByBrandAsync = cache(
 
     // 1) Katalog-Cache (schnell)
     const products = await getProductsAsync();
-    const fromCache = products.filter(
-      (p) => p.brandId && p.brandId === resolvedId
+    const fromCache = sortByArabicName(
+      products.filter((p) => p.brandId && p.brandId === resolvedId)
     );
     if (fromCache.length > 0) return fromCache;
 
     // 2) Direkte DB-Abfrage — zuverlässig auch bei Cache ohne brand_id
-    const live = await queryProductsByBrandId(resolvedId);
+    const live = sortByArabicName(await queryProductsByBrandId(resolvedId));
     if (live.length > 0) return live;
 
-    // 3) Falls URL den Markennamen trägt: alle Marken-IDs gleichen Namens prüfen
+    // 3) Gleicher Markenname, andere ID
     if (brand?.name) {
       const logos = await getBrandLogosAsync();
       const sameName = logos.filter(
@@ -784,8 +826,25 @@ export const getProductsByBrandAsync = cache(
       );
       for (const logo of sameName) {
         if (logo.id === resolvedId) continue;
-        const more = await queryProductsByBrandId(logo.id);
+        const more = sortByArabicName(await queryProductsByBrandId(logo.id));
         if (more.length) return more;
+      }
+    }
+
+    // 4) Text-Match auf Name/Beschreibung (wenn brand_id noch fehlt)
+    if (brand?.name) {
+      const matched = sortByArabicName(
+        products.filter(
+          (p) => !p.brandId && productMatchesBrandText(p, brand.name)
+        )
+      );
+      if (matched.length > 0) {
+        // Dauerhaft zuordnen — nächster Klick nutzt Index/brand_id
+        void persistBrandIdMatches(
+          resolvedId,
+          matched.map((p) => p.id)
+        );
+        return matched;
       }
     }
 
@@ -886,7 +945,7 @@ export const getFeaturedProductsAsync = cache(async (): Promise<Product[]> => {
 /** Nur reduzierte Produkte (für die Angebote-Leiste). */
 export const getOffersAsync = cache(async (): Promise<Product[]> => {
   const products = await getProductsAsync();
-  return products.filter(productIsOnSale);
+  return sortByArabicName(products.filter(productIsOnSale));
 });
 
 /**
@@ -916,19 +975,42 @@ export const getRegularProductsAsync = cache(async (): Promise<Product[]> => {
 
 export const getProductByIdAsync = cache(
   async (id: string): Promise<Product | undefined> => {
-    const products = await getProductsAsync();
-    const hit = products.find((p) => p.id === id);
-    if (hit) return hit;
+    const pid = String(id || "").trim();
+    if (!pid) return undefined;
 
+    // Direkte Point-Query zuerst — kein Full-Catalog nötig
     const supabase = createPublicClient();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("products_public")
       .select(PUBLIC_SELECT)
-      .eq("id", id)
+      .eq("id", pid)
       .maybeSingle();
 
-    if (error || !data) return undefined;
-    return mapPublicProduct(data as PublicRow);
+    if (error && /column|42703/i.test(error.message)) {
+      const basic = await supabase
+        .from("products_public")
+        .select(PUBLIC_SELECT_BASIC)
+        .eq("id", pid)
+        .maybeSingle();
+      data = basic.data as typeof data;
+      error = basic.error;
+    }
+
+    if (!error && data) return mapPublicProduct(data as PublicRow);
+
+    const base = await supabase
+      .from("products")
+      .select(PUBLIC_SELECT_BASIC)
+      .eq("id", pid)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!base.error && base.data) {
+      return mapPublicProduct(base.data as PublicRow);
+    }
+
+    // Letzter Fallback: Cache (z. B. Demo-Katalog)
+    const products = await getProductsAsync();
+    return products.find((p) => p.id === pid);
   }
 );
 
@@ -939,7 +1021,7 @@ export const getProductsByCategoryAsync = cache(
 
     // Sammelkategorie „Alle Produkte": ausnahmslos ALLE Produkte, kategorieübergreifend.
     if (isAllCategoryId(rawId)) {
-      return products;
+      return sortByArabicName(products);
     }
     // products_public: nur deleted_at IS NULL & published
 
@@ -975,7 +1057,7 @@ export const getProductsByCategoryAsync = cache(
     if (treatAsSale) {
       // Schema: discount_percent > 0 ⇒ effective price < list price
       // (kein discount_price-Feld; gelöschte Produkte bereits ausgeschlossen)
-      return products.filter(productIsOnSale);
+      return sortByArabicName(products.filter(productIsOnSale));
     }
 
     const realFlat = flat.filter((c) => !isSaleCategory(c) && !isAllCategory(c));
@@ -996,13 +1078,15 @@ export const getProductsByCategoryAsync = cache(
     }
 
     // Direkte DB-Abfrage als zusätzlicher Fallback (falls Cache/Mapping hinkt)
-    const matched = products.filter(
-      (p) => p.categoryId && ids.has(p.categoryId)
+    const matched = sortByArabicName(
+      products.filter((p) => p.categoryId && ids.has(p.categoryId))
     );
     if (matched.length > 0) return matched;
 
     // Letzter Versuch: exakter category_id Match (auch wenn Kategorie nicht im Baum)
-    const direct = products.filter((p) => p.categoryId === resolvedId);
+    const direct = sortByArabicName(
+      products.filter((p) => p.categoryId === resolvedId)
+    );
     if (direct.length > 0) return direct;
 
     // Live-Query gegen products_public / products
@@ -1024,7 +1108,9 @@ export const getProductsByCategoryAsync = cache(
         error = retry.error;
       }
       if (!error && data?.length) {
-        return (data as PublicRow[]).map(mapPublicProduct);
+        return sortByArabicName(
+          (data as PublicRow[]).map(mapPublicProduct)
+        );
       }
     } catch (e) {
       console.error("[catalog] getProductsByCategoryAsync live query:", e);
@@ -1054,7 +1140,7 @@ export async function searchProductsAsync(
   );
 
   if (!rpcError && Array.isArray(rpcData)) {
-    return (rpcData as PublicRow[]).map(mapPublicProduct);
+    return sortByArabicName((rpcData as PublicRow[]).map(mapPublicProduct));
   }
 
   const variants = searchQueryVariants(q);
@@ -1078,19 +1164,19 @@ export async function searchProductsAsync(
     .limit(limit);
 
   if (!error && data) {
-    return (data as PublicRow[]).map(mapPublicProduct);
+    return sortByArabicName((data as PublicRow[]).map(mapPublicProduct));
   }
 
   // Letzter Fallback: gecachter Katalog + Client-Normalisierung
   const { normalizeArabicSearch } = await import("@/lib/search");
   const needle = normalizeArabicSearch(q);
   const all = await getProductsAsync();
-  return all
-    .filter((p) => {
+  return sortByArabicName(
+    all.filter((p) => {
       const hay = normalizeArabicSearch(
         `${p.name} ${p.nameDe ?? ""} ${p.description} ${p.ingredients ?? ""} ${p.originCountry ?? ""}`
       );
       return hay.includes(needle);
     })
-    .slice(0, limit);
+  ).slice(0, limit);
 }
