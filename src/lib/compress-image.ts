@@ -46,6 +46,15 @@ export async function compressImageFile(
   maxEdge = MAX_EDGE_PRODUCT,
   quality = STORAGE_WEBP_QUALITY
 ): Promise<File> {
+  // Bereits kleines WebP nicht nochmals verlustreich kodieren
+  if (
+    file.type === "image/webp" &&
+    file.size > 0 &&
+    file.size <= STORAGE_MAX_MB * 1024 * 1024
+  ) {
+    return file;
+  }
+
   try {
     const bitmap = await createImageBitmap(file);
     try {

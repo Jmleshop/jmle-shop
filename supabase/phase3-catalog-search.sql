@@ -134,7 +134,7 @@ AS $$
       WHEN p.name_ar ILIKE '%' || btrim(p_query) || '%' THEN 1
       ELSE 2
     END,
-    p.created_at DESC NULLS LAST
+    p.name_ar ASC NULLS LAST
   LIMIT GREATEST(1, LEAST(COALESCE(p_limit, 24), 100));
 $$;
 

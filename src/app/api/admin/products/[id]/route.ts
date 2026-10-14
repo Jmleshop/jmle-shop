@@ -22,10 +22,11 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-function bustCatalogCache() {
+/** Nur Produkt-Cache — kein globales "catalog" (Slides/Site/Layout bleiben warm). */
+function bustProductCache(opts?: { brands?: boolean }) {
   try {
-    revalidateTag("catalog");
     revalidateTag("products");
+    if (opts?.brands) revalidateTag("brands");
   } catch {
     /* ignore */
   }
@@ -102,7 +103,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  bustCatalogCache();
+  bustProductCache({ brands: Boolean(resolved.brand_id) });
   return NextResponse.json({ product: data });
 }
 
@@ -142,7 +143,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  bustCatalogCache();
+  bustProductCache();
   return NextResponse.json({ product: data });
 }
 
@@ -186,6 +187,6 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  bustCatalogCache();
+  bustProductCache();
   return NextResponse.json({ success: true, id });
 }

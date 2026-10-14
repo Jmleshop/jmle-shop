@@ -118,8 +118,16 @@ const DEFAULT_SLIDER: LayoutSliderStyle = {
   heightPx: 0,
   marginY: 0,
   offsetY: 0,
-  objectFit: "contain",
+  /** cover füllt den Rahmen auf allen Viewports ohne Letterboxing */
+  objectFit: "cover",
   objectPosition: "center center",
+};
+
+/** Standard-Seitenverhältnisse — responsive ohne manuelle px-Höhe */
+const DEFAULT_BANNER_ASPECT: Record<LayoutViewport, string> = {
+  desktop: "2.4 / 1",
+  tablet: "2.2 / 1",
+  mobile: "16 / 10",
 };
 
 const DEFAULT_HEADER: LayoutHeaderStyle = {
@@ -185,7 +193,9 @@ function asString(v: unknown, fallback: string): string {
 }
 
 function asFit(v: unknown): BannerObjectFit {
-  return v === "cover" ? "cover" : "contain";
+  // Default cover — nur explizites "contain" behält Letterboxing
+  if (v === "contain") return "contain";
+  return "cover";
 }
 
 function asCart(v: unknown): CartPosition {
@@ -200,10 +210,12 @@ function asAlign(v: unknown): SectionTitleAlign {
 function normalizeSlider(raw: unknown): LayoutSliderStyle {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
-    heightPx: clamp(Number(o.heightPx ?? 0), 0, 1200),
+    // 0 = Aspect-Ratio statt starrer Pixelhöhe (responsiv Desktop/Mobile)
+    heightPx: clamp(Number(o.heightPx ?? DEFAULT_SLIDER.heightPx), 0, 1200),
     marginY: clamp(Number(o.marginY ?? 0), -80, 160),
     offsetY: clamp(Number(o.offsetY ?? 0), -200, 200),
-    objectFit: asFit(o.objectFit),
+    objectFit:
+      o.objectFit == null ? DEFAULT_SLIDER.objectFit : asFit(o.objectFit),
     objectPosition:
       asString(o.objectPosition, "center center").slice(0, 64) || "center center",
   };
@@ -380,10 +392,12 @@ export function layoutCssVars(
     "--layout-brands-speed": String(brands.speed),
     "--layout-heading-scale": String(typo.headingScale),
     "--layout-title-align": typo.sectionTitleAlign,
-    // Feste Höhe ersetzt Aspect-Ratio; 0 = auto über aspect 2.4/1
+    // Feste Höhe ersetzt Aspect-Ratio; 0 = viewport-spezifisches Aspect
     "--layout-banner-height": hasFixedHeight ? `${slider.heightPx}px` : "auto",
     "--layout-banner-min-height": hasFixedHeight ? `${slider.heightPx}px` : "0px",
-    "--layout-banner-aspect": hasFixedHeight ? "auto" : "2.4 / 1",
+    "--layout-banner-aspect": hasFixedHeight
+      ? "auto"
+      : DEFAULT_BANNER_ASPECT[viewport] ?? DEFAULT_BANNER_ASPECT.desktop,
     "--layout-banner-margin-y": `${slider.marginY}px`,
     "--layout-banner-offset-y": `${slider.offsetY}px`,
     "--layout-banner-object-fit": slider.objectFit,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import {
   isAuthError,
   requireStaff,
@@ -15,7 +16,17 @@ import {
   resolveProductBrand,
   stripBrandName,
 } from "@/lib/resolve-product-brand";
+import { sortByArabicName } from "@/lib/locale-sort";
 import type { FoodProduct } from "@/types";
+
+function bustProductCache(opts?: { brands?: boolean }) {
+  try {
+    revalidateTag("products");
+    if (opts?.brands) revalidateTag("brands");
+  } catch {
+    /* ignore */
+  }
+}
 
 type Db = ReturnType<typeof staffDataClient>;
 
@@ -28,7 +39,8 @@ async function selectProducts(
     let query = db
       .from("products")
       .select(columns)
-      .order("created_at", { ascending: false });
+      // Vorläufige DB-Order; finale arabische Sortierung in GET via sortByArabicName
+      .order("name_ar", { ascending: true, nullsFirst: false });
     if (!archived) {
       query = query.is("deleted_at", null);
     }
@@ -53,7 +65,7 @@ async function selectProducts(
     let fallback = db
       .from("products")
       .select(PRODUCT_SELECT_BASE)
-      .order("created_at", { ascending: false });
+      .order("name_ar", { ascending: true, nullsFirst: false });
     if (!archived) fallback = fallback.is("deleted_at", null);
     const retry = await fallback;
     data = retry.data as typeof data;
@@ -62,6 +74,16 @@ async function selectProducts(
     if (!error && status === "draft") {
       data = [];
     }
+  }
+
+  // Falls name_ar-Order vom Schema nicht unterstützt wird → ohne Order retry
+  if (error && /name_ar|order|42703/i.test(error.message)) {
+    let fallback = db.from("products").select(PRODUCT_SELECT_BASE);
+    if (!archived) fallback = fallback.is("deleted_at", null);
+    const retry = await fallback;
+    data = retry.data as typeof data;
+    error = retry.error;
+    if (!error && status === "draft") data = [];
   }
 
   return { data, error };
@@ -83,9 +105,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({
-    products: (data ?? []) as unknown as FoodProduct[],
-  });
+  const products = sortByArabicName(
+    (data ?? []) as unknown as FoodProduct[]
+  );
+
+  return NextResponse.json({ products });
 }
 
 export async function POST(request: Request) {
@@ -115,9 +139,12 @@ export async function POST(request: Request) {
   };
 
   if (!payload.product_number) {
-    const existing = await db.from("products").select("product_number");
+    // Nur die Spalte product_number (kein Join/Full-Row) — schnell genug für Max+1
+    const { data: numberRows } = await db
+      .from("products")
+      .select("product_number");
     payload.product_number = nextProductNumber(
-      (existing.data ?? []).map((row) => row.product_number as string | null)
+      (numberRows ?? []).map((row) => row.product_number as string | null)
     );
   }
 
@@ -152,5 +179,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  bustProductCache({ brands: Boolean(resolved.brand_id) });
   return NextResponse.json({ product: data }, { status: 201 });
 }

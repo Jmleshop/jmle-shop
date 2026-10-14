@@ -1,5 +1,21 @@
 import type { HomepageSection, HomepageSectionType } from "@/types";
 
+/**
+ * Startseite: genau eine aktive Marken-Leiste.
+ * Behält die erste `brands`-Sektion (nach sortOrder), entfernt weitere.
+ */
+export function dedupeBrandsSections(
+  sections: HomepageSection[]
+): HomepageSection[] {
+  let keptBrands = false;
+  return sections.filter((s) => {
+    if (s.type !== "brands") return true;
+    if (keptBrands) return false;
+    keptBrands = true;
+    return true;
+  });
+}
+
 export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSection[] = [
   {
     id: "sec-banner1",
@@ -75,21 +91,23 @@ export function normalizeHomepageSections(
 ): HomepageSection[] {
   const list = Array.isArray(raw) ? raw : null;
   if (!list?.length) {
-    return DEFAULT_HOMEPAGE_SECTIONS.map((s) => {
-      if (s.id === "sec-brands" && fallbackTitles?.brands) {
-        return { ...s, title: fallbackTitles.brands };
-      }
-      if (s.id === "sec-banner2" && fallbackTitles?.banner2) {
-        return { ...s, title: fallbackTitles.banner2 };
-      }
-      if (s.id === "sec-banner3" && fallbackTitles?.banner3) {
-        return { ...s, title: fallbackTitles.banner3 };
-      }
-      if (s.id === "sec-categories" && fallbackTitles?.categories) {
-        return { ...s, title: fallbackTitles.categories };
-      }
-      return { ...s };
-    });
+    return dedupeBrandsSections(
+      DEFAULT_HOMEPAGE_SECTIONS.map((s) => {
+        if (s.id === "sec-brands" && fallbackTitles?.brands) {
+          return { ...s, title: fallbackTitles.brands };
+        }
+        if (s.id === "sec-banner2" && fallbackTitles?.banner2) {
+          return { ...s, title: fallbackTitles.banner2 };
+        }
+        if (s.id === "sec-banner3" && fallbackTitles?.banner3) {
+          return { ...s, title: fallbackTitles.banner3 };
+        }
+        if (s.id === "sec-categories" && fallbackTitles?.categories) {
+          return { ...s, title: fallbackTitles.categories };
+        }
+        return { ...s };
+      })
+    );
   }
 
   const out: HomepageSection[] = [];
@@ -131,7 +149,7 @@ export function normalizeHomepageSections(
   }
 
   // Legacy-Titel nur setzen wenn Sektion noch komplett ohne Überschrift ist
-  return out
+  const titled = out
     .map((s) => {
       const empty = !(s.titleAr || s.title || "").trim();
       if (!empty) return s;
@@ -172,6 +190,8 @@ export function normalizeHomepageSections(
       return s;
     })
     .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  return dedupeBrandsSections(titled);
 }
 
 export function newSectionId(): string {
