@@ -14,17 +14,14 @@ interface BrandLogoTickerProps {
   title?: string;
 }
 
-/** Kundenansicht: immer zur Marken-Produktseite — Name bleibt intern. */
+/** Kundenansicht: immer zur internen Marken-Produktseite (keine externen Ablenkungen). */
 function brandHref(logo: BrandLogo): string {
-  const custom = (logo.linkUrl || "").trim();
-  if (custom.startsWith("http://") || custom.startsWith("https://")) return custom;
   return `/brands/${encodeURIComponent(logo.id)}`;
 }
 
 function LogoItem({ logo }: { logo: BrandLogo }) {
   const { t } = useShopLocale();
   const href = brandHref(logo);
-  const external = href.startsWith("http");
   const img = (
     <div className="layout-brands-logo relative shrink-0 opacity-90 transition-opacity hover:opacity-100">
       <Image
@@ -43,7 +40,6 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
       href={href}
       className="layout-brands-item"
       aria-label={t("brandPartners")}
-      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
     >
       {img}
     </Link>

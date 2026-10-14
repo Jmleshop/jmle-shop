@@ -73,7 +73,7 @@ export default function AdminProductsPage() {
   const [brands, setBrands] = useState<BrandOption[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("newest");
+  const [sortKey, setSortKey] = useState<SortKey>("az");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [stockFilter, setStockFilter] = useState<"all" | "low" | "out" | "ok">("all");
   const [scanning, setScanning] = useState(false);
@@ -278,9 +278,20 @@ export default function AdminProductsPage() {
       setSaving(false);
       return;
     }
+    const saved = data.product as FoodProduct | undefined;
+    if (saved?.id) {
+      setProducts((prev) => {
+        const idx = prev.findIndex((p) => p.id === saved.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...prev[idx], ...saved };
+          return next;
+        }
+        return [saved, ...prev];
+      });
+    }
     setShowForm(false);
     setSaving(false);
-    load();
   };
 
   const setArchived = async (id: string, archived: boolean) => {
@@ -301,7 +312,16 @@ export default function AdminProductsPage() {
       return;
     }
     toast.success(archived ? "In den Papierkorb verschoben" : "Wiederhergestellt");
-    load();
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              deleted_at: archived ? new Date().toISOString() : null,
+            }
+          : p
+      )
+    );
   };
 
   const swipeToTrash = async (p: FoodProduct) => {
@@ -337,16 +357,17 @@ export default function AdminProductsPage() {
         .toLowerCase();
       return hay.includes(needle);
     });
-    const nameOf = (p: FoodProduct) =>
-      (lang === "ar" ? p.name_ar || p.name_de : p.name_de || p.name_ar || "").trim();
+    // Alphabet immer nach Arabisch (name_ar), unabhängig von UI-Sprache
+    const nameArOf = (p: FoodProduct) =>
+      (p.name_ar || p.name_de || "").trim();
     rows.sort((a, b) => {
       if (sortKey === "oldest") {
         return String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""));
       }
       if (sortKey === "priceAsc") return Number(a.price) - Number(b.price);
       if (sortKey === "priceDesc") return Number(b.price) - Number(a.price);
-      if (sortKey === "az") return compareAlpha(nameOf(a), nameOf(b), lang, "az");
-      if (sortKey === "za") return compareAlpha(nameOf(a), nameOf(b), lang, "za");
+      if (sortKey === "az") return compareAlpha(nameArOf(a), nameArOf(b), "ar", "az");
+      if (sortKey === "za") return compareAlpha(nameArOf(a), nameArOf(b), "ar", "za");
       return String(b.created_at ?? "").localeCompare(String(a.created_at ?? ""));
     });
     return rows;
@@ -358,7 +379,6 @@ export default function AdminProductsPage() {
     categoryFilter,
     stockFilter,
     sortKey,
-    lang,
   ]);
   const displayedIds = displayed.map((p) => p.id);
   const lowStock = products.filter(

@@ -195,10 +195,20 @@ export default function ImageUpload({
 
     setUploading(true);
     try {
-      const uploaded: string[] = [];
-      for (const file of list) {
-        uploaded.push(await uploadProductImage(file, folder));
-      }
+      // Parallel mit Limit 3 — spürbar schneller bei Mehrfach-Upload
+      const concurrency = 3;
+      const uploaded: string[] = new Array(list.length);
+      let cursor = 0;
+      const workers = Array.from(
+        { length: Math.min(concurrency, list.length) },
+        async () => {
+          while (cursor < list.length) {
+            const idx = cursor++;
+            uploaded[idx] = await uploadProductImage(list[idx], folder);
+          }
+        }
+      );
+      await Promise.all(workers);
       if (multiple) publish([...urlsRef.current, ...uploaded]);
       else publish(uploaded[0] ? [uploaded[0]] : []);
     } catch (cause) {
