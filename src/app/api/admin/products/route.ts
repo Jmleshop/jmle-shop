@@ -109,6 +109,12 @@ export async function POST(request: Request) {
   }
 
   const resolved = await resolveProductBrand(db, parsed.data);
+  if (resolved.error || !resolved.brand_id) {
+    return NextResponse.json(
+      { error: resolved.error || "Marke ist Pflicht — bitte wählen oder neu anlegen" },
+      { status: 400 }
+    );
+  }
   const payload = {
     ...stripBrandName(parsed.data),
     brand_id: resolved.brand_id,

@@ -149,6 +149,15 @@ export const productCreateSchema = z
     if (!data.category_id) {
       ctx.addIssue({ code: "custom", message: "Kategorie ist Pflicht", path: ["category_id"] });
     }
+    const brandId = (data.brand_id || "").trim();
+    const brandName = (data.brand_name || "").trim();
+    if ((!brandId || brandId === "__new__") && !brandName) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Marke ist Pflicht — bitte wählen oder neu anlegen",
+        path: ["brand_id"],
+      });
+    }
   });
 
 export const productArchiveSchema = z.object({
