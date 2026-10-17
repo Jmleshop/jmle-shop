@@ -6,6 +6,14 @@ import { normalizeBadges } from "@/lib/product-badges";
 import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from "@/lib/fallback-catalog";
 import { searchQueryVariants } from "@/lib/search";
 import {
+  escapeIlikeTerm,
+  filterProducts,
+  paginateProducts,
+  sortProducts,
+  type CatalogFilterState,
+  type CatalogSort,
+} from "@/lib/catalog-filters";
+import {
   DEFAULT_HERO_SLIDES,
   DEFAULT_SITE_CONFIG,
 } from "@/lib/site-defaults";
@@ -1060,7 +1068,8 @@ export async function searchProductsAsync(
   const variants = searchQueryVariants(q);
   const orFilter = variants
     .flatMap((v) => {
-      const esc = v.replace(/%/g, "").replace(/,/g, "");
+      const esc = escapeIlikeTerm(v);
+      if (!esc) return [];
       return [
         `name_ar.ilike.%${esc}%`,
         `name_de.ilike.%${esc}%`,
@@ -1071,14 +1080,16 @@ export async function searchProductsAsync(
     })
     .join(",");
 
-  const { data, error } = await supabase
-    .from("products_public")
-    .select(PUBLIC_SELECT)
-    .or(orFilter)
-    .limit(limit);
+  if (orFilter) {
+    const { data, error } = await supabase
+      .from("products_public")
+      .select(PUBLIC_SELECT)
+      .or(orFilter)
+      .limit(limit);
 
-  if (!error && data) {
-    return (data as PublicRow[]).map(mapPublicProduct);
+    if (!error && data) {
+      return (data as PublicRow[]).map(mapPublicProduct);
+    }
   }
 
   // Letzter Fallback: gecachter Katalog + Client-Normalisierung
@@ -1093,4 +1104,199 @@ export async function searchProductsAsync(
       return hay.includes(needle);
     })
     .slice(0, limit);
+}
+
+/** Marken-Suche gegen brand_logos (Name), inkl. arabischer Normalisierung. */
+export async function searchBrandsAsync(
+  query: string,
+  limit = 8
+): Promise<BrandLogo[]> {
+  const q = query.trim().slice(0, 80);
+  if (!q) return [];
+
+  const safeLimit = Math.min(24, Math.max(1, limit));
+  const variants = searchQueryVariants(q)
+    .map(escapeIlikeTerm)
+    .filter(Boolean);
+
+  if (variants.length) {
+    const supabase = createPublicClient();
+    const orFilter = variants.map((v) => `name.ilike.%${v}%`).join(",");
+    const { data, error } = await supabase
+      .from("brand_logos")
+      .select("id, name, image, link_url, sort_order, active")
+      .eq("active", true)
+      .or(orFilter)
+      .order("sort_order", { ascending: true })
+      .limit(safeLimit);
+
+    if (!error && data?.length) {
+      return (data as BrandLogoRow[]).map(mapBrandLogo);
+    }
+  }
+
+  const { normalizeArabicSearch } = await import("@/lib/search");
+  const needle = normalizeArabicSearch(q);
+  const logos = await getBrandLogosAsync();
+  return logos
+    .filter((b) => normalizeArabicSearch(b.name).includes(needle))
+    .slice(0, safeLimit);
+}
+
+export type PublicCatalogResult = {
+  products: Product[];
+  total: number;
+  page: number;
+  pageCount: number;
+  pageSize: number;
+};
+
+/**
+ * Gefilterter/public Katalog mit Pagination.
+ * Bevorzugt gezielte products_public-Abfragen; Fallback auf gecachten Katalog.
+ */
+export async function queryPublicCatalogAsync(
+  state: CatalogFilterState,
+  opts?: {
+    lockedBrandId?: string;
+    lang?: "ar" | "de";
+  }
+): Promise<PublicCatalogResult> {
+  const lockedBrandId = opts?.lockedBrandId?.trim() || "";
+  const brandId = lockedBrandId || state.brandId;
+  const pageSize = state.pageSize;
+  const lang = opts?.lang ?? "ar";
+
+  let categoryIds: Set<string> | null = null;
+  if (state.categoryId) {
+    if (isAllCategoryId(state.categoryId)) {
+      categoryIds = null;
+    } else if (isSaleCategoryId(state.categoryId)) {
+      // Sale: In-Memory (discount_percent), kein reines SQL-Äquivalent ohne Drift
+      return queryPublicCatalogFromCache(state, {
+        lockedBrandId: brandId,
+        saleOnly: true,
+        lang,
+      });
+    } else {
+      const flat = await getFlatCategoriesAsync();
+      categoryIds = collectCategoryAndDescendantIds(state.categoryId, flat);
+    }
+  }
+
+  // Textsuche oder effektiver Preis (Rabatt) → Cache-Pfad für korrekte Preise/Sortierung
+  if (state.q || state.minPrice != null || state.maxPrice != null) {
+    return queryPublicCatalogFromCache(state, {
+      lockedBrandId: brandId,
+      categoryIds,
+      lang,
+    });
+  }
+
+  const live = await queryPublicCatalogLive(state, {
+    brandId,
+    categoryIds,
+    lang,
+  });
+  if (live) return live;
+
+  return queryPublicCatalogFromCache(state, {
+    lockedBrandId: brandId,
+    categoryIds,
+    lang,
+  });
+}
+
+async function queryPublicCatalogLive(
+  state: CatalogFilterState,
+  opts: {
+    brandId: string;
+    categoryIds: Set<string> | null;
+    lang: "ar" | "de";
+  }
+): Promise<PublicCatalogResult | null> {
+  try {
+    const supabase = createPublicClient();
+    const from = (Math.max(1, state.page) - 1) * state.pageSize;
+    const to = from + state.pageSize - 1;
+
+    let query = supabase
+      .from("products_public")
+      .select(PUBLIC_SELECT, { count: "exact" });
+
+    if (opts.brandId) {
+      query = query.eq("brand_id", opts.brandId);
+    }
+    if (opts.categoryIds && opts.categoryIds.size > 0) {
+      query = query.in("category_id", Array.from(opts.categoryIds));
+    }
+
+    query = applyCatalogSort(query, state.sort, opts.lang);
+    const { data, error, count } = await query.range(from, to);
+
+    if (error || !data) return null;
+
+    const total = typeof count === "number" ? count : data.length;
+    const pageCount = Math.max(1, Math.ceil(total / state.pageSize));
+    const page = Math.min(Math.max(1, state.page), pageCount);
+
+    return {
+      products: (data as PublicRow[]).map(mapPublicProduct),
+      total,
+      page,
+      pageCount,
+      pageSize: state.pageSize,
+    };
+  } catch (e) {
+    console.error("[catalog] queryPublicCatalogLive:", e);
+    return null;
+  }
+}
+
+function applyCatalogSort<T extends { order: (col: string, opts?: { ascending?: boolean }) => T }>(
+  query: T,
+  sort: CatalogSort,
+  lang: "ar" | "de"
+): T {
+  switch (sort) {
+    case "price-asc":
+      return query.order("price", { ascending: true });
+    case "price-desc":
+      return query.order("price", { ascending: false });
+    case "name-az":
+      return query.order(lang === "de" ? "name_de" : "name_ar", {
+        ascending: true,
+      });
+    case "name-ar":
+    default:
+      return query.order("name_ar", { ascending: true });
+  }
+}
+
+async function queryPublicCatalogFromCache(
+  state: CatalogFilterState,
+  opts: {
+    lockedBrandId?: string;
+    categoryIds?: Set<string> | null;
+    saleOnly?: boolean;
+    lang?: "ar" | "de";
+  }
+): Promise<PublicCatalogResult> {
+  let products = await getProductsAsync();
+  if (opts.saleOnly) {
+    products = products.filter(productIsOnSale);
+  }
+  const filtered = filterProducts(products, state, {
+    categoryIds: opts.categoryIds,
+    lockedBrandId: opts.lockedBrandId,
+  });
+  const sorted = sortProducts(filtered, state.sort, opts.lang ?? "ar");
+  const page = paginateProducts(sorted, state.page, state.pageSize);
+  return {
+    products: page.items,
+    total: page.total,
+    page: page.page,
+    pageCount: page.pageCount,
+    pageSize: state.pageSize,
+  };
 }

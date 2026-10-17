@@ -18,7 +18,7 @@ import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
-type Suggestion = {
+type ProductSuggestion = {
   id: string;
   name: string;
   nameDe?: string;
@@ -26,6 +26,16 @@ type Suggestion = {
   price: number;
   discountPercent: number;
 };
+
+type BrandSuggestion = {
+  id: string;
+  name: string;
+  image: string;
+};
+
+type ComboItem =
+  | { kind: "brand"; brand: BrandSuggestion }
+  | { kind: "product"; product: ProductSuggestion };
 
 const DEBOUNCE_MS = 280;
 
@@ -44,9 +54,11 @@ export default function HeaderSearch({
 }) {
   const { lang, t } = useShopLocale();
   const [query, setQuery] = useState("");
-  const [items, setItems] = useState<Suggestion[]>([]);
+  const [products, setProducts] = useState<ProductSuggestion[]>([]);
+  const [brands, setBrands] = useState<BrandSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [, startTransition] = useTransition();
   const router = useRouter();
@@ -56,7 +68,12 @@ export default function HeaderSearch({
   const abortRef = useRef<AbortController | null>(null);
   const active = persistent || open;
   const qTrim = query.trim();
-  const showPanel = qTrim.length >= 2 && (loading || searched);
+  const showPanel = qTrim.length >= 2 && (loading || searched || error);
+
+  const comboItems: ComboItem[] = [
+    ...brands.map((brand) => ({ kind: "brand" as const, brand })),
+    ...products.map((product) => ({ kind: "product" as const, product })),
+  ];
 
   useEffect(() => {
     if (!persistent && open) {
@@ -64,8 +81,10 @@ export default function HeaderSearch({
     }
     if (!persistent && !open) {
       setQuery("");
-      setItems([]);
+      setProducts([]);
+      setBrands([]);
       setSearched(false);
+      setError(false);
       setActiveIndex(-1);
     }
   }, [open, persistent]);
@@ -73,15 +92,18 @@ export default function HeaderSearch({
   useEffect(() => {
     if (!active) return;
     if (qTrim.length < 2) {
-      setItems([]);
+      setProducts([]);
+      setBrands([]);
       setLoading(false);
       setSearched(false);
+      setError(false);
       setActiveIndex(-1);
       return;
     }
 
     setLoading(true);
     setSearched(false);
+    setError(false);
     const timer = window.setTimeout(async () => {
       abortRef.current?.abort();
       const ac = new AbortController();
@@ -91,18 +113,26 @@ export default function HeaderSearch({
           `/api/search?q=${encodeURIComponent(qTrim)}&limit=8`,
           { signal: ac.signal }
         );
-        const data = (await res.json()) as { products?: Suggestion[] };
+        if (!res.ok) throw new Error("search_failed");
+        const data = (await res.json()) as {
+          products?: ProductSuggestion[];
+          brands?: BrandSuggestion[];
+        };
         startTransition(() => {
-          setItems(data.products ?? []);
+          setProducts(data.products ?? []);
+          setBrands(data.brands ?? []);
           setLoading(false);
           setSearched(true);
+          setError(false);
           setActiveIndex(-1);
         });
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
-          setItems([]);
+          setProducts([]);
+          setBrands([]);
           setLoading(false);
           setSearched(true);
+          setError(true);
         }
       }
     }, DEBOUNCE_MS);
@@ -118,24 +148,29 @@ export default function HeaderSearch({
   const goSearch = () => {
     if (!qTrim) return;
     if (!persistent) onClose();
-    router.push(`/search?q=${encodeURIComponent(qTrim)}`);
+    router.push(`/shop?q=${encodeURIComponent(qTrim)}`);
   };
+
+  const itemHref = (item: ComboItem) =>
+    item.kind === "brand"
+      ? `/brands/${encodeURIComponent(item.brand.id)}`
+      : `/products/${item.product.id}`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (activeIndex >= 0 && items[activeIndex]) {
+    if (activeIndex >= 0 && comboItems[activeIndex]) {
       if (!persistent) onClose();
-      router.push(`/products/${items[activeIndex].id}`);
+      router.push(itemHref(comboItems[activeIndex]));
       return;
     }
     goSearch();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (!showPanel || (!items.length && !searched)) return;
+    if (!showPanel || (!comboItems.length && !searched && !error)) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, items.length - 1));
+      setActiveIndex((i) => Math.min(i + 1, comboItems.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, -1));
@@ -212,25 +247,85 @@ export default function HeaderSearch({
               inline && "min-w-[min(100%,22rem)] sm:min-w-[20rem]"
             )}
           >
-            {!loading && searched && items.length === 0 && (
+            {error && !loading && (
+              <li className="px-4 py-3 text-sm text-red-600/90 font-ui text-center">
+                {t("searchError")}
+              </li>
+            )}
+            {!loading && searched && !error && comboItems.length === 0 && (
               <li className="px-4 py-3 text-sm text-gray-500 font-ui text-center">
                 {t("searchNoHits", { query: qTrim })}
               </li>
             )}
-            {items.map((item, index) => {
-              const onSale = item.discountPercent > 0;
+            {brands.length > 0 && (
+              <li
+                className="px-3 pt-2 pb-1 text-[11px] font-ui uppercase tracking-wide text-gray-400"
+                role="presentation"
+              >
+                {t("searchBrands")}
+              </li>
+            )}
+            {comboItems.map((item, index) => {
+              if (item.kind === "brand") {
+                const brand = item.brand;
+                return (
+                  <li
+                    key={`brand-${brand.id}`}
+                    id={`${listId}-opt-${index}`}
+                    role="option"
+                    aria-selected={activeIndex === index}
+                  >
+                    <Link
+                      href={`/brands/${encodeURIComponent(brand.id)}`}
+                      onClick={() => {
+                        if (!persistent) onClose();
+                      }}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 min-h-12 transition-colors",
+                        activeIndex === index
+                          ? "bg-jmle-warm"
+                          : "hover:bg-jmle-warm"
+                      )}
+                    >
+                      <span className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-white border border-amber-100">
+                        <Image
+                          src={originalImageSrc(brand.image)}
+                          alt=""
+                          fill
+                          unoptimized
+                          quality={SHOP_IMAGE_QUALITY}
+                          className="object-contain p-0.5"
+                          sizes="40px"
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1 text-start">
+                        <span className="block text-sm font-ui text-luxury-ink truncate">
+                          {brand.name}
+                        </span>
+                        <span className="block text-[11px] text-gray-400">
+                          {t("searchBrandHint")}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                );
+              }
+
+              const product = item.product;
+              const onSale = product.discountPercent > 0;
               const listPrice = onSale
-                ? item.price / (1 - item.discountPercent / 100)
-                : item.price;
+                ? product.price / (1 - product.discountPercent / 100)
+                : product.price;
               return (
                 <li
-                  key={item.id}
+                  key={`product-${product.id}`}
                   id={`${listId}-opt-${index}`}
                   role="option"
                   aria-selected={activeIndex === index}
                 >
                   <Link
-                    href={`/products/${item.id}`}
+                    href={`/products/${product.id}`}
                     onClick={() => {
                       if (!persistent) onClose();
                     }}
@@ -244,7 +339,7 @@ export default function HeaderSearch({
                   >
                     <span className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-jmle-warm">
                       <Image
-                        src={originalImageSrc(item.image)}
+                        src={originalImageSrc(product.image)}
                         alt=""
                         fill
                         unoptimized
@@ -255,19 +350,19 @@ export default function HeaderSearch({
                     </span>
                     <span className="min-w-0 flex-1 text-start">
                       <span className="block text-sm font-ui text-luxury-ink truncate">
-                        {productTitle(lang, item)}
+                        {productTitle(lang, product)}
                       </span>
-                      {item.nameDe && lang === "ar" && (
+                      {product.nameDe && lang === "ar" && (
                         <span
                           className="block text-[11px] text-gray-400 truncate"
                           dir="ltr"
                         >
-                          {item.nameDe}
+                          {product.nameDe}
                         </span>
                       )}
                     </span>
                     <span className="text-xs font-ui font-semibold text-gold shrink-0 text-end">
-                      {formatEuroDe(item.price)}
+                      {formatEuroDe(product.price)}
                       {onSale && (
                         <span className="block text-[10px] font-normal text-gray-400 line-through">
                           {formatEuroDe(listPrice)}
