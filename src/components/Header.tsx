@@ -82,7 +82,7 @@ export default function Header({
 
   const navLinks = [
     { href: "/", label: t("home") },
-    { href: "/products", label: t("products") },
+    { href: "/shop", label: t("products") },
     { href: "/wishlist", label: t("wishlist") },
     { href: "/cart", label: t("cart") },
     { href: "/search", label: t("search") },
@@ -317,7 +317,7 @@ export default function Header({
                 {t("home")}
               </Link>
               <Link
-                href="/products"
+                href="/shop"
                 onClick={() => setMenuOpen(false)}
                 className="block px-4 py-3.5 min-h-12 text-sm font-ui font-medium text-luxury-charcoal hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
               >
@@ -328,7 +328,7 @@ export default function Header({
                 onNavigate={() => setMenuOpen(false)}
               />
               {navLinks
-                .filter((l) => !["/", "/products"].includes(l.href))
+                .filter((l) => !["/", "/shop", "/products"].includes(l.href))
                 .map((link) => (
                   <Link
                     key={link.href}
