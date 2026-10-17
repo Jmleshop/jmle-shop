@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
+  getBrandForProductAsync,
   getCategoryByIdAsync,
   getProductByIdAsync,
   getSiteConfigAsync,
@@ -102,9 +103,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound();
   }
 
-  const category = product.categoryId
-    ? await getCategoryByIdAsync(product.categoryId)
-    : undefined;
+  const [category, brand] = await Promise.all([
+    product.categoryId
+      ? getCategoryByIdAsync(product.categoryId)
+      : Promise.resolve(undefined),
+    getBrandForProductAsync(product),
+  ]);
   const out = product.stock <= 0;
 
   const crumbs = [
@@ -146,7 +150,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           />
         </div>
 
-        <ProductInfo product={product} category={category} />
+        <ProductInfo product={product} category={category} brand={brand} />
       </div>
     </div>
   );
