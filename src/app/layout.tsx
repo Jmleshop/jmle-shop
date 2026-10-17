@@ -14,6 +14,10 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import AppToaster from "@/components/AppToaster";
 import { getAppUrl } from "@/lib/app-url";
 import { getSiteConfigAsync } from "@/lib/catalog-server";
+import {
+  faviconMetadataIcons,
+  resolveFaviconUrl,
+} from "@/lib/favicon";
 import { localBusinessJsonLd } from "@/lib/seo-jsonld";
 import "./globals.css";
 
@@ -38,41 +42,52 @@ const tajawal = Tajawal({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(getAppUrl()),
-  title: {
-    default: "jmle — Arabische Lebensmittel & Feinkost",
-    template: "%s",
-  },
-  description:
-    "jmle Onlineshop für arabische Lebensmittel: Gewürze, Reis, Öle, Falafel & mehr — frisch, authentisch, schnell geliefert in Deutschland.",
-  keywords: [
-    "arabische Lebensmittel",
-    "Falafel",
-    "Gewürze",
-    "arabischer Supermarkt",
-    "jmle",
-    "Feinkost",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "ar_DE",
-    siteName: "jmle",
-    title: "jmle — Arabische Lebensmittel & Feinkost",
+export async function generateMetadata(): Promise<Metadata> {
+  const faviconUrl = await resolveFaviconUrl();
+  return {
+    metadataBase: new URL(getAppUrl()),
+    title: {
+      default: "jmle — Arabische Lebensmittel & Feinkost",
+      template: "%s",
+    },
     description:
-      "Authentische arabische Lebensmittel online bestellen — Gewürze, Reis, Öle und mehr.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "jmle — Arabische Lebensmittel",
-    description:
-      "Authentische arabische Lebensmittel online bestellen bei jmle.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+      "jmle Onlineshop für arabische Lebensmittel: Gewürze, Reis, Öle, Falafel & mehr — frisch, authentisch, schnell geliefert in Deutschland.",
+    keywords: [
+      "arabische Lebensmittel",
+      "Falafel",
+      "Gewürze",
+      "arabischer Supermarkt",
+      "jmle",
+      "Feinkost",
+    ],
+    icons: {
+      ...faviconMetadataIcons(faviconUrl),
+      // App Router file conventions (/icon, /apple-icon) as reliable fallbacks
+      other: [
+        { rel: "icon", url: "/icon" },
+        { rel: "apple-touch-icon", url: "/apple-icon" },
+      ],
+    },
+    openGraph: {
+      type: "website",
+      locale: "ar_DE",
+      siteName: "jmle",
+      title: "jmle — Arabische Lebensmittel & Feinkost",
+      description:
+        "Authentische arabische Lebensmittel online bestellen — Gewürze, Reis, Öle und mehr.",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "jmle — Arabische Lebensmittel",
+      description:
+        "Authentische arabische Lebensmittel online bestellen bei jmle.",
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ShoppingBag, Minus, Plus, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -10,9 +9,10 @@ import type { Product } from "@/types";
 import { ProductPrice, StockBadge } from "@/components/ProductPrice";
 import WishlistButton from "@/components/WishlistButton";
 import ProductPagination from "@/components/ProductPagination";
+import SafeShopImage from "@/components/SafeShopImage";
 import { useShopLocale } from "@/components/ShopLocale";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
-import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import { originalImageSrc } from "@/lib/sharp-image";
 import { maxBuyQuantity } from "@/lib/pricing";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import {
@@ -88,11 +88,10 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
       <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40">
         <div ref={imgRef} className="product-image-frame">
-          <Image
-            src={originalImageSrc(product.image)}
+          <SafeShopImage
+            src={product.image}
             alt={product.nameDe ? `${title} – ${product.name}` : title}
             fill
-            quality={SHOP_IMAGE_QUALITY}
             className="product-image-media"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 320px"
           />
