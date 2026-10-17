@@ -1121,7 +1121,9 @@ export async function searchBrandsAsync(
 
   if (variants.length) {
     const supabase = createPublicClient();
-    const orFilter = variants.map((v) => `name.ilike.%${v}%`).join(",");
+    const orFilter = variants
+      .flatMap((v) => [`name.ilike.%${v}%`, `id.ilike.%${v}%`])
+      .join(",");
     const { data, error } = await supabase
       .from("brand_logos")
       .select("id, name, image, link_url, sort_order, active")
@@ -1139,7 +1141,10 @@ export async function searchBrandsAsync(
   const needle = normalizeArabicSearch(q);
   const logos = await getBrandLogosAsync();
   return logos
-    .filter((b) => normalizeArabicSearch(b.name).includes(needle))
+    .filter((b) => {
+      const hay = normalizeArabicSearch(`${b.name} ${b.id}`);
+      return hay.includes(needle);
+    })
     .slice(0, safeLimit);
 }
 
