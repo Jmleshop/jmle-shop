@@ -109,7 +109,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const crumbs = [
     { name: site.name, path: "/" },
-    { name: "Produkte", path: "/products" },
+    { name: "Produkte", path: "/shop" },
   ];
   if (category) {
     crumbs.push({
