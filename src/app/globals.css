@@ -271,7 +271,7 @@
   height: 100% !important;
   max-width: none !important;
 }
-/* Startseite: Sektionen ohne Extra-Gap stapeln */
+/* Startseite: Sektionen ohne Extra-Gap stapeln — klarer Rhythmus über Bänder */
 .home-sections-stack {
   display: flex;
   flex-direction: column;
@@ -283,6 +283,47 @@
 /* Aufeinanderfolgende Banner: kein doppelter Außenabstand */
 .home-sections-stack > [data-home-section="banner"] + [data-home-section="banner"] .layout-banner-frame {
   margin-block-start: 0;
+}
+
+/* Homepage-only visual polish (scoped — vermeidet Admin/Shop-Nebenwirkungen) */
+.home-sections-stack .home-banner-frame {
+  box-shadow: inset 0 -1px 0 rgba(127, 29, 29, 0.06);
+}
+.home-sections-stack .home-section-title .section-title {
+  letter-spacing: 0.01em;
+}
+.home-sections-stack .home-section-title .gold-divider {
+  width: 2.75rem;
+  height: 1.5px;
+  margin-inline: auto;
+  border-radius: 999px;
+  opacity: 0.9;
+}
+.home-sections-stack .home-content-section {
+  max-width: 100%;
+}
+.home-sections-stack [data-home-section="categories"] {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 247, 237, 0.35) 100%
+  );
+}
+.home-sections-stack [data-home-section="products"] + [data-home-section="products"] {
+  border-top: 1px solid rgba(254, 215, 170, 0.45);
+}
+.home-sections-stack .home-brands-band {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+@media (max-width: 639px) {
+  .home-sections-stack .layout-banner-frame {
+    max-height: min(48vh, 360px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-sections-stack .group:hover {
+    transform: none !important;
+  }
 }
 /* Footer/Hero-Mark über dem Slogan — groß & markant */
 .brand-mark-frame--footer {

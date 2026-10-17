@@ -25,12 +25,16 @@ function OfferCard({ product }: { product: Product }) {
   const { lang } = useShopLocale();
   const title = productTitle(lang, product);
   return (
-    <div className="group relative w-44 sm:w-52 md:w-60 shrink-0 px-2">
-      <div className="absolute top-3 end-3 z-30">
+    <div className="group relative w-[10.5rem] sm:w-52 md:w-56 shrink-0 px-1.5 sm:px-2">
+      <div className="absolute top-2.5 end-2.5 z-30">
         <WishlistButton productId={product.id} size="sm" />
       </div>
-      <Link href={`/products/${product.id}`} className="block" aria-label={title}>
-        <div className="overflow-hidden rounded-2xl border border-orange-100/80 bg-white transition-all duration-300 ease-boutique group-hover:shadow-gold group-hover:-translate-y-1">
+      <Link
+        href={`/products/${product.id}`}
+        className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40 focus-visible:ring-offset-2 focus-visible:ring-offset-jmle-cream"
+        aria-label={title}
+      >
+        <div className="overflow-hidden rounded-2xl border border-orange-100/90 bg-white shadow-sm transition-[box-shadow,transform,border-color] duration-300 ease-boutique group-hover:-translate-y-0.5 group-hover:border-orange-200/90 group-hover:shadow-boutique motion-reduce:group-hover:translate-y-0">
           <div className="product-image-frame">
             <Image
               src={originalImageSrc(product.image)}
@@ -38,23 +42,23 @@ function OfferCard({ product }: { product: Product }) {
               fill
               quality={SHOP_IMAGE_QUALITY}
               className="product-image-media"
-              sizes="(max-width: 640px) 70vw, (max-width: 1024px) 31vw, 240px"
+              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 224px"
             />
             <div className="absolute top-2 start-2">
               <DiscountBadge percent={product.discountPercent} />
             </div>
           </div>
-          <div className="bg-white/95 p-3 text-center">
-            <h3 className="font-ui text-sm font-medium text-luxury-ink line-clamp-1">
+          <div className="flex min-h-[4.75rem] flex-col justify-between gap-1.5 bg-white px-2.5 py-2.5 sm:min-h-[5.25rem] sm:px-3 sm:py-3 text-center">
+            <h3 className="font-ui text-[12px] sm:text-sm font-medium text-luxury-ink line-clamp-2 min-h-[2.4em] leading-snug">
               {title}
             </h3>
-            <div className="mt-1 flex items-center justify-center gap-2">
-              <span className="font-ui font-bold text-gold-dark">
+            <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5">
+              <span className="font-ui text-sm sm:text-base font-semibold tabular-nums text-gold-dark">
                 {formatPrice(product.price, lang === "de" ? "de-DE" : "ar-DE")}
               </span>
               {product.originalPrice != null &&
                 product.originalPrice > product.price && (
-                  <span className="text-xs text-gray-400 line-through">
+                  <span className="text-[11px] sm:text-xs text-gray-400 line-through tabular-nums">
                     {formatPrice(product.originalPrice, lang === "de" ? "de-DE" : "ar-DE")}
                   </span>
                 )}
@@ -87,11 +91,11 @@ export default function OffersCarousel({
   const duration = Math.max(20, visible.length * 6);
 
   return (
-    <section className="py-8 md:py-10 bg-gradient-to-b from-jmle-warm/60 to-transparent">
+    <section className="home-content-section home-products-band py-8 md:py-11">
       {heading ? (
-        <div className="text-center mb-6 px-4">
-          <h2 className="section-title">{heading}</h2>
-          <div className="gold-divider" aria-hidden />
+        <div className="layout-section-title-wrap home-section-title text-center mb-5 md:mb-7 px-4 sm:px-6">
+          <h2 className="section-title tracking-tight">{heading}</h2>
+          <div className="gold-divider mt-2.5 mb-0" aria-hidden />
         </div>
       ) : null}
 
@@ -102,7 +106,7 @@ export default function OffersCarousel({
         }`}
       >
         <div
-          className="jmle-marquee-track"
+          className="jmle-marquee-track py-1"
           style={{ ["--marquee-duration" as string]: `${duration}s` }}
         >
           {loop.map((p, i) => (
@@ -111,11 +115,11 @@ export default function OffersCarousel({
         </div>
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 start-0 w-10 bg-gradient-to-r from-jmle-cream to-transparent"
+          className="pointer-events-none absolute inset-y-0 start-0 w-8 sm:w-12 bg-gradient-to-r from-jmle-cream via-jmle-cream/80 to-transparent"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 end-0 w-10 bg-gradient-to-l from-jmle-cream to-transparent"
+          className="pointer-events-none absolute inset-y-0 end-0 w-8 sm:w-12 bg-gradient-to-l from-jmle-cream via-jmle-cream/80 to-transparent"
         />
       </div>
     </section>

@@ -26,9 +26,16 @@ export function OptionalSectionTitle({
   const text = (title ?? "").trim();
   if (!text) return null;
   return (
-    <div className={cn("layout-section-title-wrap px-4 pt-5 sm:pt-6 pb-2.5", className)}>
-      <h2 className="section-title text-lg sm:text-xl md:text-2xl">{text}</h2>
-      <div className="gold-divider mt-2" aria-hidden />
+    <div
+      className={cn(
+        "layout-section-title-wrap home-section-title px-4 sm:px-6 pt-6 sm:pt-8 pb-3",
+        className
+      )}
+    >
+      <h2 className="section-title text-lg sm:text-xl md:text-2xl tracking-tight">
+        {text}
+      </h2>
+      <div className="gold-divider mt-2.5 mb-0" aria-hidden />
     </div>
   );
 }
@@ -203,11 +210,12 @@ export function HomepageSectionsRenderer({
         }
         if (section.type === "categories") {
           return (
-            <CategoryGrid
-              key={section.id}
-              categories={categories}
-              title={title || undefined}
-            />
+            <div key={section.id} data-home-section="categories">
+              <CategoryGrid
+                categories={categories}
+                title={title || undefined}
+              />
+            </div>
           );
         }
         if (section.type === "products") {
@@ -218,12 +226,13 @@ export function HomepageSectionsRenderer({
                 ? allProducts
                 : offers;
           return (
-            <OffersCarousel
-              key={section.id}
-              products={products}
-              title={title || undefined}
-              reverse={section.productSource === "bestsellers"}
-            />
+            <div key={section.id} data-home-section="products">
+              <OffersCarousel
+                products={products}
+                title={title || undefined}
+                reverse={section.productSource === "bestsellers"}
+              />
+            </div>
           );
         }
         return null;
