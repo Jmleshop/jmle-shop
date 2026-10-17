@@ -1,4 +1,21 @@
 -- Manuell in Supabase SQL Editor ausführbar (idempotent)
+-- Zuerst fehlende Spalten anlegen (ältere DBs haben oft noch kein badges/custom_note)
+
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'published';
+
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS badges JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS custom_note TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS gross_weight_value NUMERIC;
+
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS gross_weight_unit TEXT NOT NULL DEFAULT 'g';
+
 ALTER TABLE public.products
   ADD COLUMN IF NOT EXISTS brand_id TEXT REFERENCES public.brand_logos(id) ON DELETE SET NULL;
 
