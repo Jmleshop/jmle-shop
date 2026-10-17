@@ -23,7 +23,7 @@ interface CompactBannerSliderProps {
  * (--layout-banner-*), gesteuert vom Page-Builder.
  */
 export const BANNER_FRAME_CLASS =
-  "relative w-full min-h-0 overflow-hidden bg-jmle-cream layout-banner-frame";
+  "relative w-full min-h-0 overflow-hidden bg-jmle-cream layout-banner-frame home-banner-frame";
 
 function slideHref(slide: Slide): string | null {
   if (slide.linkCategoryId) return `/categories/${slide.linkCategoryId}`;
@@ -80,14 +80,14 @@ function BannerSlideContent({
     <>
       {media}
       {showCaption && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/55 via-black/10 to-transparent p-3 sm:p-4 md:p-5 text-start">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] bg-gradient-to-t from-black/60 via-black/25 to-transparent px-3.5 pt-10 pb-3.5 sm:px-5 sm:pt-14 sm:pb-5 md:px-7 md:pb-6 text-start">
           {title ? (
-            <h2 className="font-display text-base sm:text-xl md:text-2xl text-white drop-shadow-sm text-balance">
+            <h2 className="font-display text-base sm:text-xl md:text-2xl lg:text-[1.75rem] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] text-balance leading-snug tracking-tight">
               {title}
             </h2>
           ) : null}
           {subtitle ? (
-            <p className="font-ui text-xs sm:text-sm text-white/95 mt-0.5 max-w-2xl line-clamp-2">
+            <p className="font-ui text-xs sm:text-sm md:text-[0.95rem] text-white/95 mt-1 max-w-2xl line-clamp-2 leading-relaxed">
               {subtitle}
             </p>
           ) : null}
@@ -212,7 +212,7 @@ export default function CompactBannerSlider({
       ))}
 
       {multi && (
-        <div className="absolute bottom-2.5 left-1/2 z-[2] -translate-x-1/2 flex gap-1.5">
+        <div className="absolute bottom-3 left-1/2 z-[2] -translate-x-1/2 flex items-center gap-0.5 rounded-full bg-black/30 px-1.5 py-1 backdrop-blur-[2px]">
           {slides.map((_, index) => (
             <button
               key={index}
@@ -223,13 +223,17 @@ export default function CompactBannerSlider({
               }}
               aria-label={t("slideOf", { n: index + 1 })}
               aria-current={index === current}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-300",
-                index === current
-                  ? "bg-brand-orange w-6 shadow-gold-sm"
-                  : "w-1.5 bg-white/55 hover:bg-brand-orange/80"
-              )}
-            />
+              className="flex h-9 w-9 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+            >
+              <span
+                className={cn(
+                  "block h-1.5 rounded-full transition-all duration-300 ease-boutique",
+                  index === current
+                    ? "w-5 bg-brand-orange shadow-gold-sm"
+                    : "w-1.5 bg-white/70 hover:bg-white"
+                )}
+              />
+            </button>
           ))}
         </div>
       )}

@@ -17,11 +17,11 @@ interface CategoryTileProps {
   variant?: CategoryTileVariant;
 }
 
-/** Einheitliche, professionelle Icon-Größe (kein Riesen- oder Mini-Kachel) */
+/** Einheitliche Icon-Größe — ruhig, touch-freundlich, kein Riesen-/Mini-Kachel */
 const PARENT_ICON =
-  "h-[4.75rem] w-[4.75rem] sm:h-[5.25rem] sm:w-[5.25rem] md:h-24 md:w-24";
+  "h-[4.5rem] w-[4.5rem] sm:h-[5rem] sm:w-[5rem] md:h-[5.5rem] md:w-[5.5rem]";
 const SUB_ICON =
-  "h-[4.25rem] w-[4.25rem] sm:h-[4.75rem] sm:w-[4.75rem] md:h-[5.25rem] md:w-[5.25rem]";
+  "h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem] md:h-20 md:w-20";
 
 export function CategoryTile({ category, variant = "parent" }: CategoryTileProps) {
   const { lang } = useShopLocale();
@@ -40,11 +40,11 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
   return (
     <Link
       href={`/categories/${category.id}`}
-      className="group flex w-[5.75rem] sm:w-[6.25rem] md:w-28 flex-col items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+      className="group flex w-[5.5rem] sm:w-[6.25rem] md:w-[6.75rem] flex-col items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40 focus-visible:ring-offset-2 focus-visible:ring-offset-jmle-cream rounded-xl"
     >
       <div
         className={cn(
-          "category-icon-circle relative overflow-hidden bg-white shadow-md ring-1 ring-orange-100/80 transition-[ring-color,transform,box-shadow] duration-300 ease-boutique group-hover:scale-[1.03] group-hover:shadow-lg group-hover:ring-brand-orange/40",
+          "category-icon-circle relative overflow-hidden bg-white shadow-sm ring-1 ring-orange-100/90 transition-[ring-color,transform,box-shadow] duration-300 ease-boutique group-hover:-translate-y-0.5 group-hover:shadow-boutique group-hover:ring-brand-orange/35",
           isSub ? "rounded-full" : "rounded-2xl",
           isSub ? SUB_ICON : PARENT_ICON
         )}
@@ -58,7 +58,7 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
           sizes="96px"
         />
       </div>
-      <span className="font-ui text-[11px] sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.4em] w-full">
+      <span className="font-ui text-[11px] sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.5em] w-full">
         {label}
       </span>
     </Link>
@@ -86,16 +86,16 @@ export default function CategoryGrid({
     variant ?? (titleKey === "subcategories" ? "sub" : "parent");
 
   return (
-    <section className="py-6 md:py-8 px-4 md:px-6">
+    <section className="home-content-section py-7 md:py-10 px-4 sm:px-6 md:px-8">
       {heading ? (
-        <div className="text-center mb-4 md:mb-5">
-          <h2 className="section-title text-xl sm:text-2xl md:text-[1.65rem]">
+        <div className="layout-section-title-wrap home-section-title text-center mb-5 md:mb-6">
+          <h2 className="section-title text-xl sm:text-2xl md:text-[1.65rem] tracking-tight">
             {heading}
           </h2>
-          <div className="gold-divider mt-2 mb-0" aria-hidden />
+          <div className="gold-divider mt-2.5 mb-0" aria-hidden />
         </div>
       ) : null}
-      <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-3 sm:gap-3.5 md:gap-4">
+      <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-x-3 gap-y-4 sm:gap-x-4 sm:gap-y-5 md:gap-x-5 md:gap-y-6">
         {categories.map((category) => (
           <CategoryTile
             key={category.id}

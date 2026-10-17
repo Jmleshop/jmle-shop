@@ -79,7 +79,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-2xl border border-orange-100/80 bg-white transition-all duration-300 ease-boutique hover:-translate-y-0.5 hover:shadow-gold hover:border-orange-200/80 sm:hover:-translate-y-1 ${
+      className={`group relative overflow-hidden rounded-2xl border border-orange-100/90 bg-white shadow-sm transition-[box-shadow,transform,border-color] duration-300 ease-boutique hover:-translate-y-0.5 hover:border-orange-200/90 hover:shadow-boutique motion-reduce:hover:translate-y-0 ${
         out ? "opacity-60" : ""
       }`}
     >
@@ -123,8 +123,8 @@ export default function ProductCard({ product }: ProductCardProps) {
             ))}
           </div>
         </div>
-        <div className="bg-white/95 p-1.5 sm:p-3 text-center">
-          <h3 className="font-ui text-[11px] sm:text-sm font-medium text-luxury-ink mb-0.5 line-clamp-2 min-h-[2.2em] sm:min-h-[2.5rem] leading-snug">
+        <div className="bg-white p-2 sm:p-3 text-center">
+          <h3 className="font-ui text-[11px] sm:text-sm font-medium text-luxury-ink mb-1 line-clamp-2 min-h-[2.4em] sm:min-h-[2.6em] leading-snug">
             {title}
             {product.weightValue != null && (
               <span className="hidden sm:inline text-[11px] text-gray-500 font-normal">

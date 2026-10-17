@@ -26,7 +26,7 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
   const href = brandHref(logo);
   const external = href.startsWith("http");
   const img = (
-    <div className="layout-brands-logo relative shrink-0 opacity-90 transition-opacity hover:opacity-100">
+    <div className="layout-brands-logo relative shrink-0 opacity-80 transition-[opacity,transform] duration-300 ease-boutique group-hover:opacity-100 group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100">
       <Image
         src={originalImageSrc(logo.image)}
         alt=""
@@ -41,7 +41,7 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
   return (
     <Link
       href={href}
-      className="layout-brands-item"
+      className="layout-brands-item group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40 rounded-lg"
       aria-label={t("brandPartners")}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
     >
@@ -65,16 +65,22 @@ export default function BrandLogoTicker({
   return (
     <section
       data-home-section="brands"
-      className={cn("layout-brands-frame", className)}
+      className={cn(
+        "layout-brands-frame home-brands-band border-y border-orange-100/70 bg-white/55",
+        className
+      )}
       aria-label={heading || t("brandPartners")}
     >
       {heading ? (
-        <div className="layout-section-title-wrap mb-2 sm:mb-3 px-4">
-          <h2 className="section-title text-base sm:text-lg">{heading}</h2>
+        <div className="layout-section-title-wrap home-section-title mb-3 sm:mb-4 px-4 sm:px-6 pt-5 sm:pt-6">
+          <h2 className="section-title text-base sm:text-lg md:text-xl tracking-tight">
+            {heading}
+          </h2>
+          <div className="gold-divider mt-2 mb-0" aria-hidden />
         </div>
       ) : null}
       <div
-        className="jmle-marquee overflow-hidden bg-transparent"
+        className="jmle-marquee overflow-hidden bg-transparent py-3 sm:py-4"
         style={
           {
             ["--marquee-duration" as string]: `calc(${baseDuration}s / var(--layout-brands-speed, 1))`,
