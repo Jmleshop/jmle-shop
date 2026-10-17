@@ -29,6 +29,26 @@ export const adminMessages = {
     siteLogo: "Marken-Logo",
     siteLogoHint:
       "Upload, Drag & Drop oder Strg+V. Erscheint im Header als Link zur Startseite.",
+    productWatermark: "Produkt-Wasserzeichen",
+    productWatermarkHint:
+      "Logo wird serverseitig halbtransparent in jedes neue Produktbild eingebrannt (Schutz vor Bilddiebstahl).",
+    productWatermarkEnable: "Wasserzeichen für Produktbilder aktivieren",
+    productWatermarkLogo: "Wasserzeichen-Logo (optional)",
+    productWatermarkLogoHint:
+      "Leer = Shop-Logo. Empfohlen: helles Logo auf transparentem Grund.",
+    productWatermarkOpacity: "Deckkraft",
+    productWatermarkScale: "Größe",
+    productWatermarkPosition: "Position",
+    productWatermarkPosBR: "Unten rechts",
+    productWatermarkPosBL: "Unten links",
+    productWatermarkPosCenter: "Zentriert",
+    productWatermarkPosTile: "Kachel (Muster)",
+    productWatermarkApplyAll: "Auf alle vorhandenen Produktbilder anwenden",
+    productWatermarkApplyAllHint:
+      "Verarbeitet bestehende Bilder in Batches. Vorher Wasserzeichen aktivieren und speichern.",
+    productWatermarkRunning: "Wasserzeichen wird angewendet…",
+    productWatermarkDone: "Wasserzeichen-Lauf abgeschlossen",
+    productWatermarkFail: "Wasserzeichen-Lauf fehlgeschlagen",
     sectionTitles: "Sektions-Überschriften (Arabisch)",
     sectionTitlesHint:
       "Leer lassen = Überschrift wird auf der Startseite ausgeblendet.",
@@ -129,6 +149,26 @@ export const adminMessages = {
     siteLogo: "شعار العلامة",
     siteLogoHint:
       "رفع صورة، سحب وإفلات، أو Ctrl+V. يظهر الشعار في الترويسة كرابط للصفحة الرئيسية.",
+    productWatermark: "علامة مائية للمنتجات",
+    productWatermarkHint:
+      "يُدمج الشعار شفّافاً في كل صورة منتج جديدة على الخادم (حماية من سرقة الصور).",
+    productWatermarkEnable: "تفعيل العلامة المائية لصور المنتجات",
+    productWatermarkLogo: "شعار العلامة المائية (اختياري)",
+    productWatermarkLogoHint:
+      "فارغ = شعار المتجر. يُفضّل شعار فاتح بخلفية شفافة.",
+    productWatermarkOpacity: "الشفافية",
+    productWatermarkScale: "الحجم",
+    productWatermarkPosition: "الموضع",
+    productWatermarkPosBR: "أسفل اليمين",
+    productWatermarkPosBL: "أسفل اليسار",
+    productWatermarkPosCenter: "وسط",
+    productWatermarkPosTile: "تكرار (نمط)",
+    productWatermarkApplyAll: "تطبيق على كل صور المنتجات الحالية",
+    productWatermarkApplyAllHint:
+      "يعالج الصور الحالية على دفعات. فعّل العلامة المائية واحفظ أولاً.",
+    productWatermarkRunning: "جاري تطبيق العلامة المائية…",
+    productWatermarkDone: "اكتمل تطبيق العلامة المائية",
+    productWatermarkFail: "فشل تطبيق العلامة المائية",
     sectionTitles: "عناوين الأقسام (عربي)",
     sectionTitlesHint:
       "اترك الحقل فارغاً لإخفاء العنوان على الصفحة الرئيسية بدون فراغات.",

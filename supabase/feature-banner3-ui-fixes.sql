@@ -144,6 +144,9 @@ CREATE INDEX IF NOT EXISTS categories_homepage_sort_idx
   ON public.categories (show_on_homepage, sort_order)
   WHERE deleted_at IS NULL;
 
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS brand_id TEXT;
+
 DROP VIEW IF EXISTS public.products_public;
 CREATE VIEW public.products_public AS
 SELECT
@@ -154,6 +157,7 @@ SELECT
   price,
   currency,
   category_id,
+  brand_id,
   image,
   images,
   ingredients,

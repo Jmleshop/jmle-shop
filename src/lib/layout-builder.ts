@@ -125,14 +125,14 @@ const DEFAULT_SLIDER: LayoutSliderStyle = {
 const DEFAULT_HEADER: LayoutHeaderStyle = {
   scale: 1,
   heightPx: 0,
-  paddingY: 8,
-  gap: 8,
+  paddingY: 2,
+  gap: 4,
 };
 
 const DEFAULT_BRANDS: LayoutBrandsStyle = {
   logoScale: 1,
   gap: 8,
-  paddingY: 8,
+  paddingY: 0,
   speed: 1,
 };
 
