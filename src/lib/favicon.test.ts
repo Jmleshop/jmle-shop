@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { faviconMetadataIcons } from "@/lib/favicon";
+import {
+  absoluteFetchableIconUrl,
+  faviconMetadataIcons,
+} from "./favicon";
 
 describe("favicon metadata", () => {
   it("builds icon links from a shop logo URL", () => {
@@ -20,5 +23,14 @@ describe("favicon metadata", () => {
     const icons = faviconMetadataIcons("");
     assert.equal(icons.icon[0].url, "/placeholder.svg");
     assert.equal(icons.icon[0].type, "image/svg+xml");
+  });
+
+  it("only treats http(s) URLs as fetchable", () => {
+    assert.equal(
+      absoluteFetchableIconUrl("https://cdn.example/logo.png"),
+      "https://cdn.example/logo.png"
+    );
+    assert.equal(absoluteFetchableIconUrl("/placeholder.svg"), null);
+    assert.equal(absoluteFetchableIconUrl(""), null);
   });
 });

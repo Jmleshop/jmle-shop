@@ -2,17 +2,32 @@ import { getSiteConfigAsync } from "@/lib/catalog-server";
 import { originalImageSrc } from "@/lib/sharp-image";
 
 const FALLBACK_ICON = "/placeholder.svg";
+const RESOLVE_TIMEOUT_MS = 8_000;
 
 /** Resolve shop logo URL for browser icons (never invents a new mark). */
 export async function resolveFaviconUrl(): Promise<string> {
   try {
-    const site = await getSiteConfigAsync();
+    const site = await Promise.race([
+      getSiteConfigAsync(),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), RESOLVE_TIMEOUT_MS)
+      ),
+    ]);
+    if (!site) return FALLBACK_ICON;
     const logo = originalImageSrc((site.logo || "").trim());
     if (logo) return logo;
   } catch (e) {
     console.error("[favicon] resolve:", e);
   }
   return FALLBACK_ICON;
+}
+
+/** Absolute http(s) URL suitable for server-side fetch, else null. */
+export function absoluteFetchableIconUrl(url: string): string | null {
+  const trimmed = (url || "").trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return null;
 }
 
 export function faviconMetadataIcons(logoUrl: string) {
