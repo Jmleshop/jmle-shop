@@ -1181,37 +1181,14 @@ export async function searchBrandsAsync(
   }
 
   const { normalizeArabicSearch } = await import("@/lib/search");
-  const { BRAND_CATALOG } = await import("@/lib/brand-catalog");
-  const { textContainsAlias, normalizeMatchText } = await import(
-    "@/lib/brand-match"
-  );
   const needle = normalizeArabicSearch(q);
   const logos = await getBrandLogosAsync();
-  const scored: BrandLogo[] = [];
-  for (const b of logos) {
-    const hay = normalizeArabicSearch(`${b.name} ${b.id}`);
-    if (needle && hay.includes(needle)) {
-      scored.push(b);
-      continue;
-    }
-    // Match query against catalog aliases mapped to this logo name
-    const seed =
-      BRAND_CATALOG.find((s) => s.id === b.id) ||
-      BRAND_CATALOG.find(
-        (s) =>
-          normalizeMatchText(s.name) === normalizeMatchText(b.name) ||
-          s.aliases.some(
-            (a) =>
-              normalizeMatchText(a) === normalizeMatchText(b.name) ||
-              textContainsAlias(b.name, a) ||
-              textContainsAlias(a, b.name)
-          )
-      );
-    if (seed && seed.aliases.some((a) => textContainsAlias(a, q) || textContainsAlias(q, a))) {
-      scored.push(b);
-    }
-  }
-  return scored.slice(0, safeLimit);
+  return logos
+    .filter((b) => {
+      const hay = normalizeArabicSearch(`${b.name} ${b.id}`);
+      return hay.includes(needle);
+    })
+    .slice(0, safeLimit);
 }
 
 export type PublicCatalogResult = {

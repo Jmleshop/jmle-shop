@@ -129,17 +129,13 @@ export async function syncProductBrandLinks(
       catalogToLogo.set(seed.id, seed.id);
       continue;
     }
-    const byName = logoList.find((l) => {
-      if (normalizeMatchText(l.name) === normalizeMatchText(seed.name)) {
-        return true;
-      }
-      return seed.aliases.some(
-        (a) =>
-          normalizeMatchText(a) === normalizeMatchText(l.name) ||
-          textContainsAlias(l.name, a) ||
-          textContainsAlias(a, l.name)
-      );
-    });
+    const byName = logoList.find(
+      (l) =>
+        normalizeMatchText(l.name) === normalizeMatchText(seed.name) ||
+        seed.aliases.some(
+          (a) => normalizeMatchText(a) === normalizeMatchText(l.name)
+        )
+    );
     if (byName) catalogToLogo.set(seed.id, byName.id);
   }
 
