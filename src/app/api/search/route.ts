@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { searchProductsAsync } from "@/lib/catalog-server";
+import {
+  searchBrandsAsync,
+  searchProductsAsync,
+} from "@/lib/catalog-server";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -15,14 +18,23 @@ export async function GET(request: Request) {
   });
 
   if (!parsed.success) {
-    return NextResponse.json({ products: [], error: "Invalid query" }, { status: 400 });
+    return NextResponse.json(
+      { products: [], brands: [], error: "Invalid query" },
+      { status: 400 }
+    );
   }
 
   const { q, limit } = parsed.data;
+  const brandLimit = Math.min(6, Math.max(2, Math.floor(limit / 2)));
+  const productLimit = limit;
 
   try {
-    const products = await searchProductsAsync(q, limit);
-    const suggestions = products.map((p) => ({
+    const [products, brands] = await Promise.all([
+      searchProductsAsync(q, productLimit),
+      q.trim().length >= 2 ? searchBrandsAsync(q, brandLimit) : Promise.resolve([]),
+    ]);
+
+    const productSuggestions = products.map((p) => ({
       id: p.id,
       name: p.name,
       nameDe: p.nameDe,
@@ -31,8 +43,18 @@ export async function GET(request: Request) {
       discountPercent: p.discountPercent,
     }));
 
+    const brandSuggestions = brands.map((b) => ({
+      id: b.id,
+      name: b.name,
+      image: b.image,
+    }));
+
     return NextResponse.json(
-      { products: suggestions, query: q },
+      {
+        products: productSuggestions,
+        brands: brandSuggestions,
+        query: q,
+      },
       {
         headers: {
           "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
@@ -41,6 +63,9 @@ export async function GET(request: Request) {
     );
   } catch (err) {
     console.error("[api/search]", err);
-    return NextResponse.json({ products: [] }, { status: 500 });
+    return NextResponse.json(
+      { products: [], brands: [], error: "search_failed" },
+      { status: 500 }
+    );
   }
 }
