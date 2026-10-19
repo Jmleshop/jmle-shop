@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import type { BrandLogo, Category, Product } from "@/types";
+import type { Category, Product } from "@/types";
 import { ProductPrice } from "@/components/ProductPrice";
 import AddToCartButton from "@/components/AddToCartButton";
 import ProductDetailExtras from "@/components/ProductDetailExtras";
@@ -24,11 +24,9 @@ function detectSeals(hay: string): Array<"halal" | "organic"> {
 export default function ProductInfo({
   product,
   category,
-  brand,
 }: {
   product: Product;
   category?: Category;
-  brand?: BrandLogo | null;
 }) {
   const { lang, t } = useShopLocale();
   const atcZoneRef = useRef<HTMLDivElement>(null);
@@ -94,26 +92,14 @@ export default function ProductInfo({
 
   return (
     <div className={`flex flex-col justify-center ${out ? "opacity-60" : ""}`}>
-      <div className="flex flex-wrap items-center gap-2 mb-2">
-        {category && (
-          <Link
-            href={`/categories/${category.id}`}
-            className="text-sm font-ui text-gold hover:text-gold-dark hover:underline w-fit"
-          >
-            {categoryTitle(lang, category)}
-          </Link>
-        )}
-        {brand && (
-          <Link
-            href={`/brands/${encodeURIComponent(brand.id)}`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-jmle-warm/50 px-3 py-1.5 text-sm font-ui text-luxury-ink hover:bg-jmle-warm hover:border-gold/40 transition-colors min-h-9"
-            aria-label={t("brandViewAll", { brand: brand.name })}
-          >
-            <span className="text-xs text-gray-500">{t("brandLabel")}:</span>
-            <span className="font-medium">{brand.name}</span>
-          </Link>
-        )}
-      </div>
+      {category && (
+        <Link
+          href={`/categories/${category.id}`}
+          className="text-sm font-ui text-gold hover:text-gold-dark hover:underline mb-2 w-fit"
+        >
+          {categoryTitle(lang, category)}
+        </Link>
+      )}
 
       <div className="flex flex-wrap gap-1.5 mb-3">
         <OriginBadge country={product.originCountry} />

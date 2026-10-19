@@ -42,12 +42,7 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
     <Link
       href={href}
       className="layout-brands-item"
-      aria-label={
-        logo.name
-          ? t("brandViewAll", { brand: logo.name })
-          : t("brandPartners")
-      }
-      title={logo.name || undefined}
+      aria-label={t("brandPartners")}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
     >
       {img}

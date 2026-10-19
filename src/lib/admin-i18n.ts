@@ -75,10 +75,6 @@ export const adminMessages = {
       "Alle Marken unwiderruflich löschen und die 71 Katalog-Marken neu anlegen? Produkte werden per Name/Beschreibung neu zugeordnet.",
     brandResetOk: "Marken-Reset abgeschlossen",
     brandResetFail: "Marken-Reset fehlgeschlagen",
-    brandSync: "Marken-Links synchronisieren",
-    brandSyncHint:
-      "Ordnet Produkte den bestehenden Marken anhand von Name/Alias zu — Logos bleiben erhalten.",
-    brandSyncOk: "Marken-Links aktualisiert",
     ingredients: "Zutatenliste",
     allergens: "Allergene",
     origin: "Herkunftsland",
@@ -179,10 +175,6 @@ export const adminMessages = {
       "حذف جميع العلامات نهائيًا وإعادة إنشاء قائمة الـ 71؟ ستُعاد مطابقة المنتجات عبر الاسم/الوصف.",
     brandResetOk: "اكتملت إعادة تعيين العلامات",
     brandResetFail: "فشلت إعادة تعيين العلامات",
-    brandSync: "مزامنة روابط العلامات",
-    brandSyncHint:
-      "يربط المنتجات بالعلامات الحالية حسب الاسم — تبقى الشعارات كما هي.",
-    brandSyncOk: "تم تحديث روابط العلامات",
     ingredients: "المكونات",
     allergens: "مسببات الحساسية",
     origin: "بلد المنشأ",

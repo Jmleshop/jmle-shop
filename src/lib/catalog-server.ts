@@ -772,18 +772,14 @@ export const getProductsByBrandAsync = cache(
     const brand = await getBrandByIdAsync(rawId);
     const resolvedId = brand?.id ?? rawId;
 
-    const { filterProductsForBrand } = await import("@/lib/brand-link");
-
-    // 1) Katalog-Cache: brand_id ODER Namens-/Alias-Match (viele Produkte ohne brand_id)
+    // 1) Katalog-Cache (schnell)
     const products = await getProductsAsync();
-    const fromCache = filterProductsForBrand(
-      products,
-      resolvedId,
-      brand?.name
-    ) as Product[];
+    const fromCache = products.filter(
+      (p) => p.brandId && p.brandId === resolvedId
+    );
     if (fromCache.length > 0) return fromCache;
 
-    // 2) Direkte DB-Abfrage nach brand_id
+    // 2) Direkte DB-Abfrage — zuverlässig auch bei Cache ohne brand_id
     const live = await queryProductsByBrandId(resolvedId);
     if (live.length > 0) return live;
 
@@ -798,49 +794,10 @@ export const getProductsByBrandAsync = cache(
         if (logo.id === resolvedId) continue;
         const more = await queryProductsByBrandId(logo.id);
         if (more.length) return more;
-        const byAlias = filterProductsForBrand(
-          products,
-          logo.id,
-          logo.name
-        ) as Product[];
-        if (byAlias.length) return byAlias;
       }
     }
 
     return [];
-  }
-);
-
-/** Resolve brand logo for a product (explicit brandId or alias match). */
-export const getBrandForProductAsync = cache(
-  async (product: Product): Promise<BrandLogo | undefined> => {
-    const { findBrandSeed, resolveProductBrandId } = await import(
-      "@/lib/brand-link"
-    );
-    const { normalizeMatchText } = await import("@/lib/brand-match");
-
-    if (product.brandId) {
-      const linked = await getBrandByIdAsync(product.brandId);
-      if (linked) return linked;
-    }
-
-    const catalogId = resolveProductBrandId({ ...product, brandId: null });
-    if (!catalogId) return undefined;
-
-    const byId = await getBrandByIdAsync(catalogId);
-    if (byId) return byId;
-
-    const seed = findBrandSeed(catalogId);
-    if (!seed) return undefined;
-    const logos = await getBrandLogosAsync();
-    const seedNorm = normalizeMatchText(seed.name);
-    return logos.find((logo) => {
-      const n = normalizeMatchText(logo.name);
-      return (
-        n === seedNorm ||
-        seed.aliases.some((a) => normalizeMatchText(a) === n)
-      );
-    });
   }
 );
 
@@ -1246,8 +1203,7 @@ export async function queryPublicCatalogAsync(
     categoryIds,
     lang,
   });
-  // brand_id may still be unset on many products — fall back to alias matching
-  if (live && (live.total > 0 || !brandId)) return live;
+  if (live) return live;
 
   return queryPublicCatalogFromCache(state, {
     lockedBrandId: brandId,
@@ -1335,21 +1291,9 @@ async function queryPublicCatalogFromCache(
   if (opts.saleOnly) {
     products = products.filter(productIsOnSale);
   }
-  let working = products;
-  let filterState = state;
-  if (opts.lockedBrandId) {
-    const { filterProductsForBrand } = await import("@/lib/brand-link");
-    const brand = await getBrandByIdAsync(opts.lockedBrandId);
-    working = filterProductsForBrand(
-      products,
-      opts.lockedBrandId,
-      brand?.name
-    ) as Product[];
-    // Brand already applied via alias-aware filter — avoid re-filtering on brandId alone
-    filterState = { ...state, brandId: "" };
-  }
-  const filtered = filterProducts(working, filterState, {
+  const filtered = filterProducts(products, state, {
     categoryIds: opts.categoryIds,
+    lockedBrandId: opts.lockedBrandId,
   });
   const sorted = sortProducts(filtered, state.sort, opts.lang ?? "ar");
   const page = paginateProducts(sorted, state.page, state.pageSize);
