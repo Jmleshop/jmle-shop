@@ -96,6 +96,29 @@ export default function AdminProductsPage() {
   const [brandResetBusy, setBrandResetBusy] = useState(false);
   const sel = useRowSelection();
 
+  const runBrandLinkSync = async () => {
+    if (brandResetBusy) return;
+    setBrandResetBusy(true);
+    try {
+      const res = await fetch("/api/admin/brands/sync-links", {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(String(data.error || t("brandResetFail")));
+        return;
+      }
+      toast.success(
+        `${t("brandSyncOk")}: ${data.productsUpdated ?? 0} / ${data.productsMatched ?? 0}`
+      );
+      await load();
+    } catch {
+      toast.error(t("brandResetFail"));
+    } finally {
+      setBrandResetBusy(false);
+    }
+  };
+
   const runBrandReset = async () => {
     if (brandResetBusy) return;
     if (!window.confirm(t("brandResetConfirm"))) return;
@@ -549,6 +572,15 @@ export default function AdminProductsPage() {
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => setScanning(true)}>Barcode scannen</button>
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => void downloadPriceLabels(displayed)}>
           Etiketten-PDF
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-sm min-h-11 text-orange-950 disabled:opacity-60"
+          disabled={brandResetBusy}
+          onClick={() => void runBrandLinkSync()}
+          title={t("brandSyncHint")}
+        >
+          {brandResetBusy ? "…" : t("brandSync")}
         </button>
         <button
           type="button"
