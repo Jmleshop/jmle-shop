@@ -1,9 +1,5 @@
 import { BRAND_CATALOG, type BrandSeed } from "@/lib/brand-catalog";
 import {
-  aliasesFromLogoName,
-  logoNameCandidates,
-} from "@/lib/brand-logo-aliases";
-import {
   buildAliasIndex,
   matchProductToBrand,
   normalizeMatchText,
@@ -38,22 +34,6 @@ export function toProductMatchInput(p: BrandLinkProduct): ProductMatchInput {
   };
 }
 
-function seedMatchesToken(seed: BrandSeed, token: string): boolean {
-  const norm = normalizeMatchText(token);
-  if (!norm) return false;
-  if (normalizeMatchText(seed.name) === norm) return true;
-  for (const alias of seed.aliases) {
-    const a = normalizeMatchText(alias);
-    if (!a) continue;
-    if (a === norm) return true;
-    // Logo "Do Ghazal Tea" ↔ alias "Do Ghazal"; logo "hamol" ↔ "Hamoul"
-    if (textContainsAlias(token, alias) || textContainsAlias(alias, token)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /** Find catalog seed for a brand logo / id / display name. */
 export function findBrandSeed(
   brandId: string,
@@ -65,17 +45,12 @@ export function findBrandSeed(
 
   const name = String(brandName || "").trim();
   if (!name) return undefined;
-
-  const tokens = [
-    ...logoNameCandidates(name),
-    ...aliasesFromLogoName(name),
-  ];
-
-  for (const token of tokens) {
-    const hit = BRAND_CATALOG.find((b) => seedMatchesToken(b, token));
-    if (hit) return hit;
-  }
-  return undefined;
+  const norm = normalizeMatchText(name);
+  return BRAND_CATALOG.find(
+    (b) =>
+      normalizeMatchText(b.name) === norm ||
+      b.aliases.some((a) => normalizeMatchText(a) === norm)
+  );
 }
 
 /** Aliases used to match products to a brand logo. */
@@ -84,21 +59,9 @@ export function aliasesForBrand(
   brandName?: string | null
 ): string[] {
   const seed = findBrandSeed(brandId, brandName);
-  const fromLogo = aliasesFromLogoName(brandName);
-  const seen = new Set<string>();
-  const out: string[] = [];
-  const add = (s: string) => {
-    const t = s.trim();
-    if (!t) return;
-    const key = normalizeMatchText(t);
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    out.push(t);
-  };
-  if (seed?.aliases?.length) for (const a of seed.aliases) add(a);
-  for (const a of fromLogo) add(a);
-  if (brandName) add(brandName);
-  return out;
+  if (seed?.aliases?.length) return seed.aliases;
+  const name = String(brandName || "").trim();
+  return name ? [name] : [];
 }
 
 /** True when product.brandId matches or product text contains a brand alias. */
