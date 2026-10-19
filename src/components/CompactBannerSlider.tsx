@@ -65,13 +65,13 @@ function BannerSlideContent({
       />
     ) : (
       <Image
-        src={slide.image}
+        src={slide.image || "/placeholder.svg"}
         alt={title || slideTitle(lang, slide) || "Banner"}
         fill
         quality={SHOP_IMAGE_QUALITY}
         priority={priority}
         className="layout-banner-media"
-        sizes="100vw"
+        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"
         draggable={false}
       />
     );

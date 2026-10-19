@@ -3,11 +3,14 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import {
   getBrandByIdAsync,
-  getProductsByBrandAsync,
+  getBrandLogosAsync,
+  getCategoriesAsync,
   getSiteConfigAsync,
+  queryPublicCatalogAsync,
 } from "@/lib/catalog-server";
+import { parseCatalogFilters } from "@/lib/catalog-filters";
 import { getAppUrl } from "@/lib/site-defaults";
-import { ProductGrid } from "@/components/ProductCard";
+import CatalogShop from "@/components/CatalogShop";
 import { ShopHeading } from "@/components/ShopText";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
@@ -15,6 +18,7 @@ export const revalidate = 60;
 
 interface BrandPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export async function generateMetadata({
@@ -55,17 +59,32 @@ export async function generateMetadata({
   };
 }
 
-export default async function BrandPage({ params }: BrandPageProps) {
+export default async function BrandPage({
+  params,
+  searchParams,
+}: BrandPageProps) {
   const { id } = await params;
   const decoded = decodeURIComponent(id);
-  const [brand, products] = await Promise.all([
-    getBrandByIdAsync(decoded),
-    getProductsByBrandAsync(decoded),
-  ]);
+  const rawParams = await searchParams;
+  const brand = await getBrandByIdAsync(decoded);
 
   if (!brand) {
     notFound();
   }
+
+  const filters = parseCatalogFilters({
+    ...rawParams,
+    brand: brand.id,
+  });
+
+  const [result, categories, brands] = await Promise.all([
+    queryPublicCatalogAsync(filters, {
+      lockedBrandId: brand.id,
+      lang: "ar",
+    }),
+    getCategoriesAsync(),
+    getBrandLogosAsync(),
+  ]);
 
   return (
     <div>
@@ -86,18 +105,21 @@ export default async function BrandPage({ params }: BrandPageProps) {
         <ShopHeading
           as="p"
           k="productCount"
-          vars={{ count: products.length }}
+          vars={{ count: result.total }}
           className="mt-4 text-sm text-white/90 font-ui"
         />
       </div>
 
-      {products.length > 0 ? (
-        <ProductGrid products={products} />
-      ) : (
-        <div className="max-w-lg mx-auto text-center py-16 px-4 text-luxury-charcoal">
-          <ShopHeading as="p" k="brandEmpty" className="font-ui text-base" />
-        </div>
-      )}
+      <CatalogShop
+        products={result.products}
+        total={result.total}
+        page={result.page}
+        pageCount={result.pageCount}
+        categories={categories}
+        brands={brands}
+        lockedBrandId={brand.id}
+        headingKey="allProducts"
+      />
     </div>
   );
 }
