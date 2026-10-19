@@ -293,7 +293,6 @@ export default function HeaderSearch({
                           src={originalImageSrc(brand.image)}
                           alt=""
                           fill
-                          unoptimized
                           quality={SHOP_IMAGE_QUALITY}
                           className="object-contain p-0.5"
                           sizes="40px"
@@ -342,7 +341,6 @@ export default function HeaderSearch({
                         src={originalImageSrc(product.image)}
                         alt=""
                         fill
-                        unoptimized
                         quality={SHOP_IMAGE_QUALITY}
                         className="object-contain"
                         sizes="40px"

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui";
 
 /** Max. Produkte pro Seite (Kategorie / Alle / Suche). */
-export const PRODUCTS_PAGE_SIZE = 30;
+export const PRODUCTS_PAGE_SIZE = 24;
 
 function detectSeals(product: Product): Array<"halal" | "organic"> {
   const hay =
@@ -196,7 +196,7 @@ interface ProductGridProps {
   products: Product[];
   title?: string;
   titleKey?: "homeFeatured" | "allProducts";
-  /** Produkte pro Seite (Standard 30). */
+  /** Produkte pro Seite (Standard 24). */
   pageSize?: number;
 }
 

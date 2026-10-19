@@ -11,7 +11,7 @@ import CatalogShop from "@/components/CatalogShop";
 import JsonLd from "@/components/JsonLd";
 import { collectionPageJsonLd } from "@/lib/seo-jsonld";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 interface ShopPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

@@ -13,7 +13,7 @@ import {
 import { getAppUrl } from "@/lib/site-defaults";
 import { HomepageSectionsRenderer } from "@/components/HomeSections";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getSiteConfigAsync();
