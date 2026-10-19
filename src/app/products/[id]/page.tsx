@@ -18,7 +18,7 @@ import {
   productJsonLd,
 } from "@/lib/seo-jsonld";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;

@@ -60,7 +60,7 @@ describe("catalog-filters", () => {
       maxPrice: 10,
       sort: "name-ar",
       page: 1,
-      pageSize: 30,
+      pageSize: 24,
     };
     const sp = catalogFiltersToSearchParams(state);
     assert.equal(sp.get("q"), "reis");

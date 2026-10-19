@@ -14,7 +14,7 @@ import CatalogShop from "@/components/CatalogShop";
 import { ShopHeading } from "@/components/ShopText";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 interface BrandPageProps {
   params: Promise<{ id: string }>;

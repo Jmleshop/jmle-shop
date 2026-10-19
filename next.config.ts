@@ -43,12 +43,13 @@ const nextConfig: NextConfig = {
     "*": HEAVY_TRACE_EXCLUDES,
   },
   images: {
-    // Delivery: AVIF/WebP at shop quality; cap srcset widths to limit egress
+    // Delivery: AVIF/WebP at shop quality; cap srcset widths to limit Supabase egress
     formats: ["image/avif", "image/webp"],
-    qualities: [75, 80],
-    deviceSizes: [640, 750, 828, 1080, 1200],
-    imageSizes: [128, 256, 384],
-    minimumCacheTTL: 60 * 60 * 24 * 7,
+    qualities: [75],
+    deviceSizes: [640, 750, 828, 1080],
+    imageSizes: [64, 96, 128, 256, 384],
+    // Keep optimized derivatives on the CDN for a year (browser + Vercel)
+    minimumCacheTTL: 60 * 60 * 24 * 365,
     remotePatterns: [
       {
         protocol: "https",
@@ -73,6 +74,24 @@ const nextConfig: NextConfig = {
         pathname: "/storage/v1/object/public/**",
       },
     ],
+  },
+  async headers() {
+    const immutableYear =
+      "public, max-age=31536000, immutable, stale-while-revalidate=86400";
+    return [
+      {
+        source: "/_next/image",
+        headers: [{ key: "Cache-Control", value: immutableYear }],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: immutableYear }],
+      },
+      {
+        source: "/:all*(svg|jpg|jpeg|png|webp|avif|gif|ico|woff2)",
+        headers: [{ key: "Cache-Control", value: immutableYear }],
+      },
+    ];
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {

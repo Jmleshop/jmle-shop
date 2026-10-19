@@ -105,7 +105,6 @@ export default function CartPage() {
                   src={originalImageSrc(item.product.image)}
                   alt={productTitle(lang, item.product)}
                   fill
-                  unoptimized
                   quality={SHOP_IMAGE_QUALITY}
                   className="product-image-media"
                   sizes="112px"
