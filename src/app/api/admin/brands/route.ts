@@ -66,11 +66,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ungültiges JSON" }, { status: 400 });
   }
 
-  const image = String(body.image ?? "").trim();
-  if (!image) {
-    return NextResponse.json({ error: "Logo-Bild ist Pflicht" }, { status: 400 });
-  }
-
   const name = String(body.name ?? "").trim();
   if (!name) {
     return NextResponse.json(
@@ -78,6 +73,9 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  // Logo optional — Platzhalter erlaubt (z. B. Neuanlage aus Produktformular)
+  const image = String(body.image ?? "").trim() || "/placeholder.svg";
 
   const id =
     String(body.id ?? "").trim() ||

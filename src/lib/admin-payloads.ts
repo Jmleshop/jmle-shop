@@ -23,6 +23,11 @@ export function validateProductPayload(payload: ProductCreateInput): string | nu
     return "MwSt.-Satz ist Pflicht";
   }
   if (!payload.category_id) return "Kategorie ist Pflicht";
+  const brandId = (payload.brand_id || "").trim();
+  const brandName = (payload.brand_name || "").trim();
+  if ((!brandId || brandId === "__new__") && !brandName) {
+    return "Marke ist Pflicht — bitte wählen oder neu anlegen";
+  }
   return null;
 }
 

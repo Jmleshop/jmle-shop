@@ -268,6 +268,13 @@ export default function AdminProductsPage() {
     e.preventDefault();
     setSaving(true);
     setError("");
+    const isNewBrand = form.brand_id === "__new__";
+    const brandName = form.brand_name.trim();
+    if ((!form.brand_id || isNewBrand) && !brandName) {
+      setError(t("brandRequired"));
+      setSaving(false);
+      return;
+    }
     const payload = {
       ...form,
       price: parseFloat(form.price),
@@ -275,8 +282,8 @@ export default function AdminProductsPage() {
       vat_rate: Number(form.vat_rate),
       images: form.images,
       image: form.images[0] ?? "",
-      brand_id: form.brand_id.trim() || null,
-      brand_name: null,
+      brand_id: isNewBrand ? null : form.brand_id.trim() || null,
+      brand_name: isNewBrand ? brandName : null,
       max_order_quantity:
         form.max_order_quantity === "" ||
         form.max_order_quantity === "unlimited" ||
@@ -390,13 +397,20 @@ export default function AdminProductsPage() {
   const altText = productAltText(form.name_de, form.name_ar);
 
   const exportCsv = () => {
-    const blob = new Blob([productsToCsv(displayed)], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([productsToCsv(displayed, brands)], {
+      type: "text/csv;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "produkte.csv";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const brandLabel = (brandId: string | null | undefined) => {
+    if (!brandId) return "";
+    return brands.find((b) => b.id === brandId)?.name || "";
   };
 
   const importCsv = async (file: File) => {
@@ -733,14 +747,23 @@ export default function AdminProductsPage() {
               </div>
               <div>
                 <label className="block text-sm mb-1" htmlFor="product-brand">
-                  {t("brand")}
+                  {t("brand")} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="product-brand"
+                  required
                   className="input-field"
                   value={form.brand_id}
                   onChange={(e) => {
                     const id = e.target.value;
+                    if (id === "__new__") {
+                      setForm({
+                        ...form,
+                        brand_id: "__new__",
+                        brand_name: "",
+                      });
+                      return;
+                    }
                     const match = brands.find((b) => b.id === id);
                     setForm({
                       ...form,
@@ -749,13 +772,27 @@ export default function AdminProductsPage() {
                     });
                   }}
                 >
-                  <option value="">{t("brandNone")}</option>
+                  <option value="" disabled>
+                    {t("brandNone")}
+                  </option>
                   {brands.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
                     </option>
                   ))}
+                  <option value="__new__">{t("brandNew")}</option>
                 </select>
+                {form.brand_id === "__new__" && (
+                  <input
+                    required
+                    className="input-field mt-2"
+                    placeholder={t("brandNewName")}
+                    value={form.brand_name}
+                    onChange={(e) =>
+                      setForm({ ...form, brand_name: e.target.value })
+                    }
+                  />
+                )}
                 <p className="mt-1 text-[11px] text-gray-500">{t("brandHint")}</p>
               </div>
               <ImageUpload
@@ -1078,6 +1115,15 @@ export default function AdminProductsPage() {
                       </span>
                       {p.name_de && (
                         <span className="truncate block text-xs text-gray-400">{p.name_de}</span>
+                      )}
+                      {brandLabel(p.brand_id) ? (
+                        <span className="truncate block text-[11px] text-gray-500">
+                          {t("brand")}: {brandLabel(p.brand_id)}
+                        </span>
+                      ) : (
+                        <span className="truncate block text-[11px] text-amber-700">
+                          {t("brand")}: —
+                        </span>
                       )}
                       {p.status === "draft" && (
                         <span className="text-[11px] uppercase tracking-wide text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">

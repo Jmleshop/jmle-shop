@@ -10,6 +10,7 @@ import {
   PRODUCT_SELECT_NO_BRAND,
 } from "@/lib/admin-payloads";
 import { parseCsv, previewCsvEdits } from "@/lib/admin-catalog-io";
+import { resolveProductBrand } from "@/lib/resolve-product-brand";
 import type { FoodProduct } from "@/types";
 
 export async function POST(request: Request) {
@@ -41,13 +42,39 @@ export async function POST(request: Request) {
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const preview = previewCsvEdits((data ?? []) as unknown as FoodProduct[], rows);
+  const brandsRes = await db.from("brand_logos").select("id, name");
+  const brands = ((brandsRes.data ?? []) as Array<{ id: string; name: string }>).map(
+    (b) => ({ id: String(b.id), name: String(b.name || "") })
+  );
+
+  const preview = previewCsvEdits(
+    (data ?? []) as unknown as FoodProduct[],
+    rows,
+    brands
+  );
   if (!body.apply) return NextResponse.json(preview);
 
   let applied = 0;
   const applyErrors: string[] = [];
   for (const update of preview.updates) {
-    const result = await db.from("products").update(update.fields).eq("id", update.id);
+    const fields = { ...update.fields };
+    if (update.createBrandName) {
+      const resolved = await resolveProductBrand(
+        db,
+        { brand_id: null, brand_name: update.createBrandName },
+        { require: true, createIfMissing: true }
+      );
+      if (resolved.error || !resolved.brand_id) {
+        applyErrors.push(
+          `${update.id}: ${resolved.error || "Marke konnte nicht angelegt werden"}`
+        );
+        continue;
+      }
+      fields.brand_id = resolved.brand_id;
+    }
+
+    if (Object.keys(fields).length === 0) continue;
+    const result = await db.from("products").update(fields).eq("id", update.id);
     if (result.error) applyErrors.push(`${update.id}: ${result.error.message}`);
     else applied += 1;
   }
