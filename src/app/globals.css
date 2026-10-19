@@ -256,13 +256,7 @@
   aspect-ratio: var(--layout-banner-aspect, 2.4 / 1);
   height: var(--layout-banner-height, auto);
   min-height: var(--layout-banner-min-height, 0px);
-  max-height: min(70vh, 720px);
-  width: 100%;
-}
-@media (max-width: 767px) {
-  .layout-banner-frame {
-    max-height: min(55vh, 480px);
-  }
+  max-height: none;
 }
 .layout-banner-media {
   object-fit: var(--layout-banner-object-fit, contain) !important;

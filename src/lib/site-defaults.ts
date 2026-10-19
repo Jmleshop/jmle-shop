@@ -47,7 +47,7 @@ export const DEFAULT_HERO_SLIDES: Slide[] = [
     subtitleAr: "بسمتي، مصري، وأسمر — جودة ممتازة",
     subtitleDe: "Basmati, ägyptisch und Vollkorn — Top-Qualität",
     sliderZone: "banner1",
-    linkUrl: "/shop",
+    linkUrl: "/products",
   },
   {
     id: "slide-3",

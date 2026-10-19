@@ -380,12 +380,10 @@ export function layoutCssVars(
     "--layout-brands-speed": String(brands.speed),
     "--layout-heading-scale": String(typo.headingScale),
     "--layout-title-align": typo.sectionTitleAlign,
-    // Feste Höhe ersetzt Aspect-Ratio; sonst viewport-sensible Defaults
+    // Feste Höhe ersetzt Aspect-Ratio; 0 = auto über aspect 2.4/1
     "--layout-banner-height": hasFixedHeight ? `${slider.heightPx}px` : "auto",
     "--layout-banner-min-height": hasFixedHeight ? `${slider.heightPx}px` : "0px",
-    "--layout-banner-aspect": hasFixedHeight
-      ? "auto"
-      : defaultBannerAspect(viewport),
+    "--layout-banner-aspect": hasFixedHeight ? "auto" : "2.4 / 1",
     "--layout-banner-margin-y": `${slider.marginY}px`,
     "--layout-banner-offset-y": `${slider.offsetY}px`,
     "--layout-banner-object-fit": slider.objectFit,
@@ -398,19 +396,6 @@ export function layoutCssVars(
   if (typo.bodyColor) vars["--layout-body-color"] = typo.bodyColor;
   if (typo.accentColor) vars["--layout-accent"] = typo.accentColor;
   return vars;
-}
-
-/** Sensible Banner-Seitenverhältnisse ohne feste Builder-Höhe. */
-export function defaultBannerAspect(viewport: LayoutViewport): string {
-  switch (viewport) {
-    case "mobile":
-      return "4 / 3";
-    case "tablet":
-      return "2 / 1";
-    case "desktop":
-    default:
-      return "2.4 / 1";
-  }
 }
 
 export function detectViewportWidth(width: number): LayoutViewport {

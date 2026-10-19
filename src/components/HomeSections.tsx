@@ -164,17 +164,9 @@ export function HomepageSectionsRenderer({
 
   const activeSections = useMemo(() => {
     const list = overrideSections ?? sections;
-    const sorted = [...list]
+    return [...list]
       .filter((s) => s.active !== false)
       .sort((a, b) => a.sortOrder - b.sortOrder);
-    // Nur eine Marken-Sektion rendern — verhindert doppelte Ticker
-    let brandsSeen = false;
-    return sorted.filter((s) => {
-      if (s.type !== "brands") return true;
-      if (brandsSeen) return false;
-      brandsSeen = true;
-      return true;
-    });
   }, [overrideSections, sections]);
 
   return (
