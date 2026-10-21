@@ -8,6 +8,9 @@ export default function AdminDashboardPage() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [counts, setCounts] = useState({ products: 0, categories: 0, drafts: 0 });
+  const [lowStock, setLowStock] = useState<
+    { id: string; name_de?: string | null; name_ar?: string | null; stock_quantity: number; min_stock_alert?: number | null }[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,8 +18,9 @@ export default function AdminDashboardPage() {
       fetch("/api/admin/me").then((r) => r.json()),
       fetch("/api/admin/products").then((r) => r.json()),
       fetch("/api/admin/categories").then((r) => r.json()),
+      fetch("/api/admin/pos").then((r) => r.json()),
     ])
-      .then(([me, products, categories]) => {
+      .then(([me, products, categories, stock]) => {
         const profile = me.profile ?? {};
         setName(
           profile.full_name ||
@@ -34,6 +38,7 @@ export default function AdminDashboardPage() {
           (p: { status?: string; deleted_at?: string | null }) =>
             !p.deleted_at && p.status === "draft"
         );
+        setLowStock(stock.products ?? []);
         setCounts({
           products: published.length,
           categories: (categories.categories ?? []).length,
@@ -103,6 +108,56 @@ export default function AdminDashboardPage() {
           </div>
         </Link>
       </div>
+
+      <section className="mt-8 rounded-2xl border border-gray-100 bg-white p-6">
+        <h2 className="mb-4 text-lg font-semibold">Niedriger Lagerbestand</h2>
+        {lowStock.length === 0 ? (
+          <p className="text-sm text-gray-500">Kein Produkt unter dem Mindestbestand.</p>
+        ) : (
+          <ul className="space-y-2">
+            {lowStock.map((product) => {
+              const stock = Number(product.stock_quantity ?? 0);
+              const tone = stock <= 0 ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800";
+              return (
+                <li key={product.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 ${tone}`}>
+                  <span>
+                    {product.name_de || product.name_ar} · {stock} Stück
+                    {stock <= 0 ? " · ausverkauft" : " · wenig Bestand"}
+                  </span>
+                  <span className="flex gap-2">
+                    {[10, 50].map((amount) => (
+                      <button
+                        key={amount}
+                        type="button"
+                        className="min-h-10 rounded-lg bg-white px-3 text-sm text-luxury-ink"
+                        onClick={() => {
+                          void fetch("/api/admin/pos", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ productId: product.id, delta: amount }),
+                          }).then(() => {
+                            setLowStock((rows) =>
+                              rows
+                                .map((row) =>
+                                  row.id === product.id
+                                    ? { ...row, stock_quantity: Number(row.stock_quantity) + amount }
+                                    : row
+                                )
+                                .filter((row) => Number(row.stock_quantity) <= Number(row.min_stock_alert ?? 5))
+                            );
+                          });
+                        }}
+                      >
+                        +{amount}
+                      </button>
+                    ))}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
