@@ -16,13 +16,18 @@ export async function downloadQuotePdf(input: {
   protocol: string;
   phone: string;
   lines: InquiryLine[];
-  kind: "quote" | "invoice";
+  kind: "quote" | "invoice" | "delivery";
   invoiceNumber?: string | null;
   notes?: string | null;
   customer?: string;
 }) {
   const totals = summarizeLines(input.lines);
-  const title = input.kind === "invoice" ? "Rechnung" : "Preisvorschlag / Bestellübersicht";
+  const title =
+    input.kind === "invoice"
+      ? "Rechnung"
+      : input.kind === "delivery"
+        ? "Preisvorschlag & Lieferanfrage"
+        : "Preisvorschlag / Bestellübersicht";
   const doc = (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -64,7 +69,12 @@ export async function downloadQuotePdf(input: {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = input.kind === "invoice" ? `${input.invoiceNumber || "rechnung"}.pdf` : "preisvorschlag-jmle.pdf";
+  a.download =
+    input.kind === "invoice"
+      ? `${input.invoiceNumber || "rechnung"}.pdf`
+      : input.kind === "delivery"
+        ? "lieferanfrage-jmle.pdf"
+        : "preisvorschlag-jmle.pdf";
   a.click();
   URL.revokeObjectURL(url);
 }

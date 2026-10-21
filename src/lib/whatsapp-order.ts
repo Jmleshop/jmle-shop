@@ -6,10 +6,11 @@ export const WHATSAPP_E164 = "49123456789";
 export function whatsAppOrderUrl(
   lines: { name: string; quantity: number; lineTotal: number }[],
   total: number,
-  phone?: string
+  phone?: string,
+  heading = "Neue Anfrage über jmle (Preisvorschlag)"
 ): string {
   const body = [
-    "Neue Anfrage über jmle (Preisvorschlag)",
+    heading,
     phone ? `Telefon: ${phone}` : "",
     "",
     ...lines.map(

@@ -5,7 +5,7 @@ import { formatEuroDe } from "@/lib/pricing";
 import { lineGross, summarizeLines, type Inquiry, type InquiryLine } from "@/lib/inquiry";
 import { downloadQuotePdf } from "@/components/cart/QuotePdf";
 
-type Tab = "whatsapp" | "callback" | "done";
+type Tab = "whatsapp" | "callback" | "delivery" | "done";
 type ProductHit = {
   id: string;
   name_de?: string | null;
@@ -59,6 +59,7 @@ export default function AdminOrdersPage() {
           [
             ["whatsapp", "Per WhatsApp gesendet"],
             ["callback", "Rückruf / Kontakt erforderlich"],
+            ["delivery", "Lieferanfragen (30 km Radius)"],
             ["done", "Abgeschlossen"],
           ] as const
         ).map(([key, label]) => (

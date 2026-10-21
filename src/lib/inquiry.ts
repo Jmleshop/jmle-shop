@@ -1,4 +1,4 @@
-export type InquiryChannel = "whatsapp" | "callback";
+export type InquiryChannel = "whatsapp" | "callback" | "delivery";
 export type InquiryStatus = "open" | "done";
 
 export type InquiryLine = {

@@ -12,7 +12,7 @@ const lineSchema = z.object({
 });
 
 const bodySchema = z.object({
-  channel: z.enum(["whatsapp", "callback"]),
+  channel: z.enum(["whatsapp", "callback", "delivery"]),
   firstName: z.string().trim().min(1).optional(),
   lastName: z.string().trim().min(1).optional(),
   phone: z.string().trim().min(6),
@@ -37,8 +37,11 @@ export async function POST(request: Request) {
   }
 
   const data = parsed.data;
-  if (data.channel === "callback" && (!data.firstName || !data.lastName)) {
+  if ((data.channel === "callback" || data.channel === "delivery") && (!data.firstName || !data.lastName)) {
     return NextResponse.json({ error: "Vor- und Nachname sind Pflicht." }, { status: 400 });
+  }
+  if (data.channel === "delivery" && (!data.street || !data.postalCode || !data.city)) {
+    return NextResponse.json({ error: "Bitte eine gültige Lieferadresse angeben." }, { status: 400 });
   }
 
   const items = data.items as InquiryLine[];
