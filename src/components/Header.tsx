@@ -22,7 +22,7 @@ export default function Header() {
   const lastY = useRef(0);
 
   useEffect(() => {
-    registerCartIcon(cartRef.current);
+    return registerCartIcon(cartRef.current);
   }, [registerCartIcon, compact, itemCount]);
 
   const onScroll = useCallback(() => {

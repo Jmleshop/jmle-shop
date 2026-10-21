@@ -88,15 +88,16 @@ export default function ProductCard({ product }: ProductCardProps) {
           className="relative aspect-square overflow-hidden !bg-white flex items-center justify-center"
           style={{ backgroundColor: "#ffffff" }}
         >
-          <Image
-            src={originalImageSrc(product.image)}
-            alt={product.nameDe ? `${title} – ${product.name}` : title}
-            fill
-            unoptimized
-            quality={SHOP_IMAGE_QUALITY}
-            className="object-contain transition-transform duration-500 ease-boutique group-hover:scale-105"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
-          />
+          {originalImageSrc(product.image) ? (
+            <Image
+              src={originalImageSrc(product.image)}
+              alt={product.nameDe ? `${title} – ${product.name}` : title}
+              fill
+              quality={SHOP_IMAGE_QUALITY}
+              className="object-contain transition-transform duration-500 ease-boutique group-hover:scale-105"
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            />
+          ) : null}
           <div className="absolute inset-x-0 top-0 p-2 flex gap-1.5 justify-between items-start pointer-events-none">
             <div className="flex flex-wrap gap-1.5">
               <StockBadge stock={product.stock} />

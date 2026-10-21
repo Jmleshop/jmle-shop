@@ -44,7 +44,7 @@ export default function WishlistPage() {
         discountPercent: 0,
         vatRate: 7,
         categoryId: "",
-        image: "/placeholder.svg",
+        image: "",
         images: [],
         stock: 0,
         inStock: false,
@@ -111,7 +111,6 @@ export default function WishlistPage() {
                   src={originalImageSrc(product.image)}
                   alt={productTitle(lang, product)}
                   fill
-                  unoptimized
                   quality={SHOP_IMAGE_QUALITY}
                   className="object-contain"
                   sizes="(max-width: 640px) 100vw, 200px"

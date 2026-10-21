@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { Archive, ArchiveRestore, Pencil, Plus, X, Trash2 } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
@@ -949,12 +950,15 @@ export default function AdminProductsPage() {
                         />
                       )}
                       {p.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={originalImageSrc(p.image)}
-                          alt=""
-                          className="h-12 w-12 shrink-0 rounded-lg border border-gray-100 bg-white object-contain"
-                        />
+                        <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-white">
+                          <Image
+                            src={originalImageSrc(p.image)}
+                            alt=""
+                            fill
+                            className="object-contain"
+                            sizes="48px"
+                          />
+                        </span>
                       ) : (
                         <span className="h-12 w-12 shrink-0 rounded-lg bg-gray-100" />
                       )}

@@ -14,6 +14,7 @@ const ADMIN_ONLY_PREFIXES = [
   "/api/admin/activity",
   "/api/admin/analytics",
   "/api/admin/orders",
+  "/api/admin/inquiries",
   "/api/admin/discounts",
   "/api/admin/users",
   "/api/admin/stats",
@@ -46,11 +47,13 @@ function unauthorizedApi(message: string, status: number) {
 }
 
 function redirectToLogin(request: NextRequest, path: string, error?: string) {
-  // Staff-Einstieg bleibt /admin/login (ungated). Gate-Fails ohne Session
-  // und ohne Staff-Rolle landen auf /auth/login laut Phase-1-Vorgabe.
-  // absoluteAppUrl verhindert Redirects auf Vercel-Preview-Hosts.
-  const loginUrl = absoluteAppUrl("/auth/login", request.url);
-  if (path.startsWith("/admin") && path !== "/admin/login") {
+  const isAdminPath =
+    path.startsWith("/admin") || path.startsWith("/api/admin");
+  const loginUrl = absoluteAppUrl(
+    isAdminPath ? "/admin/login" : "/auth/login",
+    request.url
+  );
+  if (isAdminPath && path !== "/admin/login") {
     loginUrl.searchParams.set(
       "redirect",
       path === "/admin" ? "/admin/dashboard" : path

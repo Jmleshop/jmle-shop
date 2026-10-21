@@ -1,109 +1,292 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { formatPriceDe } from "@/lib/catalog";
-import type { Order } from "@/types";
+import { useEffect, useMemo, useState } from "react";
+import { formatEuroDe } from "@/lib/pricing";
+import { lineGross, summarizeLines, type Inquiry, type InquiryLine } from "@/lib/inquiry";
+import { downloadQuotePdf } from "@/components/cart/QuotePdf";
+
+type Tab = "whatsapp" | "callback" | "done";
+type ProductHit = {
+  id: string;
+  name_de?: string | null;
+  name_ar?: string | null;
+  price?: number | null;
+  vat_rate?: number | null;
+  stock_quantity?: number | null;
+};
 
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [rows, setRows] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState<Tab>("callback");
+  const [editing, setEditing] = useState<Inquiry | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    fetch("/api/admin/inquiries")
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "Laden fehlgeschlagen");
+        setRows(data.inquiries ?? []);
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    fetch("/api/admin/orders")
-      .then((r) => r.json())
-      .then((data) => setOrders(data.orders ?? []))
-      .finally(() => setLoading(false));
+    load();
   }, []);
 
-  const statusLabel: Record<string, string> = {
-    pending: "Ausstehend",
-    paid: "Bezahlt",
-    cancelled: "Storniert",
-    refunded: "Erstattet",
-  };
+  const visible = rows.filter((row) => {
+    if (tab === "done") return row.status === "done";
+    return row.status !== "done" && row.channel === tab;
+  });
+  const openCallbacks = rows.filter((row) => row.channel === "callback" && row.status === "open").length;
+  const done = rows.filter((row) => row.status === "done").length;
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-2">Verkäufe</h1>
-      <p className="text-gray-500 text-sm mb-8">
-        Alle Bestellungen und Umsätze im Überblick
-      </p>
-
+      <h1 className="mb-2 text-2xl font-semibold">Anfragen</h1>
+      <p className="mb-6 text-sm text-gray-500">WhatsApp-Anfragen und Rückrufe, ohne Online-Zahlung.</p>
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+        <Stat label="Gesamtanfragen" value={rows.length} />
+        <Stat label="Offene Rückrufe" value={openCallbacks} />
+        <Stat label="Bearbeitete Bestellungen" value={done} />
+      </div>
+      <div className="mb-6 flex flex-wrap gap-2">
+        {(
+          [
+            ["whatsapp", "Per WhatsApp gesendet"],
+            ["callback", "Rückruf / Kontakt erforderlich"],
+            ["done", "Abgeschlossen"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={`min-h-11 rounded-full px-4 text-sm ${tab === key ? "bg-brand-orange text-white" : "bg-white border"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
       {loading ? (
-        <p className="text-gray-500">Lade Bestellungen...</p>
-      ) : orders.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center text-gray-400 border border-gray-100">
-          Noch keine Bestellungen vorhanden.
-        </div>
+        <p className="text-gray-500">Lade Anfragen…</p>
+      ) : visible.length === 0 ? (
+        <p className="rounded-2xl border bg-white p-8 text-center text-gray-400">Keine Einträge in dieser Ansicht.</p>
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+          {visible.map((row) => (
+            <article key={row.id} className="rounded-2xl border bg-white p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">
-                    {new Date(order.created_at).toLocaleString("de-DE")}
-                  </p>
+                  <p className="text-xs text-gray-400">{new Date(row.created_at).toLocaleString("de-DE")}</p>
                   <p className="font-medium">
-                    {order.customer_email || "Gast-Bestellung"}
+                    {[row.first_name, row.last_name].filter(Boolean).join(" ") || "WhatsApp-Anfrage"}
+                  </p>
+                  <p className="text-sm">{row.phone}</p>
+                  <p className="text-sm text-gray-500">
+                    {[row.street, row.postal_code, row.city, row.email].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xl font-semibold text-gold-dark">
-                    {formatPriceDe(Number(order.total))}
+                <div className="text-end">
+                  <p className="text-xl font-semibold text-gold-dark">{formatEuroDe(Number(row.total))}</p>
+                  <p className="text-xs text-gray-500">
+                    {row.invoice_status === "issued" ? `Rechnung ${row.invoice_number}` : "Rechnungsentwurf"}
                   </p>
-                  <span
-                    className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs ${
-                      order.status === "paid"
-                        ? "bg-green-50 text-green-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {statusLabel[order.status] ?? order.status}
-                  </span>
                 </div>
               </div>
-
-              {order.discount_code && (
-                <p className="text-sm text-green-600 mb-3">
-                  Rabattcode: {order.discount_code} (−
-                  {formatPriceDe(Number(order.discount_amount))})
-                </p>
-              )}
-
-              {order.order_items && order.order_items.length > 0 && (
-                <div className="border-t pt-4 overflow-x-auto">
-                  <table className="w-full text-sm min-w-[320px]">
-                    <thead>
-                      <tr className="text-gray-500">
-                        <th className="text-left pb-2 font-medium">Produkt</th>
-                        <th className="text-center pb-2 font-medium">Menge</th>
-                        <th className="text-right pb-2 font-medium">Preis</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {order.order_items.map((item) => (
-                        <tr key={item.id}>
-                          <td className="py-2" dir="rtl">
-                            {item.product_name}
-                          </td>
-                          <td className="py-2 text-center">{item.quantity}</td>
-                          <td className="py-2 text-right">
-                            {formatPriceDe(Number(item.price) * item.quantity)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a className="min-h-11 rounded-xl bg-[#25D366] px-3 py-2 text-sm text-white" href={`https://wa.me/${row.phone.replace(/\D/g, "")}`}>
+                  WhatsApp öffnen
+                </a>
+                <a className="min-h-11 rounded-xl border px-3 py-2 text-sm" href={`tel:${row.phone}`}>
+                  Kunden anrufen
+                </a>
+                <button type="button" className="min-h-11 rounded-xl border px-3 text-sm" onClick={() => setEditing(row)}>
+                  Rechnung bearbeiten
+                </button>
+                <button
+                  type="button"
+                  className="min-h-11 rounded-xl border px-3 text-sm"
+                  onClick={() => void patch(row.id, { status: row.status === "done" ? "open" : "done" }).then(load)}
+                >
+                  {row.status === "done" ? "Wieder öffnen" : "Abschließen"}
+                </button>
+              </div>
+            </article>
           ))}
         </div>
       )}
+      {editing && (
+        <InvoiceEditor
+          inquiry={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(next) => {
+            setEditing(next);
+            setRows((list) => list.map((row) => (row.id === next.id ? next : row)));
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border bg-white p-4">
+      <p className="text-xs uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+async function patch(id: string, body: Record<string, unknown>) {
+  const response = await fetch("/api/admin/inquiries", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, ...body }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Speichern fehlgeschlagen");
+  return data.inquiry as Inquiry;
+}
+
+function InvoiceEditor({
+  inquiry,
+  onClose,
+  onSaved,
+}: {
+  inquiry: Inquiry;
+  onClose: () => void;
+  onSaved: (row: Inquiry) => void;
+}) {
+  const [lines, setLines] = useState<InquiryLine[]>(inquiry.items ?? []);
+  const [notes, setNotes] = useState(inquiry.notes ?? "");
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<ProductHit[]>([]);
+  const [message, setMessage] = useState("");
+  const totals = useMemo(() => summarizeLines(lines), [lines]);
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setHits([]);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void fetch(`/api/admin/inquiries?q=${encodeURIComponent(query.trim())}`)
+        .then((r) => r.json())
+        .then((data) => setHits(data.products ?? []))
+        .catch(() => setHits([]));
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  const save = async (issue = false) => {
+    setMessage("");
+    try {
+      const next = await patch(inquiry.id, { items: lines, notes, issue });
+      onSaved(next);
+      setMessage(issue ? "Rechnung ausgestellt." : "Entwurf gespeichert.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Fehler");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-3 sm:items-center">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Rechnungsentwurf</h2>
+          <button type="button" onClick={onClose} className="text-sm">Schließen</button>
+        </div>
+        {lines.map((line, index) => (
+          <div key={`${line.productId}-${index}`} className="mb-2 grid grid-cols-[1fr_5rem_auto] items-center gap-2 text-sm">
+            <span>{line.name}</span>
+            <input
+              type="number"
+              min={1}
+              value={line.quantity}
+              className="min-h-10 rounded-lg border px-2"
+              onChange={(e) => {
+                const quantity = Math.max(1, Number(e.target.value) || 1);
+                setLines((current) => current.map((item, i) => (i === index ? { ...item, quantity } : item)));
+              }}
+            />
+            <button type="button" className="text-red-600" onClick={() => setLines((current) => current.filter((_, i) => i !== index))}>
+              Entfernen
+            </button>
+            <span className="col-span-3 text-xs text-gray-400">{formatEuroDe(lineGross(line))}</span>
+          </div>
+        ))}
+        <label className="mt-4 block text-sm">
+          Produkt hinzufügen
+          <input value={query} onChange={(e) => setQuery(e.target.value)} className="mt-1 w-full min-h-11 rounded-xl border px-3" placeholder="Name suchen" />
+        </label>
+        {hits.length > 0 && (
+          <ul className="mt-2 rounded-xl border">
+            {hits.map((hit) => (
+              <li key={hit.id}>
+                <button
+                  type="button"
+                  className="flex w-full justify-between px-3 py-2 text-start text-sm hover:bg-orange-50"
+                  onClick={() => {
+                    const list = Number(hit.price ?? 0);
+                    const discount = Number((hit as ProductHit & { discount_percent?: number }).discount_percent ?? 0);
+                    setLines((current) => [
+                      ...current,
+                      {
+                        productId: hit.id,
+                        name: hit.name_de || hit.name_ar || "Produkt",
+                        quantity: 1,
+                        unitPrice: Math.round(list * (1 - discount / 100) * 100) / 100,
+                        vatRate: Number(hit.vat_rate ?? 19),
+                      },
+                    ]);
+                    setQuery("");
+                    setHits([]);
+                  }}
+                >
+                  <span>{hit.name_de || hit.name_ar}</span>
+                  <span>{formatEuroDe(Number(hit.price ?? 0))} · Bestand {hit.stock_quantity ?? 0}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-4 min-h-20 w-full rounded-xl border p-3 text-sm" placeholder="Anmerkung auf der Rechnung" />
+        <p className="mt-3 text-sm">Zwischensumme {formatEuroDe(totals.subtotal)}</p>
+        <p className="text-sm">MwSt. {formatEuroDe(totals.vat)}</p>
+        <p className="font-semibold">Gesamt {formatEuroDe(totals.total)}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" className="min-h-11 rounded-xl border px-3 text-sm" onClick={() => void save(false)}>Entwurf speichern</button>
+          <button type="button" className="min-h-11 rounded-xl bg-brand-orange px-3 text-sm text-white" onClick={() => void save(true)}>
+            Rechnung ausstellen / Aktivieren
+          </button>
+          <button
+            type="button"
+            disabled={inquiry.invoice_status !== "issued" && !inquiry.invoice_number}
+            className="min-h-11 rounded-xl border px-3 text-sm disabled:opacity-40"
+            onClick={() =>
+              void downloadQuotePdf({
+                protocol: inquiry.id.slice(0, 8),
+                phone: inquiry.phone,
+                lines,
+                kind: "invoice",
+                invoiceNumber: inquiry.invoice_number,
+                notes,
+                customer: [inquiry.first_name, inquiry.last_name].filter(Boolean).join(" "),
+              })
+            }
+          >
+            Offizielle Rechnung als PDF herunterladen
+          </button>
+        </div>
+        {message && <p className="mt-3 text-sm">{message}</p>}
+      </div>
     </div>
   );
 }

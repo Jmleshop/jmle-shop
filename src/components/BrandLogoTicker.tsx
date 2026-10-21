@@ -19,7 +19,6 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
         src={originalImageSrc(logo.image)}
         alt={logo.name || "Brand"}
         fill
-        unoptimized
         quality={SHOP_IMAGE_QUALITY}
         className="object-contain"
         sizes="144px"

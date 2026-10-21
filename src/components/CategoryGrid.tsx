@@ -32,15 +32,17 @@ export function CategoryTile({ category }: CategoryTileProps) {
           aria-hidden
           className="absolute inset-0 rounded-full bg-gradient-to-br from-jmle-yellow to-gold-light translate-x-2 translate-y-1.5 transition-transform duration-300 ease-boutique group-hover:translate-x-2.5 group-hover:translate-y-2"
         />
-        <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-gold-sm transition-transform duration-300 ease-boutique group-hover:scale-105 group-hover:-translate-y-1">
-          <Image
-            src={originalImageSrc(category.image)}
-            alt={label}
-            fill
-            quality={SHOP_IMAGE_QUALITY}
-            className="object-cover"
-            sizes="128px"
-          />
+        <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-white shadow-gold-sm transition-transform duration-300 ease-boutique group-hover:scale-105 group-hover:-translate-y-1 bg-jmle-cream">
+          {originalImageSrc(category.image) ? (
+            <Image
+              src={originalImageSrc(category.image)}
+              alt={label}
+              fill
+              quality={SHOP_IMAGE_QUALITY}
+              className="object-cover"
+              sizes="128px"
+            />
+          ) : null}
         </div>
       </div>
       <span className="font-ui text-xs sm:text-sm font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug">

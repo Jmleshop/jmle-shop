@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { ArrowDown, ArrowUp, Plus, Trash2, Images, Building2, PanelsTopLeft } from "lucide-react";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
@@ -349,12 +350,9 @@ export default function AdminSlidersPage() {
                 key={s.id}
                 className="card-boutique p-3 flex gap-3 items-center"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={s.image}
-                  alt=""
-                  className="w-24 h-14 object-cover rounded-lg bg-orange-50"
-                />
+                <span className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-orange-50">
+                  <Image src={s.image} alt="" fill className="object-cover" sizes="96px" quality={90} />
+                </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
                     {s.title_de || s.title_ar || s.title || s.id}
@@ -459,12 +457,9 @@ export default function AdminSlidersPage() {
                 key={l.id}
                 className="card-boutique p-3 flex gap-3 items-center"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={l.image}
-                  alt={l.name}
-                  className="w-20 h-12 object-contain rounded-lg bg-white"
-                />
+                <span className="relative h-12 w-20 shrink-0 overflow-hidden rounded-lg bg-white">
+                  <Image src={l.image} alt={l.name} fill className="object-contain" sizes="80px" quality={90} />
+                </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{l.name || l.id}</p>
                 </div>

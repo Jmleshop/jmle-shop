@@ -32,17 +32,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     },
     {
-      url: `${appUrl}/legal/impressum`,
+      url: `${appUrl}/impressum`,
       changeFrequency: "yearly",
       priority: 0.2,
     },
     {
-      url: `${appUrl}/legal/datenschutz`,
+      url: `${appUrl}/datenschutz`,
       changeFrequency: "yearly",
       priority: 0.2,
     },
     {
-      url: `${appUrl}/legal/widerruf`,
+      url: `${appUrl}/agb`,
       changeFrequency: "yearly",
       priority: 0.2,
     },

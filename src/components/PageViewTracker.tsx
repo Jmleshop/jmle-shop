@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { readCookieConsent } from "@/components/CookieBanner";
 
 /**
  * Datenschutzkonformes In-House-Tracking:
@@ -10,9 +11,17 @@ import { usePathname } from "next/navigation";
  */
 export default function PageViewTracker() {
   const pathname = usePathname();
+  const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    if (!pathname || pathname.startsWith("/admin") || pathname.startsWith("/api")) {
+    const sync = () => setAllowed(readCookieConsent() === "all");
+    sync();
+    window.addEventListener("jmle-cookie-consent", sync);
+    return () => window.removeEventListener("jmle-cookie-consent", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!allowed || !pathname || pathname.startsWith("/admin") || pathname.startsWith("/api")) {
       return;
     }
     // Preview-iframe nicht doppelt zählen
@@ -28,7 +37,7 @@ export default function PageViewTracker() {
     }, 400);
 
     return () => window.clearTimeout(t);
-  }, [pathname]);
+  }, [pathname, allowed]);
 
   return null;
 }

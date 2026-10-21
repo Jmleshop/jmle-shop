@@ -3,12 +3,8 @@ import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { discountedPrice } from "@/lib/pricing";
 import { normalizeBadges } from "@/lib/product-badges";
-import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from "@/lib/fallback-catalog";
 import { searchQueryVariants } from "@/lib/search";
-import {
-  DEFAULT_HERO_SLIDES,
-  DEFAULT_SITE_CONFIG,
-} from "@/lib/site-defaults";
+import { DEFAULT_SITE_CONFIG } from "@/lib/site-defaults";
 import {
   ALL_CATEGORY,
   SALE_CATEGORY,
@@ -21,9 +17,9 @@ import {
   productIsOnSale,
 } from "@/lib/category-special";
 import { originalImageSrc } from "@/lib/sharp-image";
+import { PRODUCT_PAGE_SIZE, paginateProducts } from "@/lib/pagination";
 import type { BrandLogo, Category, Product, SiteConfig, Slide, SliderZone } from "@/types";
 
-const PLACEHOLDER_IMAGE = "/placeholder.svg";
 const REVALIDATE_SECONDS = 60;
 
 const PUBLIC_SELECT =
@@ -95,7 +91,7 @@ export function mapPublicProduct(row: PublicRow): Product {
   const discount = Number(row.discount_percent ?? 0);
   const stock = Number(row.stock_quantity ?? 0);
   const gallery = Array.isArray(row.images) ? row.images.filter(Boolean) : [];
-  const image = originalImageSrc(row.image || gallery[0] || PLACEHOLDER_IMAGE);
+  const image = originalImageSrc(row.image || gallery[0] || "");
   const uniqueImages = Array.from(
     new Set([image, ...gallery.map((item) => originalImageSrc(item))].filter(Boolean))
   );
@@ -137,7 +133,7 @@ function mapCategory(row: CategoryRow): Category {
     id: row.id,
     name: row.name_ar || row.name_de || "",
     nameEn: row.name_de || "",
-    image: originalImageSrc(row.image || PLACEHOLDER_IMAGE),
+    image: originalImageSrc(row.image || ""),
     parentId: row.parent_id ?? null,
     sortOrder: row.sort_order ?? 0,
     showOnHomepage: row.show_on_homepage !== false,
@@ -153,7 +149,7 @@ function mapHeroSlide(row: HeroSlideRow): Slide {
     row.slider_zone === "banner2" ? "banner2" : "banner1";
   return {
     id: String(row.id),
-    image: String(row.image || PLACEHOLDER_IMAGE),
+    image: String(row.image || ""),
     title: titleAr || titleDe,
     subtitle: subtitleAr || subtitleDe,
     titleAr,
@@ -172,7 +168,7 @@ function mapBrandLogo(row: BrandLogoRow): BrandLogo {
   return {
     id: String(row.id),
     name: String(row.name || ""),
-    image: originalImageSrc(String(row.image || PLACEHOLDER_IMAGE)),
+    image: originalImageSrc(String(row.image || "")),
     linkUrl: row.link_url || null,
     sortOrder: row.sort_order ?? 0,
     active: row.active !== false,
@@ -372,7 +368,7 @@ async function fetchHeroSlides(zone?: SliderZone): Promise<Slide[]> {
       console.error("[catalog] hero_slides:", error.message);
     }
     if (zone === "banner2") return [];
-    return DEFAULT_HERO_SLIDES;
+    return [];
   }
 
   return (data as HeroSlideRow[]).map(mapHeroSlide);
@@ -430,15 +426,94 @@ const getBrandLogosCached = unstable_cache(
  * frisch in die DB importierte Produkte sofort sichtbar sind. `cache` dedupt
  * lediglich innerhalb eines einzelnen Requests.
  */
+export type ProductSort = "popular" | "price_asc" | "price_desc" | "newest";
+
+export type ProductListQuery = {
+  sort?: ProductSort;
+  min?: number;
+  max?: number;
+  sale?: boolean;
+  inStock?: boolean;
+};
+
+function applyListQuery(products: Product[], query: ProductListQuery): Product[] {
+  let list = products;
+  if (query.sale) list = list.filter((p) => p.discountPercent > 0);
+  if (query.inStock) list = list.filter((p) => p.stock > 0);
+  if (query.min != null) list = list.filter((p) => p.price >= query.min!);
+  if (query.max != null) list = list.filter((p) => p.price <= query.max!);
+  const sort = query.sort ?? "popular";
+  const byNewest = (a: Product, b: Product) => (a.id < b.id ? 1 : -1);
+  if (sort === "price_asc") list = [...list].sort((a, b) => a.price - b.price);
+  else if (sort === "price_desc") list = [...list].sort((a, b) => b.price - a.price);
+  else if (sort === "newest") list = [...list].sort(byNewest);
+  else list = [...list].sort((a, b) => b.discountPercent - a.discountPercent || byNewest(a, b));
+  return list;
+}
+
+/** Eine Seite der öffentlichen Produktliste (höchstens 24 Zeilen). */
+export async function getProductsPageAsync(
+  page: number,
+  query: ProductListQuery = {}
+): Promise<{
+  products: Product[];
+  total: number;
+  page: number;
+  pages: number;
+}> {
+  const safePage = Math.max(1, Math.floor(page) || 1);
+  const from = (safePage - 1) * PRODUCT_PAGE_SIZE;
+  const to = from + PRODUCT_PAGE_SIZE - 1;
+  const supabase = createPublicClient();
+  let request = supabase
+    .from("products_public")
+    .select(PUBLIC_SELECT, { count: "exact" });
+
+  if (query.sale) request = request.gt("discount_percent", 0);
+  if (query.inStock) request = request.gt("stock_quantity", 0);
+  if (query.min != null && Number.isFinite(query.min)) request = request.gte("price", query.min);
+  if (query.max != null && Number.isFinite(query.max)) request = request.lte("price", query.max);
+
+  const sort = query.sort ?? "popular";
+  if (sort === "price_asc") request = request.order("price", { ascending: true });
+  else if (sort === "price_desc") request = request.order("price", { ascending: false });
+  else if (sort === "newest") request = request.order("created_at", { ascending: false });
+  else {
+    request = request
+      .order("discount_percent", { ascending: false })
+      .order("created_at", { ascending: false });
+  }
+
+  const { data, error, count } = await request.range(from, to);
+
+  if (!error && data) {
+    const total = count ?? data.length;
+    const pages = Math.max(1, Math.ceil(total / PRODUCT_PAGE_SIZE) || 1);
+    return {
+      products: (data as PublicRow[]).map(mapPublicProduct),
+      total,
+      page: Math.min(safePage, pages),
+      pages,
+    };
+  }
+
+  const all = applyListQuery(await getProductsAsync(), query);
+  const sliced = paginateProducts(all, safePage);
+  return {
+    products: sliced.items,
+    total: sliced.total,
+    page: sliced.page,
+    pages: sliced.pages,
+  };
+}
+
 export const getProductsAsync = cache(async (): Promise<Product[]> => {
-  const products = await fetchAllPublicProducts();
-  // Nie eine leere Seite: wenn die DB (noch) nichts liefert, Demo-Katalog zeigen.
-  return products.length ? products : FALLBACK_PRODUCTS;
+  return fetchAllPublicProducts();
 });
 
 export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
   const dbTree = await getCategoriesCached();
-  const tree = dbTree.length ? dbTree : FALLBACK_CATEGORIES;
+  const tree = dbTree;
   const all: Category = {
     id: ALL_CATEGORY.id,
     name: ALL_CATEGORY.name,
@@ -465,7 +540,7 @@ export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
 /** Nur Kategorien, die auf der Startseite erscheinen sollen (ohne virtuelle). */
 export const getHomepageCategoriesAsync = cache(async (): Promise<Category[]> => {
   const tree = await getCategoriesCached();
-  const source = tree.length ? tree : FALLBACK_CATEGORIES;
+  const source = tree;
   const filterVisible = (nodes: Category[]): Category[] =>
     nodes
       .filter((c) => c.showOnHomepage !== false)
@@ -676,27 +751,84 @@ export const getProductsByCategoryAsync = cache(
   }
 );
 
+/** Höchstens 24 Produkte einer Kategorie, direkt per Bereichsabfrage. */
+export async function getCategoryProductsPageAsync(
+  categoryId: string,
+  page: number
+): Promise<{ products: Product[]; total: number; page: number; pages: number }> {
+  if (isAllCategoryId(categoryId)) return getProductsPageAsync(page);
+
+  const safePage = Math.max(1, Math.floor(page) || 1);
+  const from = (safePage - 1) * PRODUCT_PAGE_SIZE;
+  const to = from + PRODUCT_PAGE_SIZE - 1;
+  const flat = await getFlatCategoriesAsync();
+  const cat = flat.find((c) => c.id === categoryId);
+  const treatAsSale =
+    isSaleCategoryId(categoryId) || (cat != null && isSaleCategory(cat));
+  const realFlat = flat.filter((c) => !isSaleCategory(c) && !isAllCategory(c));
+  const ids = collectCategoryAndDescendantIds(categoryId, realFlat);
+
+  const supabase = createPublicClient();
+  let query = supabase
+    .from("products_public")
+    .select(PUBLIC_SELECT, { count: "exact" })
+    .order("created_at", { ascending: false });
+  query = treatAsSale
+    ? query.gt("discount_percent", 0)
+    : query.in("category_id", [...ids]);
+
+  const { data, error, count } = await query.range(from, to);
+  if (!error && data) {
+    const total = count ?? data.length;
+    const pages = Math.max(1, Math.ceil(total / PRODUCT_PAGE_SIZE) || 1);
+    return {
+      products: (data as PublicRow[]).map(mapPublicProduct),
+      total,
+      page: Math.min(safePage, pages),
+      pages,
+    };
+  }
+
+  const all = await getProductsByCategoryAsync(categoryId);
+  const sliced = paginateProducts(all, safePage);
+  return {
+    products: sliced.items,
+    total: sliced.total,
+    page: sliced.page,
+    pages: sliced.pages,
+  };
+}
+
 /**
  * Live-Suche: bevorzugt RPC search_products_public, Fallback ILIKE / In-Memory.
  */
 export async function searchProductsAsync(
   query: string,
-  limit = 24
+  limit = 24,
+  offset = 0
 ): Promise<Product[]> {
   const q = query.trim();
+  const from = Math.max(0, offset);
   if (!q) {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("products_public")
+      .select(PUBLIC_SELECT)
+      .order("created_at", { ascending: false })
+      .range(from, from + limit - 1);
+    if (!error && data) return (data as PublicRow[]).map(mapPublicProduct);
     const all = await getProductsAsync();
-    return all.slice(0, limit);
+    return all.slice(from, from + limit);
   }
 
   const supabase = createPublicClient();
   const { data: rpcData, error: rpcError } = await supabase.rpc(
     "search_products_public",
-    { p_query: q, p_limit: limit }
+    { p_query: q, p_limit: from + limit }
   );
 
   if (!rpcError && Array.isArray(rpcData)) {
-    return (rpcData as PublicRow[]).map(mapPublicProduct);
+    return (rpcData as PublicRow[]).map(mapPublicProduct).slice(from, from + limit);
   }
 
   const variants = searchQueryVariants(q);
@@ -717,7 +849,7 @@ export async function searchProductsAsync(
     .from("products_public")
     .select(PUBLIC_SELECT)
     .or(orFilter)
-    .limit(limit);
+    .range(from, from + limit - 1);
 
   if (!error && data) {
     return (data as PublicRow[]).map(mapPublicProduct);
@@ -734,5 +866,5 @@ export async function searchProductsAsync(
       );
       return hay.includes(needle);
     })
-    .slice(0, limit);
+    .slice(from, from + limit);
 }

@@ -11,14 +11,21 @@ function supabaseHostname(): string {
 }
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: "/legal/impressum", destination: "/impressum", permanent: true },
+      { source: "/legal/datenschutz", destination: "/datenschutz", permanent: true },
+      { source: "/legal/widerruf", destination: "/agb", permanent: true },
+    ];
+  },
   // ONNX/WASM des Freistellers bleibt aus dem Server-Bundle; der Editor lädt es nur im Browser.
   serverExternalPackages: ["@imgly/background-removal", "onnxruntime-web", "onnxruntime-node", "sharp"],
   images: {
     formats: ["image/webp"],
-    qualities: [75, 90, 95],
+    qualities: [75, 85, 90],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [128, 256, 384, 512],
-    minimumCacheTTL: 60 * 60 * 24 * 7,
+    minimumCacheTTL: 31536000,
     remotePatterns: [
       {
         protocol: "https",
@@ -31,6 +38,19 @@ const nextConfig: NextConfig = {
         pathname: "/storage/v1/object/public/**",
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/_next/image",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {

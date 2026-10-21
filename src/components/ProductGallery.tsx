@@ -15,7 +15,7 @@ export default function ProductGallery({
   alt: string;
   dimmed?: boolean;
 }) {
-  const slides = images.length ? images : ["/placeholder.svg"];
+  const slides = images.filter(Boolean);
   const [index, setIndex] = useState(0);
   const pausedUntil = useRef(0);
   const touchX = useRef<number | null>(null);
@@ -40,6 +40,18 @@ export default function ProductGallery({
     }, 4500);
     return () => clearInterval(t);
   }, [next, slides.length]);
+
+  if (slides.length === 0) {
+    return (
+      <div
+        className={cn(
+          "relative aspect-square !bg-white overflow-hidden rounded-2xl border border-amber-200/40 shadow-boutique",
+          dimmed && "opacity-60"
+        )}
+        style={{ backgroundColor: "#ffffff" }}
+      />
+    );
+  }
 
   return (
     <div
@@ -83,10 +95,9 @@ export default function ProductGallery({
               src={originalImageSrc(src)}
               alt={i === index ? alt : ""}
               fill
-              unoptimized
               quality={SHOP_IMAGE_QUALITY}
               className="max-h-full max-w-full object-contain"
-              sizes="(max-width: 768px) 100vw, 50vw"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               draggable={false}
             />
           </div>

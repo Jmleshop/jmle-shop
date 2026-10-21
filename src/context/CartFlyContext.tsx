@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 
 type FlyPayload = {
   image: string;
@@ -20,7 +21,7 @@ type CartFlyContextValue = {
   cartIconRef: React.RefObject<HTMLElement | null>;
   bumpCart: () => void;
   cartBumping: boolean;
-  registerCartIcon: (el: HTMLElement | null) => void;
+  registerCartIcon: (el: HTMLElement | null) => () => void;
 };
 
 const CartFlyContext = createContext<CartFlyContextValue | null>(null);
@@ -33,10 +34,22 @@ export function useCartFly() {
       cartIconRef: { current: null },
       bumpCart: () => {},
       cartBumping: false,
-      registerCartIcon: () => {},
+      registerCartIcon: () => () => {},
     } satisfies CartFlyContextValue;
   }
   return ctx;
+}
+
+function pickVisibleCartIcon(icons: Set<HTMLElement>): HTMLElement | null {
+  const visible = [...icons].filter((el) => {
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
+  });
+  if (visible.length === 0) return null;
+  if (window.innerWidth < 768) {
+    return visible.sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0];
+  }
+  return visible.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
 }
 
 type Flying = {
@@ -50,12 +63,18 @@ type Flying = {
 
 export function CartFlyProvider({ children }: { children: ReactNode }) {
   const cartIconRef = useRef<HTMLElement | null>(null);
+  const iconsRef = useRef<Set<HTMLElement>>(new Set());
   const [flying, setFlying] = useState<Flying[]>([]);
   const [cartBumping, setCartBumping] = useState(false);
   const idRef = useRef(0);
 
   const registerCartIcon = useCallback((el: HTMLElement | null) => {
+    if (!el) return () => {};
+    iconsRef.current.add(el);
     cartIconRef.current = el;
+    return () => {
+      iconsRef.current.delete(el);
+    };
   }, []);
 
   const bumpCart = useCallback(() => {
@@ -65,7 +84,7 @@ export function CartFlyProvider({ children }: { children: ReactNode }) {
 
   const flyToCart = useCallback(
     ({ image, fromRect }: FlyPayload) => {
-      const target = cartIconRef.current?.getBoundingClientRect();
+      const target = pickVisibleCartIcon(iconsRef.current)?.getBoundingClientRect();
       if (!target || !image) {
         bumpCart();
         return;
@@ -109,8 +128,7 @@ export function CartFlyProvider({ children }: { children: ReactNode }) {
                   animation: "jmle-fly-to-cart 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards",
                 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.image} alt="" className="h-full w-full object-cover" />
+                <Image src={f.image} alt="" fill className="object-cover" sizes="40px" />
               </div>
             ))}
           </>,

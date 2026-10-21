@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Amiri, Noto_Sans_Arabic, Tajawal } from "next/font/google";
 import Header from "@/components/Header";
 import FooterNav from "@/components/FooterNav";
+import CookieBanner from "@/components/CookieBanner";
 import SiteFooter from "@/components/SiteFooter";
 import ConfettiBackground from "@/components/ConfettiBackground";
 import DevicePreviewToggle from "@/components/DevicePreviewToggle";
@@ -69,6 +70,7 @@ export default function RootLayout({
             <main className="flex-1 pb-20 md:pb-0">{children}</main>
             <SiteFooter />
             <FooterNav />
+            <CookieBanner />
             <DevicePreviewToggle />
             <PageViewTracker />
             </CartFlyProvider>

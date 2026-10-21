@@ -3,92 +3,101 @@
 import Link from "next/link";
 import { useShopLocale } from "@/components/ShopLocale";
 
+const headingClass =
+  "mb-4 font-ui text-sm font-semibold uppercase tracking-wider text-amber-200";
+const linkClass =
+  "text-sm text-orange-100/80 transition-colors hover:text-white";
+
 export default function SiteFooter() {
   const { t } = useShopLocale();
+
   return (
-    <footer className="relative bg-gradient-to-b from-gold-dark via-jmle-orange-dark to-jmle-mahogany text-white py-14 px-4 md:px-8 mt-auto border-t border-amber-200/20">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-10">
+    <footer className="relative mt-auto border-t border-white/10 bg-gradient-to-b from-gold-dark via-jmle-orange-dark to-jmle-mahogany text-white">
+      <div className="mx-auto max-w-7xl px-4 py-14 md:px-8">
+        <div className="mb-10 text-center">
           <Link
             href="/"
-            className="font-display text-3xl tracking-[0.28em] text-jmle-yellow hover:text-white transition-colors"
+            className="font-display text-3xl tracking-[0.28em] text-jmle-yellow transition-colors hover:text-white"
           >
             jmle
           </Link>
-          <p className="text-jmle-ocher/80 text-sm mt-2 font-ui font-light">
-            {t("tagline")}
-          </p>
-          <div className="gold-divider !via-jmle-yellow/80 !mb-0 !mt-4" aria-hidden />
+          <p className="mt-2 font-ui text-sm font-light text-orange-100/80">{t("tagline")}</p>
+          <div
+            className="mx-auto mt-5 h-px w-16 bg-gradient-to-l from-transparent via-amber-200/80 to-transparent"
+            aria-hidden
+          />
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-sm mb-10">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div>
-            <h4 className="font-ui text-jmle-yellow mb-3 font-medium">{t("footerShop")}</h4>
-            <ul className="space-y-2.5 text-white/70 font-body">
+            <h2 className={headingClass}>{t("footerShop")}</h2>
+            <ul className="space-y-2.5">
               <li>
-                <Link href="/categories" className="hover:text-white transition-colors">
+                <Link href="/categories" className={linkClass}>
                   {t("categories")}
                 </Link>
               </li>
               <li>
-                <Link href="/wishlist" className="hover:text-white transition-colors">
+                <Link href="/wishlist" className={linkClass}>
                   {t("wishlist")}
                 </Link>
               </li>
               <li>
-                <Link href="/search" className="hover:text-white transition-colors">
+                <Link href="/search" className={linkClass}>
                   {t("search")}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <h4 className="font-ui text-jmle-yellow mb-3 font-medium">{t("footerAccount")}</h4>
-            <ul className="space-y-2.5 text-white/70 font-body">
+            <h2 className={headingClass}>{t("footerAccount")}</h2>
+            <ul className="space-y-2.5">
               <li>
-                <Link href="/auth/login" className="hover:text-white transition-colors">
+                <Link href="/auth/login" className={linkClass}>
                   {t("login")}
                 </Link>
               </li>
               <li>
-                <Link href="/auth/register" className="hover:text-white transition-colors">
+                <Link href="/auth/register" className={linkClass}>
                   {t("register")}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <h4 className="font-ui text-jmle-yellow mb-3 font-medium">{t("footerLegal")}</h4>
-            <ul className="space-y-2.5 text-white/70 font-body">
+            <h2 className={headingClass}>{t("footerLegal")}</h2>
+            <ul className="space-y-2.5">
               <li>
-                <Link href="/legal/impressum" className="hover:text-white transition-colors">
+                <Link href="/impressum" className={linkClass}>
                   Impressum
                 </Link>
               </li>
               <li>
-                <Link href="/legal/datenschutz" className="hover:text-white transition-colors">
+                <Link href="/datenschutz" className={linkClass}>
                   Datenschutz
                 </Link>
               </li>
               <li>
-                <Link href="/legal/widerruf" className="hover:text-white transition-colors">
-                  Widerrufsbelehrung
+                <Link href="/agb" className={linkClass}>
+                  Widerruf & AGB
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <h4 className="font-ui text-jmle-yellow mb-3 font-medium">{t("footerContact")}</h4>
-            <ul className="space-y-2.5 text-white/70 font-body">
+            <h2 className={headingClass}>{t("footerContact")}</h2>
+            <ul className="space-y-2.5 text-sm text-orange-100/80">
               <li dir="ltr">info@jmle.de</li>
               <li>Coswig (Anhalt), Deutschland</li>
             </ul>
           </div>
         </div>
+      </div>
 
-        <div className="border-t border-white/10 pt-6 text-center text-xs text-white/45 font-ui">
-          <p>&copy; {new Date().getFullYear()} jmle. {t("rights")}</p>
-        </div>
+      <div className="border-t border-white/10 py-6 text-center">
+        <p className="font-ui text-xs text-orange-100/70">
+          &copy; {new Date().getFullYear()} jmle. {t("rights")}
+        </p>
       </div>
     </footer>
   );

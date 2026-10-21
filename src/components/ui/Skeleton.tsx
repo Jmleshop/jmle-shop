@@ -20,12 +20,13 @@ export function Skeleton({
 
 export function ProductCardSkeleton() {
   return (
-    <div className="card-boutique overflow-hidden" aria-busy="true">
+    <div className="card-boutique overflow-hidden" aria-busy="true" aria-hidden>
       <Skeleton className="aspect-square rounded-none" />
-      <div className="p-3 space-y-2">
-        <Skeleton className="h-4 w-[80%] mx-auto" />
-        <Skeleton className="h-3 w-1/2 mx-auto" />
-        <Skeleton className="h-10 w-full mt-2" />
+      <div className="space-y-2 p-3 text-center">
+        <Skeleton className="mx-auto h-4 w-[78%]" />
+        <Skeleton className="mx-auto h-3 w-2/5" />
+        <Skeleton className="mx-auto mt-1 h-5 w-16" />
+        <Skeleton className="mt-2 h-11 w-full rounded-xl" />
       </div>
     </div>
   );

@@ -39,10 +39,9 @@ function OfferCard({ product }: { product: Product }) {
               src={originalImageSrc(product.image)}
               alt={title}
               fill
-              unoptimized
               quality={SHOP_IMAGE_QUALITY}
               className="object-contain transition-transform duration-500 ease-boutique group-hover:scale-105"
-              sizes="(max-width: 640px) 70vw, (max-width: 1024px) 31vw, 240px"
+              sizes="(max-width: 768px) 70vw, (max-width: 1200px) 33vw, 240px"
             />
             <div className="absolute top-2 start-2">
               <DiscountBadge percent={product.discountPercent} />

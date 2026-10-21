@@ -2,11 +2,13 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import {
   getCategoryByIdAsync,
-  getProductsByCategoryAsync,
+  getCategoryProductsPageAsync,
   getSiteConfigAsync,
 } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
+import { pageFromSearchParam } from "@/lib/pagination";
 import { ProductGrid } from "@/components/ProductCard";
+import ProductPagination from "@/components/ProductPagination";
 import CategoryGrid from "@/components/CategoryGrid";
 import { CategoryHeading } from "@/components/ShopText";
 
@@ -14,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 interface CategoryPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
 export async function generateMetadata({
@@ -60,16 +63,19 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
+export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { id } = await params;
-  const [category, products] = await Promise.all([
+  const { page: pageParam } = await searchParams;
+  const [category, list] = await Promise.all([
     getCategoryByIdAsync(id),
-    getProductsByCategoryAsync(id),
+    getCategoryProductsPageAsync(id, pageFromSearchParam(pageParam)),
   ]);
 
   if (!category) {
     notFound();
   }
+
+  const { products: items, page, pages } = list;
 
   return (
     <div>
@@ -82,7 +88,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       {category.children && category.children.length > 0 && (
         <CategoryGrid categories={category.children} titleKey="subcategories" />
       )}
-      <ProductGrid products={products} />
+      <ProductGrid products={items} />
+      <ProductPagination page={page} pages={pages} href={`/categories/${category.id}`} />
     </div>
   );
 }

@@ -103,10 +103,7 @@ export async function GET(request: Request) {
       detail = {
         id: productId,
         name: stats.name,
-        image:
-          p.image ||
-          (Array.isArray(p.images) && p.images[0]) ||
-          "/placeholder.svg",
+        image: p.image || (Array.isArray(p.images) && p.images[0]) || "",
         category:
           (cat as { name_de?: string; name_ar?: string } | null)?.name_de ||
           (cat as { name_ar?: string } | null)?.name_ar ||

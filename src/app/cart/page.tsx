@@ -15,9 +15,8 @@ import DiscountCodeField, {
 import OrderCostBreakdown, {
   computeCheckoutTotals,
 } from "@/components/cart/OrderCostBreakdown";
-import { Button } from "@/components/ui";
 import { productShippingGrams } from "@/lib/shipping";
-import { whatsAppOrderUrl } from "@/lib/whatsapp-order";
+import CartRequestPanel from "@/components/cart/CartRequestPanel";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
@@ -105,7 +104,6 @@ export default function CartPage() {
                   src={originalImageSrc(item.product.image)}
                   alt={productTitle(lang, item.product)}
                   fill
-                  unoptimized
                   quality={SHOP_IMAGE_QUALITY}
                   className="object-contain"
                   sizes="112px"
@@ -187,26 +185,16 @@ export default function CartPage() {
         <OrderCostBreakdown subtotal={total} discount={discount} weightGrams={weightGrams} />
       </div>
 
-      <Link href="/checkout" className="block">
-        <Button fullWidth size="lg">
-          {t("checkout")} · {formatPrice(grandTotal)}
-        </Button>
-      </Link>
-      <a
-        href={whatsAppOrderUrl(
-          items.map((item) => ({
-            name: item.product ? productTitle(lang, item.product) : "Produkt",
-            quantity: item.quantity,
-            lineTotal: (item.product?.price ?? 0) * item.quantity,
-          })),
-          grandTotal
-        )}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-3 flex min-h-12 items-center justify-center rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-white"
-      >
-        {t("whatsapp")}
-      </a>
+      <CartRequestPanel
+        totalLabel={formatPrice(grandTotal)}
+        lines={items.map((item) => ({
+          productId: item.product?.id || item.id,
+          name: item.product ? productTitle(lang, item.product) : "Produkt",
+          quantity: item.quantity,
+          unitPrice: item.product?.price ?? 0,
+          vatRate: item.product?.vatRate ?? 19,
+        }))}
+      />
     </div>
   );
 }

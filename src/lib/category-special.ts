@@ -5,8 +5,7 @@ export const ALL_CATEGORY = {
   id: ALL_CATEGORY_ID,
   name: "جميع المنتجات",
   nameEn: "All Products",
-  image:
-    "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
+  image: "",
   parentId: null as string | null,
   sortOrder: -200,
 } as const;
@@ -33,8 +32,7 @@ export const SALE_CATEGORY = {
   id: SALE_CATEGORY_ID,
   name: "العروض",
   nameEn: "Sale",
-  image:
-    "https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?w=800&q=80",
+  image: "",
   parentId: null as string | null,
   sortOrder: -100,
 } as const;
