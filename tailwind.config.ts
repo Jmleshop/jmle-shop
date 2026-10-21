@@ -42,6 +42,7 @@ const config: Config = {
       fontFamily: {
         arabic: [
           "var(--font-tajawal)",
+          "var(--font-cairo)",
           "var(--font-noto-arabic)",
           "sans-serif",
         ],

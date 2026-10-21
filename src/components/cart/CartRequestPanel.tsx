@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useShopLocale } from "@/components/ShopLocale";
 import { whatsAppOrderUrl } from "@/lib/whatsapp-order";
 import { downloadQuotePdf } from "@/components/cart/QuotePdf";
 import type { InquiryLine } from "@/lib/inquiry";
@@ -15,6 +16,7 @@ export default function CartRequestPanel({
   lines: InquiryLine[];
   totalLabel: string;
 }) {
+  const { lang, t } = useShopLocale();
   const [phone, setPhone] = useState("");
   const [agb, setAgb] = useState(false);
   const [contactOk, setContactOk] = useState(false);
@@ -84,6 +86,7 @@ export default function CartRequestPanel({
           phone: phone.trim(),
           lines,
           kind: "quote",
+          lang,
         });
         window.open(
           whatsAppOrderUrl(
@@ -93,7 +96,9 @@ export default function CartRequestPanel({
               lineTotal: line.unitPrice * line.quantity,
             })),
             lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0),
-            phone.trim()
+            phone.trim(),
+            undefined,
+            lang
           ),
           "_blank",
           "noopener,noreferrer"
@@ -109,13 +114,13 @@ export default function CartRequestPanel({
 
   return (
     <section className="mt-6 space-y-4 rounded-2xl border border-amber-200/70 bg-white p-4 md:p-5">
-      <h2 className="font-ui text-lg font-semibold text-luxury-ink">Anfrage statt Direktkauf</h2>
-      <p className="text-sm text-luxury-charcoal/70">Summe {totalLabel}. Es wird nichts online abgebucht.</p>
+      <h2 className="font-ui text-lg font-semibold text-luxury-ink">{lang === "ar" ? "طلب بدون دفع مباشر" : "Anfrage statt Direktkauf"}</h2>
+      <p className="text-sm text-luxury-charcoal/70">{lang === "ar" ? `المجموع ${totalLabel}. لا يتم خصم أي مبلغ عبر الإنترنت.` : `Summe ${totalLabel}. Es wird nichts online abgebucht.`}</p>
 
       <div className="space-y-3 rounded-2xl bg-jmle-warm/50 p-4">
-        <p className="font-ui text-sm font-semibold">Direkt per WhatsApp bestellen</p>
+        <p className="font-ui text-sm font-semibold">{t("whatsapp")}</p>
         <label className="block text-sm">
-          Telefonnummer
+          {t("phone")}
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -127,13 +132,12 @@ export default function CartRequestPanel({
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={agb} onChange={(e) => setAgb(e.target.checked)} className="mt-1" />
           <span>
-            Ich akzeptiere die <Link href="/agb" className="underline">AGB</Link> und die{" "}
-            <Link href="/datenschutz" className="underline">Datenschutzbedingungen</Link>.
+            {t("acceptLegal")} <Link href="/agb" className="underline">AGB</Link> · <Link href="/datenschutz" className="underline">{lang === "ar" ? "الخصوصية" : "Datenschutz"}</Link>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={contactOk} onChange={(e) => setContactOk(e.target.checked)} className="mt-1" />
-          <span>Ich bin einverstanden, per Telefon oder WhatsApp kontaktiert zu werden.</span>
+          <span>{t("acceptContact")}</span>
         </label>
         <button
           type="button"
@@ -141,7 +145,7 @@ export default function CartRequestPanel({
           onClick={() => void send("whatsapp")}
           className="min-h-12 w-full rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-white disabled:opacity-40"
         >
-          Direkt per WhatsApp bestellen
+          {t("whatsapp")}
         </button>
       </div>
 
@@ -152,23 +156,23 @@ export default function CartRequestPanel({
           void send("callback");
         }}
       >
-        <p className="font-ui text-sm font-semibold">Kontaktdaten eingeben und Angebot anfordern</p>
+        <p className="font-ui text-sm font-semibold">{t("offerTitle")}</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <input required placeholder="Vorname" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
-          <input required placeholder="Nachname" value={lastName} onChange={(e) => setLastName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
+          <input required placeholder={t("firstName")} value={firstName} onChange={(e) => setFirstName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
+          <input required placeholder={t("lastName")} value={lastName} onChange={(e) => setLastName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
         </div>
-        <input required placeholder="Telefonnummer" value={phone} onChange={(e) => setPhone(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
-        <input placeholder="E-Mail (optional)" value={email} onChange={(e) => setEmail(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
-        <input placeholder="Straße und Hausnummer (optional)" value={street} onChange={(e) => setStreet(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
+        <input required placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
+        <input placeholder={lang === "ar" ? "البريد الإلكتروني (اختياري)" : "E-Mail (optional)"} value={email} onChange={(e) => setEmail(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
+        <input placeholder={lang === "ar" ? "الشارع ورقم المنزل (اختياري)" : "Straße und Hausnummer (optional)"} value={street} onChange={(e) => setStreet(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
         <div className="relative grid gap-3 sm:grid-cols-2">
           <input
-            placeholder="PLZ"
+            placeholder={lang === "ar" ? "الرمز البريدي" : "PLZ"}
             value={postalCode}
             onChange={(e) => setPostalCode(e.target.value)}
             className="min-h-11 rounded-xl border border-amber-200 px-3"
             inputMode="numeric"
           />
-          <input placeholder="Ort" value={city} onChange={(e) => setCity(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
+          <input placeholder={lang === "ar" ? "المدينة" : "Ort"} value={city} onChange={(e) => setCity(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
           {places.length > 0 && (
             <ul className="absolute z-20 top-12 inset-x-0 max-h-48 overflow-auto rounded-xl border border-amber-200 bg-white shadow-boutique">
               {places.map((place) => (
@@ -190,7 +194,7 @@ export default function CartRequestPanel({
           )}
         </div>
         <button type="submit" disabled={busy || phone.trim().length < 6} className="min-h-12 w-full rounded-xl bg-brand-orange text-sm font-semibold text-white disabled:opacity-40">
-          Angebot anfordern
+          {t("requestOffer")}
         </button>
       </form>
       <HomeDelivery lines={lines} busy={busy} onDone={() => setThanks(true)} onError={setError} />
@@ -199,10 +203,10 @@ export default function CartRequestPanel({
       {thanks && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-boutique" role="dialog">
-            <p className="font-ui text-lg font-semibold">Vielen Dank für Ihre Anfrage!</p>
-            <p className="mt-2 text-sm text-luxury-charcoal/80">Wir melden uns in Kürze bei Ihnen.</p>
+            <p className="font-ui text-lg font-semibold">{t("thanksTitle")}</p>
+            <p className="mt-2 text-sm text-luxury-charcoal/80">{t("thanksBody")}</p>
             <button type="button" className="mt-4 min-h-11 rounded-xl bg-brand-orange px-5 text-white" onClick={() => setThanks(false)}>
-              Schließen
+              {t("close")}
             </button>
           </div>
         </div>
@@ -234,6 +238,7 @@ function HomeDelivery({
   const [phone, setPhone] = useState("");
   const [agb, setAgb] = useState(false);
   const [sending, setSending] = useState(false);
+  const { lang, t } = useShopLocale();
 
   useEffect(() => {
     const q = query.trim();
@@ -288,6 +293,7 @@ function HomeDelivery({
         phone: phone.trim(),
         lines,
         kind: "delivery",
+        lang,
         customer: `${firstName.trim()} ${lastName.trim()}, ${street.trim()} ${house.trim()}, ${place.postalCode} ${place.city}`,
       });
       const total = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -300,7 +306,10 @@ function HomeDelivery({
           })),
           total,
           phone.trim(),
-          `Lieferanfrage jmle nach ${place.postalCode} ${place.city}`
+          lang === "ar"
+            ? `طلب توصيل jmle إلى ${place.postalCode} ${place.city}`
+            : `Lieferanfrage jmle nach ${place.postalCode} ${place.city}`,
+          lang
         ),
         "_blank",
         "noopener,noreferrer"
@@ -315,46 +324,39 @@ function HomeDelivery({
 
   return (
     <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl border border-amber-200/80 p-4">
-      <p className="font-ui text-sm font-semibold">Lieferung nach Hause</p>
-      <p className="text-xs text-luxury-charcoal/70">Eigener Lieferservice im Umkreis von 30 km ab 71032 Böblingen.</p>
+      <p className="font-ui text-sm font-semibold">{t("deliveryTitle")}</p>
+      <p className="text-xs text-luxury-charcoal/70">{t("deliveryHint")}</p>
       <label className="block text-sm">
-        Ort oder Postleitzahl
+        {t("deliveryQuery")}
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="71032, Böblingen oder 71032 Böblingen"
+          placeholder={t("deliveryPlaceholder")}
           className="mt-1 w-full min-h-11 rounded-xl border border-amber-200 px-3"
         />
       </label>
       {status === "not_found" && (
-        <p className="text-sm text-red-600">
-          Dieser Ort oder diese Postleitzahl konnte nicht gefunden werden. Bitte überprüfe deine Eingabe noch einmal.
-        </p>
+        <p className="text-sm text-red-600">{t("deliveryNotFound")}</p>
       )}
       {status === "outside" && (
-        <p className="text-sm text-amber-700">
-          Dieser Ort liegt außerhalb unseres eigenen Lieferservice-Radius (max. 30 km ab Böblingen). Gerne können Sie Ihre Bestellung per WhatsApp zur Abholung anfragen!
-        </p>
+        <p className="text-sm text-amber-700">{t("deliveryOutside")}</p>
       )}
       {status === "ok" && (
-        <p className="text-sm text-green-700">Lieferung an {place.postalCode} {place.city} möglich.</p>
+        <p className="text-sm text-green-700">{t("deliveryOk")} {place.postalCode} {place.city}</p>
       )}
       <div className={`grid gap-3 sm:grid-cols-2 ${unlocked ? "" : "pointer-events-none opacity-40"}`}>
-        <input required={unlocked} disabled={!unlocked} placeholder="Straße" value={street} onChange={(e) => setStreet(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
-        <input required={unlocked} disabled={!unlocked} placeholder="Hausnummer" value={house} onChange={(e) => setHouse(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
-        <input required={unlocked} disabled={!unlocked} placeholder="Vorname" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
-        <input required={unlocked} disabled={!unlocked} placeholder="Nachname" value={lastName} onChange={(e) => setLastName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
-        <input required={unlocked} disabled={!unlocked} placeholder="Telefonnummer" value={phone} onChange={(e) => setPhone(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3 sm:col-span-2" />
+        <input required={unlocked} disabled={!unlocked} placeholder={t("street")} value={street} onChange={(e) => setStreet(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
+        <input required={unlocked} disabled={!unlocked} placeholder={t("houseNumber")} value={house} onChange={(e) => setHouse(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
+        <input required={unlocked} disabled={!unlocked} placeholder={t("firstName")} value={firstName} onChange={(e) => setFirstName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
+        <input required={unlocked} disabled={!unlocked} placeholder={t("lastName")} value={lastName} onChange={(e) => setLastName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
+        <input required={unlocked} disabled={!unlocked} placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3 sm:col-span-2" />
       </div>
       <label className={`flex items-start gap-2 text-sm ${unlocked ? "" : "pointer-events-none opacity-40"}`}>
         <input type="checkbox" checked={agb} disabled={!unlocked} onChange={(e) => setAgb(e.target.checked)} className="mt-1" />
-        <span>
-          Ich akzeptiere die <Link href="/agb" className="underline">AGB</Link> und die{" "}
-          <Link href="/datenschutz" className="underline">Datenschutzbedingungen</Link>.
-        </span>
+        <span>{t("acceptLegal")}</span>
       </label>
       <button type="submit" disabled={!canSend || busy || sending} className="min-h-12 w-full rounded-xl bg-[#25D366] text-sm font-semibold text-white disabled:opacity-40">
-        Lieferanfrage per WhatsApp senden
+        {t("deliverySend")}
       </button>
     </form>
   );

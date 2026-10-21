@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Amiri, Noto_Sans_Arabic, Tajawal } from "next/font/google";
+import { Amiri, Cairo, Noto_Sans_Arabic, Tajawal } from "next/font/google";
 import Header from "@/components/Header";
 import FooterNav from "@/components/FooterNav";
 import CookieBanner from "@/components/CookieBanner";
+import WhatsAppWidget from "@/components/WhatsAppWidget";
 import SiteFooter from "@/components/SiteFooter";
 import ConfettiBackground from "@/components/ConfettiBackground";
 import DevicePreviewToggle from "@/components/DevicePreviewToggle";
@@ -26,6 +27,13 @@ const amiri = Amiri({
   subsets: ["arabic", "latin"],
   variable: "--font-amiri",
   weight: ["400", "700"],
+  display: "swap",
+});
+
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  variable: "--font-cairo",
+  weight: ["400", "600", "700"],
   display: "swap",
 });
 
@@ -58,7 +66,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body
-        className={`${notoArabic.variable} ${amiri.variable} ${tajawal.variable} font-arabic antialiased bg-jmle-cream text-luxury-black min-h-screen flex flex-col`}
+        className={`${notoArabic.variable} ${amiri.variable} ${tajawal.variable} ${cairo.variable} font-arabic antialiased bg-jmle-cream text-luxury-black min-h-screen flex flex-col`}
       >
         <ConfettiBackground />
         <CartProvider>
@@ -71,6 +79,7 @@ export default function RootLayout({
             <SiteFooter />
             <FooterNav />
             <CookieBanner />
+            <WhatsAppWidget />
             <DevicePreviewToggle />
             <PageViewTracker />
             </CartFlyProvider>

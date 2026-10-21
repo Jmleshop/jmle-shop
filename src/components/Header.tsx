@@ -152,14 +152,23 @@ export default function Header() {
                 jmle
               </Link>
               <div className="flex items-center gap-0.5 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setLang(lang === "ar" ? "de" : "ar")}
-                  className="px-2 min-h-11 text-xs font-ui font-semibold text-luxury-charcoal hover:text-brand-orange"
-                  aria-label={t("langSwitch")}
-                >
-                  {t("langSwitch")}
-                </button>
+                <div className="flex items-center gap-1 px-1 text-xs font-ui" dir="ltr">
+                  <button
+                    type="button"
+                    onClick={() => setLang("ar")}
+                    className={cn("min-h-11 px-1.5 font-semibold", lang === "ar" ? "text-brand-orange" : "text-luxury-charcoal/60")}
+                  >
+                    العربية
+                  </button>
+                  <span aria-hidden className="text-luxury-charcoal/30">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setLang("de")}
+                    className={cn("min-h-11 px-1.5 font-semibold", lang === "de" ? "text-brand-orange" : "text-luxury-charcoal/60")}
+                  >
+                    Deutsch
+                  </button>
+                </div>
                 <Link
                   href="/wishlist"
                   className="relative p-2.5 min-h-11 min-w-11 inline-flex items-center justify-center text-luxury-charcoal hover:text-brand-red transition-colors rounded-xl"
@@ -237,14 +246,10 @@ export default function Header() {
             </nav>
 
             <div className="pt-4 mt-auto border-t border-orange-100">
-              <button
-                type="button"
-                onClick={() => setLang(lang === "ar" ? "de" : "ar")}
-                className="w-full px-4 py-3.5 min-h-12 text-sm font-ui font-semibold text-luxury-charcoal hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl text-start"
-                aria-label={t("langSwitch")}
-              >
-                {t("langSwitch")}
-              </button>
+              <div className="flex gap-2" dir="ltr">
+                <button type="button" onClick={() => setLang("ar")} className={cn("min-h-12 flex-1 rounded-xl text-sm font-ui font-semibold", lang === "ar" ? "bg-brand-orange text-white" : "text-luxury-charcoal")}>العربية</button>
+                <button type="button" onClick={() => setLang("de")} className={cn("min-h-12 flex-1 rounded-xl text-sm font-ui font-semibold", lang === "de" ? "bg-brand-orange text-white" : "text-luxury-charcoal")}>Deutsch</button>
+              </div>
             </div>
           </aside>
         </div>
