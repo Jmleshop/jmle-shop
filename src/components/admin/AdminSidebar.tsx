@@ -8,6 +8,7 @@ import {
   FolderTree,
   ScrollText,
   Warehouse,
+  ScanLine,
   Store,
   LogOut,
   Trash2,
@@ -41,6 +42,7 @@ export default function AdminSidebar({
     { href: "/admin/categories", icon: FolderTree, key: "categories" },
     { href: "/admin/sliders", icon: Images, key: "sliders" },
     { href: "/admin/inventory", icon: Warehouse, key: "inventory" },
+    { href: "/admin/pos", icon: ScanLine, key: "pos" },
     { href: "/admin/trash", icon: Trash2, key: "trash" },
   ];
   const adminItems: { href: string; icon: typeof Package; key: AdminMsgKey }[] = [
