@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Amiri, Noto_Sans_Arabic, Tajawal } from "next/font/google";
+import { Amiri, Cairo, Noto_Sans_Arabic, Tajawal } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
 import FooterNav from "@/components/FooterNav";
 import SiteFooterShell from "@/components/SiteFooterShell";
+import WhatsAppWidget from "@/components/WhatsAppWidget";
 import ConfettiBackground from "@/components/ConfettiBackground";
 import DevicePreviewToggle from "@/components/DevicePreviewToggle";
 import PageViewTracker from "@/components/PageViewTracker";
@@ -32,6 +33,13 @@ const amiri = Amiri({
   subsets: ["arabic", "latin"],
   variable: "--font-amiri",
   weight: ["400", "700"],
+  display: "swap",
+});
+
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  variable: "--font-cairo",
+  weight: ["400", "600", "700"],
   display: "swap",
 });
 
@@ -99,7 +107,7 @@ export default async function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body
-        className={`${notoArabic.variable} ${amiri.variable} ${tajawal.variable} font-arabic antialiased bg-jmle-cream text-luxury-black min-h-screen flex flex-col`}
+        className={`${notoArabic.variable} ${amiri.variable} ${tajawal.variable} ${cairo.variable} font-arabic antialiased bg-jmle-cream text-luxury-black min-h-screen flex flex-col`}
       >
         <JsonLd data={localBusinessJsonLd(site)} />
         <ConfettiBackground />
@@ -112,6 +120,7 @@ export default async function RootLayout({
             <main className="flex-1 pb-20 md:pb-0">{children}</main>
             <SiteFooterShell />
             <FooterNav />
+            <WhatsAppWidget />
             <DevicePreviewToggle />
             <PageViewTracker />
             </CartFlyProvider>

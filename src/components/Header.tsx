@@ -342,14 +342,10 @@ export default function Header({
             </nav>
 
             <div className="pt-4 mt-auto border-t border-orange-100">
-              <button
-                type="button"
-                onClick={() => setLang(lang === "ar" ? "de" : "ar")}
-                className="w-full px-4 py-3.5 min-h-12 text-sm font-ui font-semibold text-luxury-charcoal hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl text-start"
-                aria-label={t("langSwitch")}
-              >
-                {t("langSwitch")}
-              </button>
+              <div className="flex gap-2" dir="ltr">
+                <button type="button" onClick={() => setLang("ar")} className={cn("min-h-12 flex-1 rounded-xl text-sm font-ui font-semibold", lang === "ar" ? "bg-brand-orange text-white" : "text-luxury-charcoal")}>العربية</button>
+                <button type="button" onClick={() => setLang("de")} className={cn("min-h-12 flex-1 rounded-xl text-sm font-ui font-semibold", lang === "de" ? "bg-brand-orange text-white" : "text-luxury-charcoal")}>Deutsch</button>
+              </div>
             </div>
           </aside>
         </div>

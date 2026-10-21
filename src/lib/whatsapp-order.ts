@@ -7,19 +7,21 @@ export function whatsAppOrderUrl(
   lines: { name: string; quantity: number; lineTotal: number }[],
   total: number,
   phone?: string,
-  heading = "Neue Anfrage über jmle (Preisvorschlag)"
+  heading?: string,
+  lang: "ar" | "de" = "ar"
 ): string {
+  const ar = lang !== "de";
   const body = [
-    heading,
-    phone ? `Telefon: ${phone}` : "",
+    heading || (ar ? "طلب جديد عبر jmle (عرض سعر)" : "Neue Anfrage über jmle (Preisvorschlag)"),
+    phone ? `${ar ? "الهاتف" : "Telefon"}: ${phone}` : "",
     "",
     ...lines.map(
       (line) => `• ${line.quantity}× ${line.name} — ${formatEuroDe(line.lineTotal)}`
     ),
     "",
-    `Summe: ${formatEuroDe(total)}`,
+    `${ar ? "المجموع" : "Summe"}: ${formatEuroDe(total)}`,
     "",
-    "Die Bestellübersicht wurde als PDF heruntergeladen.",
+    ar ? "تم تنزيل ملخص الطلب كملف PDF." : "Die Bestellübersicht wurde als PDF heruntergeladen.",
   ]
     .filter(Boolean)
     .join("\n");
