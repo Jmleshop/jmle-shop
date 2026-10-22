@@ -48,7 +48,8 @@ import type {
 } from "@/types";
 
 const PLACEHOLDER_IMAGE = "/placeholder.svg";
-const REVALIDATE_SECONDS = 60;
+/** Longer ISR reduces repeated full-catalog reads from Supabase. */
+const REVALIDATE_SECONDS = 300;
 
 const PUBLIC_SELECT =
   "id, name_ar, name_de, description, price, currency, category_id, brand_id, image, images, ingredients, allergens, origin_country, weight_value, weight_unit, gross_weight_value, gross_weight_unit, best_before_note, vat_rate, discount_percent, barcode, max_order_quantity, stock_quantity, badges, custom_note, deleted_at, created_at";
@@ -937,7 +938,7 @@ export const getFeaturedProductsAsync = cache(async (): Promise<Product[]> => {
 /** Nur reduzierte Produkte (für die Angebote-Leiste). */
 export const getOffersAsync = cache(async (): Promise<Product[]> => {
   const products = await getProductsAsync();
-  return products.filter(productIsOnSale);
+  return products.filter(productIsOnSale).slice(0, 24);
 });
 
 /**
@@ -948,10 +949,10 @@ export const getBestsellersAsync = cache(async (): Promise<Product[]> => {
   const tagged = products.filter((p) =>
     (p.badges ?? []).includes("bestseller")
   );
-  if (tagged.length) return tagged;
+  if (tagged.length) return tagged.slice(0, 24);
   // Fallback: höchster Rabatt / neueste als „populär“
   const featured = products.filter((p) => p.featured);
-  if (featured.length) return featured;
+  if (featured.length) return featured.slice(0, 24);
   return products.slice(0, 12);
 });
 
@@ -962,7 +963,9 @@ export const getBestsellersAsync = cache(async (): Promise<Product[]> => {
 export const getRegularProductsAsync = cache(async (): Promise<Product[]> => {
   const products = await getProductsAsync();
   const regular = products.filter((p) => !productIsOnSale(p));
-  return regular.length ? regular : products;
+  // Cap strips for homepage/marquees — full catalog stays on /shop
+  const source = regular.length ? regular : products;
+  return source.slice(0, 48);
 });
 
 export const getProductByIdAsync = cache(

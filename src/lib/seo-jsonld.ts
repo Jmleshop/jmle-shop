@@ -1,12 +1,13 @@
 import { BUSINESS_INFO } from "@/lib/business-info";
 import { getAppUrl } from "@/lib/site-defaults";
+import { absoluteCdnImageUrl } from "@/lib/sharp-image";
 import type { Category, Product, SiteConfig } from "@/types";
 
 type JsonLd = Record<string, unknown>;
 
 export function localBusinessJsonLd(site: SiteConfig): JsonLd {
   const appUrl = getAppUrl();
-  const logo = site.logo || site.ogImage;
+  const logo = absoluteCdnImageUrl(site.logo || site.ogImage, 512);
   const data: JsonLd = {
     "@context": "https://schema.org",
     "@type": "GroceryStore",
@@ -63,9 +64,10 @@ export function productJsonLd(
 ): JsonLd {
   const appUrl = getAppUrl();
   const url = `${appUrl}/products/${product.id}`;
-  const images = (product.images?.length ? product.images : [product.image]).filter(
-    Boolean
-  );
+  const images = (product.images?.length ? product.images : [product.image])
+    .filter(Boolean)
+    .map((src) => absoluteCdnImageUrl(src, 800))
+    .filter(Boolean);
   // product.price ist bereits der Verkaufspreis (rabattiert, falls aktiv)
   const price = Number(product.price);
   const availability =

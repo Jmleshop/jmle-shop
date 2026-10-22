@@ -3,7 +3,9 @@ import { productTitle, type ShopLang } from "@/lib/shop-i18n";
 import { normalizeArabicSearch } from "@/lib/search";
 import type { Product } from "@/types";
 
-export const CATALOG_PAGE_SIZE = 30;
+/** Shop/brand/category catalog page size — keeps HTML + image fan-out small. */
+export const CATALOG_PAGE_SIZE = 24;
+export const CATALOG_PAGE_SIZE_MAX = 24;
 
 export type CatalogSort =
   | "price-asc"
@@ -58,7 +60,7 @@ export function parseCatalogFilters(
   defaults?: Partial<CatalogFilterState>
 ): CatalogFilterState {
   const pageSize = Math.min(
-    48,
+    CATALOG_PAGE_SIZE_MAX,
     Math.max(
       1,
       parseInt(firstParam(params.pageSize), 10) ||

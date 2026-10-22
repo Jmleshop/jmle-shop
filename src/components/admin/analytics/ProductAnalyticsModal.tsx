@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { X } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
+import { originalImageSrc } from "@/lib/sharp-image";
 
 export type ProductAnalyticsDetail = {
   id: string;
@@ -50,7 +51,7 @@ export default function ProductAnalyticsModal({
           <div className="flex gap-4">
             <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-gray-100 shrink-0">
               <Image
-                src={detail.image}
+                src={originalImageSrc(detail.image)}
                 alt={detail.name}
                 fill
                 className="object-cover"

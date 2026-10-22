@@ -12,7 +12,7 @@ import ProductPagination from "@/components/ProductPagination";
 import SafeShopImage from "@/components/SafeShopImage";
 import { useShopLocale } from "@/components/ShopLocale";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
-import { originalImageSrc } from "@/lib/sharp-image";
+import { vercelOptimizedImageSrc } from "@/lib/sharp-image";
 import { maxBuyQuantity } from "@/lib/pricing";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import {
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui";
 
 /** Max. Produkte pro Seite (Kategorie / Alle / Suche). */
-export const PRODUCTS_PAGE_SIZE = 30;
+export const PRODUCTS_PAGE_SIZE = 24;
 
 function detectSeals(product: Product): Array<"halal" | "organic"> {
   const hay =
@@ -70,7 +70,10 @@ export default function ProductCard({ product }: ProductCardProps) {
     if (out) return;
     const rect = imgRef.current?.getBoundingClientRect();
     if (rect) {
-      flyToCart({ image: originalImageSrc(product.image), fromRect: rect });
+      flyToCart({
+        image: vercelOptimizedImageSrc(product.image, 96),
+        fromRect: rect,
+      });
     }
     await addItem(product.id, Math.max(1, Math.min(max || 1, qty)));
     setAdded(true);
@@ -196,7 +199,7 @@ interface ProductGridProps {
   products: Product[];
   title?: string;
   titleKey?: "homeFeatured" | "allProducts";
-  /** Produkte pro Seite (Standard 30). */
+  /** Produkte pro Seite (Standard 24). */
   pageSize?: number;
 }
 

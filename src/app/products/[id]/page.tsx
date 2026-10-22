@@ -7,6 +7,7 @@ import {
   getSiteConfigAsync,
 } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
+import { absoluteCdnImageUrl } from "@/lib/sharp-image";
 import { StockBadge } from "@/components/ProductPrice";
 import ProductGallery from "@/components/ProductGallery";
 import ProductInfo from "@/components/ProductInfo";
@@ -18,7 +19,7 @@ import {
   productJsonLd,
 } from "@/lib/seo-jsonld";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;
@@ -48,7 +49,10 @@ export async function generateMetadata({
   const description =
     product.description?.slice(0, 155) ||
     `${bilingual} kaufen — arabische Lebensmittel & Feinkost bei ${site.name}. Preis ab ${price.toFixed(2)} €.`;
-  const image = product.images[0] || product.image;
+  const image = absoluteCdnImageUrl(
+    product.images[0] || product.image,
+    800
+  );
   const keywords = [
     product.name,
     product.nameDe,
@@ -70,20 +74,24 @@ export async function generateMetadata({
       siteName: site.name,
       title,
       description,
-      images: [
-        {
-          url: image,
-          width: 800,
-          height: 800,
-          alt: product.name,
-        },
-      ],
+      ...(image
+        ? {
+            images: [
+              {
+                url: image,
+                width: 800,
+                height: 800,
+                alt: product.name,
+              },
+            ],
+          }
+        : {}),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [image],
+      ...(image ? { images: [image] } : {}),
     },
     other: {
       "product:price:amount": price.toFixed(2),
