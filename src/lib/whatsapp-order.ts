@@ -1,7 +1,8 @@
 import { formatEuroDe } from "@/lib/pricing";
 
-/** Platzhalter aus dem Impressum, international ohne führende Null. */
-export const WHATSAPP_E164 = "49123456789";
+/** Shop-WhatsApp, international ohne führende Null. */
+export const WHATSAPP_E164 = "491749500391";
+export const SHOP_PHONE_DISPLAY = "0174 9500391";
 
 export function whatsAppOrderUrl(
   lines: { name: string; quantity: number; lineTotal: number }[],

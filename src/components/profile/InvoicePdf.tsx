@@ -115,7 +115,7 @@ function InvoiceDoc({
           <View>
             <Text style={styles.brand}>jmle</Text>
             <Text style={styles.muted}>Arabische Feinkost · Coswig (Anhalt)</Text>
-            <Text style={styles.muted}>info@jmle.de</Text>
+            <Text style={styles.muted}>0174 9500391 · info@jmle.de</Text>
           </View>
           <View>
             <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 12 }}>

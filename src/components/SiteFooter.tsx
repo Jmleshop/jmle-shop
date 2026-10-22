@@ -87,6 +87,7 @@ export default function SiteFooter() {
           <div>
             <h2 className={headingClass}>{t("footerContact")}</h2>
             <ul className="space-y-2.5 text-sm text-orange-100/80">
+              <li dir="ltr">0174 9500391</li>
               <li dir="ltr">info@jmle.de</li>
               <li>Coswig (Anhalt), Deutschland</li>
             </ul>
