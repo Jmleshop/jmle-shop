@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { originalImageSrc } from "@/lib/sharp-image";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 type BrandMarkProps = {
   logoUrl?: string | null;
@@ -16,7 +17,7 @@ type BrandMarkProps = {
 };
 
 /**
- * Markenlogo als Home-Link (`/`). Original-URL, natürliches Seitenverhältnis.
+ * Markenlogo als Home-Link (`/`). Via next/image → Vercel CDN (kein Direkt-Egress).
  */
 export default function BrandMark({
   logoUrl,
@@ -39,14 +40,15 @@ export default function BrandMark({
     >
       {src ? (
         <span className={cn("brand-mark-frame", heightClassName)}>
-          {/* Native img: keine Next-Resize-Artefakte, Aspekt bleibt erhalten */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={src}
             alt={name}
-            className="brand-mark-img"
-            decoding="async"
-            fetchPriority={priority ? "high" : "auto"}
+            width={220}
+            height={80}
+            quality={SHOP_IMAGE_QUALITY}
+            priority={priority}
+            sizes="(max-width: 1024px) 120px, 176px"
+            className="brand-mark-img h-full w-auto max-w-full object-contain"
             draggable={false}
           />
         </span>

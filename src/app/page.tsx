@@ -71,7 +71,10 @@ export default async function HomePage() {
   const needsAllProducts = sections.some(
     (s) => s.type === "products" && s.productSource === "all"
   );
-  const allProducts = needsAllProducts ? await getProductsAsync() : [];
+  // Cap homepage “all products” strip — full catalog still available via /shop
+  const allProducts = needsAllProducts
+    ? (await getProductsAsync()).slice(0, 48)
+    : [];
 
   return (
     <HomepageSectionsRenderer
