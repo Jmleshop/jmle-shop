@@ -6,8 +6,11 @@ import {
 export const runtime = "nodejs";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
-export const dynamic = "force-dynamic";
-export const revalidate = 300;
+/** Cache at the edge — avoid re-fetching the logo from Supabase every request. */
+export const revalidate = 86400;
+
+const CACHE_CONTROL =
+  "public, max-age=86400, stale-while-revalidate=604800";
 
 /**
  * Next.js App Router icon — proxies the existing shop logo when available.
@@ -20,7 +23,7 @@ export default async function Icon() {
     try {
       const res = await fetch(remote, {
         signal: AbortSignal.timeout(8_000),
-        next: { revalidate: 300, tags: ["catalog", "site"] },
+        next: { revalidate: 86400, tags: ["catalog", "site"] },
       });
       if (res.ok) {
         const buf = await res.arrayBuffer();
@@ -28,7 +31,7 @@ export default async function Icon() {
         return new Response(buf, {
           headers: {
             "Content-Type": type,
-            "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+            "Cache-Control": CACHE_CONTROL,
           },
         });
       }
@@ -43,7 +46,7 @@ export default async function Icon() {
   return new Response(svg, {
     headers: {
       "Content-Type": "image/svg+xml",
-      "Cache-Control": "public, max-age=60",
+      "Cache-Control": CACHE_CONTROL,
     },
   });
 }

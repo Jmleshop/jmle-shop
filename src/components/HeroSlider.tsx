@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import type { Slide } from "@/types";
 import { cn } from "@/lib/cn";
-import { SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 interface HeroSliderProps {
   slides: Slide[];
@@ -35,7 +35,7 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
           aria-hidden={index !== current}
         >
           <Image
-            src={slide.image}
+            src={originalImageSrc(slide.image)}
             alt={slide.title}
             width={1920}
             height={800}

@@ -11,6 +11,7 @@ import {
   getSlidesByZoneAsync,
 } from "@/lib/catalog-server";
 import { getAppUrl } from "@/lib/site-defaults";
+import { absoluteCdnImageUrl } from "@/lib/sharp-image";
 import { HomepageSectionsRenderer } from "@/components/HomeSections";
 
 export const revalidate = 300;
@@ -19,7 +20,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const site = await getSiteConfigAsync();
   const slides = await getSlidesAsync();
   const appUrl = getAppUrl();
-  const ogImage = site.ogImage || slides[0]?.image;
+  const ogImage = absoluteCdnImageUrl(
+    site.ogImage || slides[0]?.image,
+    1200
+  );
 
   const description =
     site.description ||

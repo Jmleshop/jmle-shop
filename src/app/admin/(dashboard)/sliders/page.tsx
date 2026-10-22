@@ -16,6 +16,7 @@ import { toast } from "react-hot-toast";
 import ImageUpload from "@/components/admin/ImageUpload";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 import { Button } from "@/components/ui";
+import { vercelOptimizedImageSrc } from "@/lib/sharp-image";
 import {
   createHomepageSection,
   normalizeHomepageSections,
@@ -892,7 +893,7 @@ export default function AdminSlidersPage() {
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={s.image}
+                            src={vercelOptimizedImageSrc(s.image, 96)}
                             alt=""
                             className="h-full w-full object-cover"
                           />
@@ -1077,7 +1078,7 @@ export default function AdminSlidersPage() {
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={l.image}
+                            src={vercelOptimizedImageSrc(l.image, 96)}
                             alt={l.name}
                             className="h-full w-full object-contain"
                           />

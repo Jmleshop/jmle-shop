@@ -1,3 +1,5 @@
+import { getAppUrl } from "@/lib/app-url";
+
 /** Next.js Image quality for shop delivery (sharp WebP/AVIF). */
 export const SHOP_IMAGE_QUALITY = 75;
 
@@ -63,4 +65,20 @@ export function vercelOptimizedImageSrc(
     q: String(Math.max(1, Math.min(100, Math.round(quality)))),
   });
   return `/_next/image?${params.toString()}`;
+}
+
+/**
+ * Absolute share/OG URL via the shop origin + `/_next/image`.
+ * Crawlers and messengers must not hit Supabase Storage directly.
+ */
+export function absoluteCdnImageUrl(
+  src: string | null | undefined,
+  width = 1200,
+  quality = SHOP_IMAGE_QUALITY
+): string {
+  const path = vercelOptimizedImageSrc(src, width, quality);
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path) || path.startsWith("data:")) return path;
+  const base = getAppUrl().replace(/\/$/, "");
+  return path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
 }
