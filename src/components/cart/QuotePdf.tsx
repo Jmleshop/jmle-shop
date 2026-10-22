@@ -9,6 +9,7 @@ Font.register({
 Font.registerHyphenationCallback((word) => [word]);
 import { formatEuroDe } from "@/lib/pricing";
 import { lineGross, summarizeLines, type InquiryLine } from "@/lib/inquiry";
+import { SHOP_PHONE_DISPLAY } from "@/lib/whatsapp-order";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#3B1408" },
@@ -41,7 +42,11 @@ export async function downloadQuotePdf(input: {
     <Document>
       <Page size="A4" style={{ ...styles.page, textAlign: align, fontFamily: ar ? "Tajawal" : "Helvetica" }}>
         <Text style={styles.brand}>jmle</Text>
-        <Text style={styles.muted}>{ar ? "مأكولات عربية · كوزفيغ · info@jmle.de" : "Arabische Feinkost · Coswig (Anhalt) · info@jmle.de"}</Text>
+        <Text style={styles.muted}>
+          {ar
+            ? `مأكولات عربية · كوزفيغ · ${SHOP_PHONE_DISPLAY} · info@jmle.de`
+            : `Arabische Feinkost · Coswig (Anhalt) · ${SHOP_PHONE_DISPLAY} · info@jmle.de`}
+        </Text>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.muted}>
           {new Date().toLocaleDateString("de-DE")}

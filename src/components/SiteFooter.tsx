@@ -94,6 +94,7 @@ export default function SiteFooter({
           <div>
             <h4 className="font-ui text-jmle-yellow mb-3 font-medium">{t("footerContact")}</h4>
             <ul className="space-y-2.5 text-white/70 font-body">
+              <li dir="ltr">0174 9500391</li>
               <li dir="ltr">info@jmle.de</li>
               <li>Coswig (Anhalt), Deutschland</li>
             </ul>

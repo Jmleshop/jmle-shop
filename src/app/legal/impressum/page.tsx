@@ -16,7 +16,7 @@ export default function ImpressumPage() {
 
         <h2 className="text-lg font-medium text-luxury-black pt-4">Kontakt</h2>
         <p>
-          Telefon: +49 (0) 123 456789<br />
+          Telefon: 0174 9500391<br />
           E-Mail: info@jmle.de
         </p>
 
