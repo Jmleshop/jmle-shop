@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { vercelOptimizedImageSrc } from "@/lib/sharp-image";
 
 type FlyPayload = {
   image: string;
@@ -112,7 +113,11 @@ export function CartFlyProvider({ children }: { children: ReactNode }) {
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.image} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={vercelOptimizedImageSrc(f.image, 96)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
               </div>
             ))}
           </>,

@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { vercelOptimizedImageSrc } from "@/lib/sharp-image";
 import type { HomepageSection } from "@/types";
 
 type SlideMeta = {
@@ -275,7 +276,7 @@ export default function BuilderStructurePanel({
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             {slide.image ? (
                               <img
-                                src={slide.image}
+                                src={vercelOptimizedImageSrc(slide.image, 64)}
                                 alt=""
                                 className="h-8 w-12 rounded object-cover"
                               />

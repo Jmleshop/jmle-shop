@@ -963,7 +963,9 @@ export const getBestsellersAsync = cache(async (): Promise<Product[]> => {
 export const getRegularProductsAsync = cache(async (): Promise<Product[]> => {
   const products = await getProductsAsync();
   const regular = products.filter((p) => !productIsOnSale(p));
-  return regular.length ? regular : products;
+  // Cap strips for homepage/marquees — full catalog stays on /shop
+  const source = regular.length ? regular : products;
+  return source.slice(0, 48);
 });
 
 export const getProductByIdAsync = cache(

@@ -5,7 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Slide } from "@/types";
 import { cn } from "@/lib/cn";
-import { SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import {
+  originalImageSrc,
+  SHOP_IMAGE_QUALITY,
+  vercelOptimizedImageSrc,
+} from "@/lib/sharp-image";
 import { useShopLocale } from "@/components/ShopLocale";
 import { slideTitle } from "@/lib/shop-i18n";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
@@ -56,7 +60,7 @@ function BannerSlideContent({
       <video
         className="absolute inset-0 h-full w-full layout-banner-media"
         src={slide.videoUrl}
-        poster={slide.image}
+        poster={vercelOptimizedImageSrc(slide.image, 1080)}
         autoPlay
         muted
         loop
@@ -65,7 +69,7 @@ function BannerSlideContent({
       />
     ) : (
       <Image
-        src={slide.image || "/placeholder.svg"}
+        src={originalImageSrc(slide.image) || "/placeholder.svg"}
         alt={title || slideTitle(lang, slide) || "Banner"}
         fill
         quality={SHOP_IMAGE_QUALITY}

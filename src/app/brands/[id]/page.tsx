@@ -12,7 +12,11 @@ import { parseCatalogFilters } from "@/lib/catalog-filters";
 import { getAppUrl } from "@/lib/site-defaults";
 import CatalogShop from "@/components/CatalogShop";
 import { ShopHeading } from "@/components/ShopText";
-import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import {
+  absoluteCdnImageUrl,
+  originalImageSrc,
+  SHOP_IMAGE_QUALITY,
+} from "@/lib/sharp-image";
 
 export const revalidate = 300;
 
@@ -53,7 +57,14 @@ export async function generateMetadata({
       title,
       description,
       images: brand.image
-        ? [{ url: brand.image, width: 400, height: 200, alt: site.name }]
+        ? [
+            {
+              url: absoluteCdnImageUrl(brand.image, 400),
+              width: 400,
+              height: 200,
+              alt: site.name,
+            },
+          ]
         : undefined,
     },
   };

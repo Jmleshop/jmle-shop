@@ -6,23 +6,20 @@ import {
 } from "./favicon";
 
 describe("favicon metadata", () => {
-  it("builds icon links from a shop logo URL", () => {
+  it("always uses app proxy routes — never raw Supabase Storage", () => {
     const icons = faviconMetadataIcons(
       "https://example.supabase.co/storage/v1/object/public/logos/jmle.webp"
     );
-    assert.equal(
-      icons.icon[0].url,
-      "https://example.supabase.co/storage/v1/object/public/logos/jmle.webp"
-    );
-    assert.equal(icons.icon[0].type, "image/webp");
-    assert.equal(icons.apple[0].url, icons.icon[0].url);
-    assert.ok(icons.shortcut);
+    assert.equal(icons.icon[0].url, "/icon");
+    assert.equal(icons.icon[0].type, "image/png");
+    assert.equal(icons.apple[0].url, "/apple-icon");
+    assert.equal(icons.shortcut, "/icon");
   });
 
-  it("falls back when logo is empty", () => {
+  it("falls back to the same proxy routes when logo is empty", () => {
     const icons = faviconMetadataIcons("");
-    assert.equal(icons.icon[0].url, "/placeholder.svg");
-    assert.equal(icons.icon[0].type, "image/svg+xml");
+    assert.equal(icons.icon[0].url, "/icon");
+    assert.equal(icons.apple[0].url, "/apple-icon");
   });
 
   it("only treats http(s) URLs as fetchable", () => {
