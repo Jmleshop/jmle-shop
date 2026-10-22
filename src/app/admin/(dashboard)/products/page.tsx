@@ -22,7 +22,7 @@ import { isSaleCategoryId } from "@/lib/category-special";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import { useRowSelection } from "@/lib/use-row-selection";
 import { productAltText, productsToCsv, type CsvChange, type CsvIssue } from "@/lib/admin-catalog-io";
-import { originalImageSrc } from "@/lib/sharp-image";
+import { vercelOptimizedImageSrc } from "@/lib/sharp-image";
 import type { NumberPlan } from "@/lib/product-numbers";
 import BarcodeScanModal from "@/components/admin/BarcodeScanModal";
 import { downloadPriceLabels } from "@/components/admin/PriceLabelPdf";
@@ -1053,7 +1053,7 @@ export default function AdminProductsPage() {
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={originalImageSrc(p.image)}
+                            src={vercelOptimizedImageSrc(p.image, 96)}
                             alt=""
                             className="h-full w-full object-contain object-center"
                           />
