@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { absoluteAppUrl } from "@/lib/app-url";
+import { isLocalDevAdmin } from "@/lib/local-admin";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
 
 const STAFF_ROLES = new Set(["admin", "employee"]);
@@ -100,6 +101,15 @@ export async function updateSession(request: NextRequest) {
   if (path !== rawPath && isAdminUiPath(path)) {
     const cleanUrl = absoluteAppUrl(path || "/admin", request.url);
     return NextResponse.redirect(cleanUrl);
+  }
+
+  if (isLocalDevAdmin() && (isAdminUiPath(path) || isAdminApiPath(path))) {
+    if (path === "/admin/login" || path === "/admin") {
+      return NextResponse.redirect(
+        absoluteAppUrl("/admin/dashboard", request.url)
+      );
+    }
+    return supabaseResponse;
   }
 
   const needsAdminGate =

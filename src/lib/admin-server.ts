@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isLocalDevAdmin } from "@/lib/local-admin";
 import type { StaffRole } from "@/types";
 import type { User } from "@supabase/supabase-js";
 
@@ -13,11 +14,21 @@ interface AuthError {
   status: number;
 }
 
+export { isLocalDevAdmin } from "@/lib/local-admin";
+
 export async function requireStaff(): Promise<StaffResult | AuthError> {
   const supabase = await createClient();
-  const {
+  let {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user && isLocalDevAdmin()) {
+    const signed = await supabase.auth.signInWithPassword({
+      email: "admin@jmle.test",
+      password: "password123",
+    });
+    user = signed.data.user;
+  }
 
   if (!user) {
     return { error: "Nicht angemeldet", status: 401 };

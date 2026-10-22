@@ -3,7 +3,6 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 function urlErrorMessage(code: string | null) {
   if (code === "no_profile") {
@@ -38,7 +37,6 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const fromUrl = urlErrorMessage(searchParams.get("error"));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,53 +44,23 @@ function LoginForm() {
     setError("");
     setLoading(true);
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
-    if (authError || !data.user) {
-      console.error("[admin-login] Auth-Fehler:", authError?.message, authError);
-      setError("E-Mail oder Passwort ist falsch.");
+    try {
+      const response = await fetch("/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(payload.error || "Anmeldung fehlgeschlagen.");
+        setLoading(false);
+        return;
+      }
+      window.location.assign(safeAdminPath(searchParams.get("redirect"), payload.role || "admin"));
+    } catch {
+      setError("Der Server ist gerade nicht erreichbar. Bitte die Seite neu laden.");
       setLoading(false);
-      return;
     }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, role, email, full_name")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      console.error("[admin-login] profiles-Abfrage:", profileError.message, profileError);
-      setError(
-        `Profil konnte nicht gelesen werden (${profileError.message}). Meist fehlt eine SELECT-Policy auf profiles.`
-      );
-      setLoading(false);
-      return;
-    }
-
-    if (!profile) {
-      console.error("[admin-login] Kein profiles-Eintrag für User", data.user.id);
-      setError(
-        "Login erfolgreich, aber kein Eintrag in profiles für diesen Benutzer. Bitte supabase/fix-and-consolidate.sql ausführen."
-      );
-      setLoading(false);
-      return;
-    }
-
-    const role = String(profile.role ?? "").toLowerCase().trim();
-    if (role !== "admin" && role !== "employee") {
-      console.error("[admin-login] Ungültige Rolle:", profile.role, profile);
-      setError(
-        `Login erfolgreich, Profil gefunden, aber role ist „${profile.role || "(leer)"}“ statt admin oder employee.`
-      );
-      setLoading(false);
-      return;
-    }
-
-    window.location.assign(safeAdminPath(searchParams.get("redirect"), role));
   };
 
   const visibleError = error || fromUrl;
@@ -116,6 +84,14 @@ function LoginForm() {
             {visibleError}
           </div>
         )}
+
+        <p className="mb-4 rounded-xl bg-amber-50 p-3 text-center text-sm text-amber-900">
+          Lokal gilt nur das Demo-Konto
+          <br />
+          <span className="font-semibold">admin@jmle.test</span>
+          <br />
+          Passwort <span className="font-semibold">password123</span>
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -145,12 +121,26 @@ function LoginForm() {
             />
           </div>
 
+          <a href="/api/auth/admin-login" className="btn-primary w-full text-center">
+            Als Admin öffnen
+          </a>
           <button
             type="submit"
             disabled={loading}
             className="btn-primary w-full disabled:opacity-50"
           >
             {loading ? "Anmelden..." : "Anmelden"}
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            className="w-full min-h-11 rounded-xl border border-amber-300 text-sm"
+            onClick={() => {
+              setEmail("admin@jmle.test");
+              setPassword("password123");
+            }}
+          >
+            Demo-Zugangsdaten einsetzen
           </button>
         </form>
 

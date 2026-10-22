@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
 import { createClient } from "@/lib/supabase/server";
-import { displayNameFromProfile } from "@/lib/admin-server";
+import { displayNameFromProfile, isLocalDevAdmin } from "@/lib/admin-server";
 import type { StaffRole } from "@/types";
 
 // Admin ist auth- und datengetrieben: niemals statisch cachen, sonst wird eine
@@ -19,6 +19,14 @@ export default async function AdminDashboardLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (isLocalDevAdmin()) {
+    return (
+      <AdminShell role="admin" displayName="Lokal">
+        {children}
+      </AdminShell>
+    );
+  }
 
   if (!user) {
     redirect("/admin/login");
