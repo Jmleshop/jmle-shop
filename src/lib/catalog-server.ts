@@ -260,7 +260,18 @@ export function nestCategories(flat: Category[]): Category[] {
  *   2) Basistabelle `products` über anon (falls View fehlt/leer)
  *   3) Basistabelle `products` über Service-Role (umgeht RLS; nur serverseitig)
  */
+function useLocalProductPreview(): boolean {
+  return process.env.LOCAL_PRODUCT_PREVIEW === "1";
+}
+
 async function fetchAllPublicProducts(): Promise<Product[]> {
+  // Vorübergehend auskommentiert für die lokale Vorschau
+  // (LOCAL_PRODUCT_PREVIEW=1). Live bleibt:
+  // const { data: products } = await supabase.from("products").select("*");
+  if (useLocalProductPreview()) {
+    return FALLBACK_PRODUCTS;
+  }
+
   const supabase = createPublicClient();
 
   // Volle Spaltenauswahl; bei Schema-Drift (fehlende Spalten) Basis-Select.
@@ -341,6 +352,8 @@ async function fetchProductsFromBaseTable(
 }
 
 async function fetchAllCategories(): Promise<Category[]> {
+  if (useLocalProductPreview()) return FALLBACK_CATEGORIES;
+
   const supabase = createPublicClient();
   // show_on_homepage optional — Fallback ohne Spalte
   let data: CategoryRow[] | null = null;
@@ -512,7 +525,7 @@ async function fetchBrandLogos(): Promise<BrandLogo[]> {
 
 const getCategoriesCached = unstable_cache(
   fetchAllCategories,
-  ["catalog-categories-v4"],
+  ["catalog-categories-v5", process.env.LOCAL_PRODUCT_PREVIEW === "1" ? "local" : "live"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "categories"] }
 );
 
@@ -558,7 +571,7 @@ const getProductsCached = unstable_cache(
     // Nie eine leere Seite: wenn die DB (noch) nichts liefert, Demo-Katalog zeigen.
     return products.length ? products : FALLBACK_PRODUCTS;
   },
-  ["catalog-products-v2"],
+  ["catalog-products-v3", process.env.LOCAL_PRODUCT_PREVIEW === "1" ? "local" : "live"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "products"] }
 );
 
