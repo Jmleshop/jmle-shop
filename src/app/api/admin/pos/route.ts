@@ -2,13 +2,18 @@ import { NextResponse } from "next/server";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import { createServiceClient } from "@/lib/supabase/admin";
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireStaff();
   if (isAuthError(auth)) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const q = new URL(request.url).searchParams.get("q")?.trim();
+  // Zeichen entfernen, die die PostgREST-Filtersyntax von .or() aufbrechen würden.
+  const q = new URL(request.url).searchParams
+    .get("q")
+    ?.replace(/[,()*%\\]/g, " ")
+    .trim()
+    .slice(0, 80);
   const service = createServiceClient();
   if (q) {
     const { data, error } = await service
