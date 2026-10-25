@@ -84,6 +84,11 @@ export default function SiteFooter({
                   حق الإلغاء
                 </Link>
               </li>
+              <li>
+                <Link href="/legal/agb" className="hover:text-white transition-colors">
+                  الشروط والأحكام
+                </Link>
+              </li>
             </ul>
           </div>
           <div>

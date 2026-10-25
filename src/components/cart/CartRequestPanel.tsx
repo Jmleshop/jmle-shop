@@ -127,8 +127,8 @@ export default function CartRequestPanel({
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={agb} onChange={(e) => setAgb(e.target.checked)} className="mt-1" />
           <span>
-            Ich akzeptiere die <Link href="/agb" className="underline">AGB</Link> und die{" "}
-            <Link href="/datenschutz" className="underline">Datenschutzbedingungen</Link>.
+            Ich akzeptiere die <Link href="/legal/agb" className="underline">AGB</Link> und die{" "}
+            <Link href="/legal/datenschutz" className="underline">Datenschutzbedingungen</Link>.
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
@@ -349,8 +349,8 @@ function HomeDelivery({
       <label className={`flex items-start gap-2 text-sm ${unlocked ? "" : "pointer-events-none opacity-40"}`}>
         <input type="checkbox" checked={agb} disabled={!unlocked} onChange={(e) => setAgb(e.target.checked)} className="mt-1" />
         <span>
-          Ich akzeptiere die <Link href="/agb" className="underline">AGB</Link> und die{" "}
-          <Link href="/datenschutz" className="underline">Datenschutzbedingungen</Link>.
+          Ich akzeptiere die <Link href="/legal/agb" className="underline">AGB</Link> und die{" "}
+          <Link href="/legal/datenschutz" className="underline">Datenschutzbedingungen</Link>.
         </span>
       </label>
       <button type="submit" disabled={!canSend || busy || sending} className="min-h-12 w-full rounded-xl bg-[#25D366] text-sm font-semibold text-white disabled:opacity-40">
