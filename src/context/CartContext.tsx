@@ -192,8 +192,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             data: { user: newUser },
           } = await supabase.auth.getUser();
           if (newUser) {
+            let allMerged = true;
             for (const item of guestItems) {
-              await supabase.from("cart_items").upsert(
+              const { error } = await supabase.from("cart_items").upsert(
                 {
                   user_id: newUser.id,
                   product_id: item.product_id,
@@ -201,8 +202,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 },
                 { onConflict: "user_id,product_id" }
               );
+              if (error) {
+                allMerged = false;
+                console.error("[cart] Gast-Warenkorb übernehmen:", error.message);
+              }
             }
-            localStorage.removeItem(GUEST_CART_KEY);
+            // Gast-Warenkorb nur löschen, wenn alles übernommen wurde — sonst ginge er verloren.
+            if (allMerged) localStorage.removeItem(GUEST_CART_KEY);
           }
         }
       }
