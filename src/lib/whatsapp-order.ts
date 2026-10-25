@@ -5,16 +5,23 @@ export const WHATSAPP_E164 = "49123456789";
 
 export function whatsAppOrderUrl(
   lines: { name: string; quantity: number; lineTotal: number }[],
-  total: number
+  total: number,
+  phone?: string,
+  heading = "Neue Anfrage über jmle (Preisvorschlag)"
 ): string {
   const body = [
-    "Neue Bestellung über jmle",
+    heading,
+    phone ? `Telefon: ${phone}` : "",
     "",
     ...lines.map(
       (line) => `• ${line.quantity}× ${line.name} — ${formatEuroDe(line.lineTotal)}`
     ),
     "",
     `Summe: ${formatEuroDe(total)}`,
-  ].join("\n");
+    "",
+    "Die Bestellübersicht wurde als PDF heruntergeladen.",
+  ]
+    .filter(Boolean)
+    .join("\n");
   return `https://wa.me/${WHATSAPP_E164}?text=${encodeURIComponent(body)}`;
 }
