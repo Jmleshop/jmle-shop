@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { getProductsByIdsAsync } from "@/lib/catalog-server";
 import { summarizeLines, type InquiryLine } from "@/lib/inquiry";
 
+// Name, Preis und MwSt. aus dem Browser werden ignoriert — maßgeblich ist der Katalog.
 const lineSchema = z.object({
   productId: z.string().min(1),
-  name: z.string().min(1),
-  quantity: z.number().int().positive(),
-  unitPrice: z.number().nonnegative(),
-  vatRate: z.number().nonnegative(),
+  quantity: z.number().int().positive().max(9999),
 });
 
 const bodySchema = z.object({
@@ -20,7 +19,7 @@ const bodySchema = z.object({
   street: z.string().trim().optional(),
   postalCode: z.string().trim().optional(),
   city: z.string().trim().optional(),
-  items: z.array(lineSchema).min(1),
+  items: z.array(lineSchema).min(1).max(100),
 });
 
 export async function POST(request: Request) {
@@ -44,7 +43,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bitte eine gültige Lieferadresse angeben." }, { status: 400 });
   }
 
-  const items = data.items as InquiryLine[];
+  const products = await getProductsByIdsAsync(data.items.map((item) => item.productId));
+  const productMap = new Map(products.map((p) => [p.id, p]));
+  const items: InquiryLine[] = [];
+  for (const item of data.items) {
+    const product = productMap.get(item.productId);
+    if (!product) {
+      return NextResponse.json(
+        { error: "Ein Produkt im Warenkorb ist nicht mehr verfügbar. Bitte Warenkorb prüfen." },
+        { status: 400 }
+      );
+    }
+    items.push({
+      productId: product.id,
+      name: product.nameDe || product.name,
+      quantity: item.quantity,
+      unitPrice: product.price,
+      vatRate: product.vatRate,
+    });
+  }
   const totals = summarizeLines(items);
 
   try {
