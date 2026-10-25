@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
+import { isAuthError, requireStaff } from "@/lib/admin-server";
 import { translateText, type TranslateLang } from "@/lib/translate";
 
 export const runtime = "nodejs";
 
+/** Max. Texte pro Anfrage — schützt das DeepL-/MyMemory-Kontingent. */
+const MAX_TEXTS = 50;
+
 export async function POST(request: Request) {
+  // Nur Personal: öffentlich ließ sich das Übersetzungs-Kontingent von außen verbrauchen.
+  const auth = await requireStaff();
+  if (isAuthError(auth)) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -25,7 +35,7 @@ export async function POST(request: Request) {
   }
 
   if (Array.isArray(raw.texts)) {
-    const texts = raw.texts.map((t) => String(t ?? "").slice(0, 2000));
+    const texts = raw.texts.slice(0, MAX_TEXTS).map((t) => String(t ?? "").slice(0, 2000));
     const translated = await Promise.all(
       texts.map((t) => (t.trim() ? translateText(t, from, to) : Promise.resolve("")))
     );
