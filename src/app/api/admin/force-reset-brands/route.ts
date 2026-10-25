@@ -105,6 +105,15 @@ export async function POST(request: Request) {
     }
   }
 
+  // Löscht alle brand_logos: nur mit ausdrücklicher Bestätigung im Body ausführen.
+  const body = (await request.json().catch(() => null)) as { confirm?: unknown } | null;
+  if (body?.confirm !== "RESET") {
+    return NextResponse.json(
+      { error: "Bestätigung fehlt: confirm: \"RESET\" erforderlich" },
+      { status: 400 }
+    );
+  }
+
   try {
     const target = resolveRuntimeSupabaseTarget();
     const host = new URL(target.url).hostname;

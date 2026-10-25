@@ -121,12 +121,19 @@ export default function AdminProductsPage() {
 
   const runBrandReset = async () => {
     if (brandResetBusy) return;
-    if (!window.confirm(t("brandResetConfirm"))) return;
+    // Löscht alle Marken — nur nach getippter Bestätigung (nicht nur "OK").
+    const typed = window.prompt(t("brandResetTypeConfirm"));
+    if (typed?.trim() !== "RESET") {
+      if (typed !== null) toast(t("brandResetCancelled"));
+      return;
+    }
     setBrandResetBusy(true);
     try {
       // Force-Reset trifft immer die Production-DB (nicht localhost)
       const res = await fetch("/api/admin/force-reset-brands", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "RESET" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -573,23 +580,30 @@ export default function AdminProductsPage() {
         <button type="button" className="rounded-xl border px-3 py-2 text-sm min-h-11" onClick={() => void downloadPriceLabels(displayed)}>
           Etiketten-PDF
         </button>
-        <button
-          type="button"
-          className="rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-sm min-h-11 text-orange-950 disabled:opacity-60"
-          disabled={brandResetBusy}
-          onClick={() => void runBrandLinkSync()}
-          title={t("brandSyncHint")}
-        >
-          {brandResetBusy ? "…" : t("brandSync")}
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm min-h-11 text-amber-950 disabled:opacity-60"
-          disabled={brandResetBusy}
-          onClick={() => void runBrandReset()}
-        >
-          {brandResetBusy ? "…" : t("brandReset")}
-        </button>
+        <details className="rounded-xl border border-red-200 bg-red-50/40 px-3 py-2 text-sm">
+          <summary className="min-h-11 cursor-pointer select-none font-medium text-red-900 flex items-center">
+            {t("maintenance")}
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-sm min-h-11 text-orange-950 disabled:opacity-60"
+              disabled={brandResetBusy}
+              onClick={() => void runBrandLinkSync()}
+              title={t("brandSyncHint")}
+            >
+              {brandResetBusy ? "…" : t("brandSync")}
+            </button>
+            <button
+              type="button"
+              className="rounded-xl border border-red-400 bg-red-600 px-3 py-2 text-sm min-h-11 font-semibold text-white disabled:opacity-60"
+              disabled={brandResetBusy}
+              onClick={() => void runBrandReset()}
+            >
+              {brandResetBusy ? "…" : t("brandReset")}
+            </button>
+          </div>
+        </details>
       </div>
       {lowStock.length > 0 && (
         <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
