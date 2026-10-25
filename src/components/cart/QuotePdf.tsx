@@ -2,11 +2,6 @@
 
 import { Document, Font, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
 
-Font.register({
-  family: "Tajawal",
-  src: "https://cdn.jsdelivr.net/fontsource/fonts/tajawal@5.2.8/arabic-400-normal.ttf",
-});
-Font.registerHyphenationCallback((word) => [word]);
 import { formatEuroDe } from "@/lib/pricing";
 import { lineGross, summarizeLines, type InquiryLine } from "@/lib/inquiry";
 import { SHOP_PHONE_DISPLAY } from "@/lib/whatsapp-order";
@@ -18,6 +13,23 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", borderBottomWidth: 0.4, borderBottomColor: "#FED7AA", paddingVertical: 4 },
   muted: { color: "#9A3412", fontSize: 9, marginTop: 2 },
 });
+
+let cairoReady = false;
+
+/** Arabische Schrift aus /public/fonts (der frühere Tajawal-CDN-Link lieferte 404). */
+function ensureCairo() {
+  if (cairoReady || typeof window === "undefined") return;
+  const origin = window.location.origin;
+  Font.register({
+    family: "Cairo",
+    fonts: [
+      { src: `${origin}/fonts/Cairo-Regular.ttf`, fontWeight: 400 },
+      { src: `${origin}/fonts/Cairo-Bold.ttf`, fontWeight: 700 },
+    ],
+  });
+  Font.registerHyphenationCallback((word) => [word]);
+  cairoReady = true;
+}
 
 export async function downloadQuotePdf(input: {
   protocol: string;
@@ -38,16 +50,20 @@ export async function downloadQuotePdf(input: {
         ? ar ? "عرض السعر وطلب التوصيل" : "Preisvorschlag & Lieferanfrage"
         : ar ? "عرض السعر وملخص الطلب" : "Preisvorschlag / Bestellübersicht";
   const align = ar ? "right" : "left";
+  if (ar) ensureCairo();
+  // Helvetica hat keine arabischen Zeichen — auf Arabisch durchgehend Cairo verwenden.
+  const regular = ar ? { fontFamily: "Cairo" } : { fontFamily: "Helvetica" };
+  const bold = ar ? { fontFamily: "Cairo", fontWeight: 700 as const } : { fontFamily: "Helvetica-Bold" };
   const doc = (
     <Document>
-      <Page size="A4" style={{ ...styles.page, textAlign: align, fontFamily: ar ? "Tajawal" : "Helvetica" }}>
-        <Text style={styles.brand}>jmle</Text>
+      <Page size="A4" style={{ ...styles.page, ...regular, textAlign: align }}>
+        <Text style={[styles.brand, bold]}>jmle</Text>
         <Text style={styles.muted}>
           {ar
             ? `مأكولات عربية · كوزفيغ · ${SHOP_PHONE_DISPLAY} · info@jmle.de`
             : `Arabische Feinkost · Coswig (Anhalt) · ${SHOP_PHONE_DISPLAY} · info@jmle.de`}
         </Text>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, bold]}>{title}</Text>
         <Text style={styles.muted}>
           {new Date().toLocaleDateString("de-DE")}
           {input.invoiceNumber ? ` · ${input.invoiceNumber}` : ""} · {ar ? "رقم" : "Vorgang"} {input.protocol}
@@ -69,7 +85,7 @@ export async function downloadQuotePdf(input: {
         ))}
         <Text style={{ marginTop: 12 }}>{ar ? "المجموع الفرعي" : "Zwischensumme"} {formatEuroDe(totals.subtotal)}</Text>
         <Text>{ar ? "ضريبة القيمة المضافة" : "darin MwSt."} {formatEuroDe(totals.vat)}</Text>
-        <Text style={{ fontFamily: "Helvetica-Bold", marginTop: 4 }}>{ar ? "الإجمالي" : "Gesamt"} {formatEuroDe(totals.total)}</Text>
+        <Text style={[bold, { marginTop: 4 }]}>{ar ? "الإجمالي" : "Gesamt"} {formatEuroDe(totals.total)}</Text>
         {input.notes ? <Text style={[styles.muted, { marginTop: 12 }]}>{ar ? "ملاحظة" : "Anmerkung"}: {input.notes}</Text> : null}
         <Text style={[styles.muted, { marginTop: 24 }]}>
           {input.kind === "invoice"
