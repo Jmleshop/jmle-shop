@@ -11,6 +11,8 @@ export type WhatsAppOrderExtras = {
   reference?: string;
   /** Nur true, wenn das PDF tatsächlich heruntergeladen wurde. */
   pdfDownloaded?: boolean;
+  /** Beträge wie im Warenkorb; ohne Angabe wird nur die Warensumme genannt. */
+  totals?: { discount: number; shipping: number; grandTotal: number };
 };
 
 export function whatsAppOrderUrl(
@@ -32,7 +34,16 @@ export function whatsAppOrderUrl(
       (line) => `• ${line.quantity}× ${line.name} — ${formatEuroDe(line.lineTotal)}`
     ),
     "",
-    `${ar ? "المجموع" : "Summe"}: ${formatEuroDe(total)}`,
+    ...(extras.totals
+      ? [
+          `${ar ? "المجموع الفرعي" : "Zwischensumme"}: ${formatEuroDe(total)}`,
+          extras.totals.discount > 0
+            ? `${ar ? "الخصم" : "Rabatt"}: −${formatEuroDe(extras.totals.discount)}`
+            : "",
+          `${ar ? "الشحن" : "Versand"}: ${extras.totals.shipping > 0 ? formatEuroDe(extras.totals.shipping) : ar ? "مجاني" : "kostenlos"}`,
+          `${ar ? "الإجمالي" : "Gesamt"}: ${formatEuroDe(extras.totals.grandTotal)}`,
+        ]
+      : [`${ar ? "المجموع" : "Summe"}: ${formatEuroDe(total)}`]),
     "",
     extras.pdfDownloaded
       ? ar ? "تم تنزيل ملخص الطلب كملف PDF." : "Die Bestellübersicht wurde als PDF heruntergeladen."

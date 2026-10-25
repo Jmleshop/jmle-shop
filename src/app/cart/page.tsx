@@ -85,7 +85,11 @@ export default function CartPage() {
     (sum, item) => sum + productShippingGrams(item.product ?? {}) * item.quantity,
     0
   );
-  const { total: grandTotal } = computeCheckoutTotals(total, discount, weightGrams);
+  const {
+    total: grandTotal,
+    shipping,
+    discountAmount,
+  } = computeCheckoutTotals(total, discount, weightGrams);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12 animate-fade-up">
@@ -193,6 +197,7 @@ export default function CartPage() {
       </Link>
       <CartRequestPanel
         totalLabel={formatPrice(grandTotal)}
+        totals={{ discount: discountAmount, shipping, grandTotal }}
         lines={items.map((item) => ({
           productId: item.product?.id || item.id,
           name: item.product ? productTitle(lang, item.product) : "Produkt",

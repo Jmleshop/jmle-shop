@@ -44,6 +44,27 @@ describe("whatsapp order message", () => {
     assert.match(full, /Adresse: Musterweg 1, 71032 Böblingen/);
   });
 
+  it("shows shipping and the same grand total as the cart", () => {
+    const { text } = decode(
+      whatsAppOrderUrl(lines, 16, undefined, undefined, "de", {
+        totals: { discount: 0, shipping: 4.99, grandTotal: 20.99 },
+      })
+    );
+    assert.match(text, /Zwischensumme: 16,00/);
+    assert.match(text, /Versand: 4,99/);
+    assert.match(text, /Gesamt: 20,99/);
+    assert.doesNotMatch(text, /Rabatt/);
+
+    const free = decode(
+      whatsAppOrderUrl(lines, 60, undefined, undefined, "de", {
+        totals: { discount: 5, shipping: 0, grandTotal: 55 },
+      })
+    ).text;
+    assert.match(free, /Rabatt: −5,00/);
+    assert.match(free, /Versand: kostenlos/);
+    assert.match(free, /Gesamt: 55,00/);
+  });
+
   it("writes Arabic labels by default", () => {
     const { text } = decode(whatsAppOrderUrl(lines, 16, "0151 000000"));
     assert.match(text, /المجموع/);

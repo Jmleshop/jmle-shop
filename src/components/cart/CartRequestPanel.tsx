@@ -7,6 +7,8 @@ import { whatsAppOrderUrl } from "@/lib/whatsapp-order";
 import { downloadQuotePdf } from "@/components/cart/QuotePdf";
 import type { InquiryLine } from "@/lib/inquiry";
 
+type CartTotals = { discount: number; shipping: number; grandTotal: number };
+
 type Place = { postalCode: string; name: string };
 
 /** Ergebnis einer Anfrage: "saved" = beim Shop gespeichert; "whatsapp" = nur vorbereitet, Kunde muss in WhatsApp senden. */
@@ -43,9 +45,11 @@ async function saveInquiry(body: Record<string, unknown>): Promise<{ reference: 
 export default function CartRequestPanel({
   lines,
   totalLabel,
+  totals,
 }: {
   lines: InquiryLine[];
   totalLabel: string;
+  totals?: CartTotals;
 }) {
   const { lang, t } = useShopLocale();
   const [phone, setPhone] = useState("");
@@ -131,7 +135,7 @@ export default function CartRequestPanel({
         phone.trim(),
         undefined,
         lang,
-        { reference, pdfDownloaded }
+        { reference, pdfDownloaded, totals }
       );
       goToWhatsApp(pending, url);
       setResult({ kind: "whatsapp", reference, whatsappUrl: url });
@@ -225,7 +229,7 @@ export default function CartRequestPanel({
           {t("requestOffer")}
         </button>
       </form>
-      <HomeDelivery lines={lines} busy={busy} onDone={setResult} onError={setError} />
+      <HomeDelivery lines={lines} totals={totals} busy={busy} onDone={setResult} onError={setError} />
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {result && (
@@ -264,11 +268,13 @@ type AreaStatus = "idle" | "not_found" | "outside" | "ok";
 
 function HomeDelivery({
   lines,
+  totals,
   busy,
   onDone,
   onError,
 }: {
   lines: InquiryLine[];
+  totals?: CartTotals;
   busy: boolean;
   onDone: (result: RequestResult) => void;
   onError: (message: string) => void;
@@ -356,6 +362,7 @@ function HomeDelivery({
         {
           reference,
           pdfDownloaded,
+          totals,
           details: [
             `${lang === "ar" ? "الاسم" : "Name"}: ${name}`,
             `${lang === "ar" ? "العنوان" : "Adresse"}: ${address}`,
