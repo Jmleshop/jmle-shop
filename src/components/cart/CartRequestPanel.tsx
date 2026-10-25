@@ -203,8 +203,8 @@ export default function CartRequestPanel({
       {thanks && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-boutique" role="dialog">
-            <p className="font-ui text-lg font-semibold">{t("thanksTitle")}</p>
-            <p className="mt-2 text-sm text-luxury-charcoal/80">{t("thanksBody")}</p>
+            <p className="font-ui text-lg font-semibold">{t("requestThanksTitle")}</p>
+            <p className="mt-2 text-sm text-luxury-charcoal/80">{t("requestThanksBody")}</p>
             <button type="button" className="mt-4 min-h-11 rounded-xl bg-brand-orange px-5 text-white" onClick={() => setThanks(false)}>
               {t("close")}
             </button>
