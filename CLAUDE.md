@@ -10,8 +10,11 @@ Read `docs/CLAUDE_HANDOVER.md` before any non-trivial task; workflow in `docs/DE
 - Hosted on Vercel (production host `jmle-shop.vercel.app`, see `src/lib/app-url.ts`)
 - GitHub: `Jmleshop/jmle-shop`
 
-## ⚠️ Branch situation (verify before every task)
-Since 2026-10-25 local `main` tracks `origin/main` (the base; likely production). The older WhatsApp-checkout work lives on local `whatsapp-checkout` (tracks `origin/whatsapp-checkout`) and is being ported file-by-file — **do not `git merge` it** (it carries ~40 stale storefront files, 23 conflicts). See `docs/CLAUDE_HANDOVER.md` §2. Never push to `origin/main` or reset branches without explicit approval. Run `git status -sb` first.
+## ⚠️ Branch / environment situation (verify before every task)
+- Live: Vercel project `jmle-shop` (`prj_QXSwdIG6JAlhqxASvqwXKjv00d9A`, scope `jmleonline26-5875`) deploys `main`.
+- Live database: Supabase `rbdarbzwbzpfjorgeavi` (all shop data). `uohnkgwwiffxbgpbpwjb` is an empty second project — do not use.
+- 2026-10-25: `release/2026-10-25` = main + security fix + WhatsApp checkout + egress cuts + POS + shop phone. Old branches `whatsapp-checkout` and `cursor/*` must **not** be merged wholesale (stale files).
+- Never push to `origin/main`, change Vercel production env vars, or run SQL on production without explicit approval. Run `git status -sb` first.
 
 ## Key paths
 - `src/middleware.ts` + `src/lib/supabase/middleware.ts` — session refresh + admin gate (roles `admin`/`employee`)
@@ -23,7 +26,7 @@ Since 2026-10-25 local `main` tracks `origin/main` (the base; likely production)
 
 ## Commands
 - `npm run dev` (http://localhost:3000) · `npm run build` · `npm run lint` · `npx tsc --noEmit`
-- Tests: `node --import ./scripts/register-ts.mjs --test src/lib/*.test.ts src/lib/image-editor/*.test.ts`
+- Tests: `node --import tsx --test src/lib/*.test.ts src/lib/*/*.test.ts` (1 known failure in image-editor "studio margin")
 
 ## Rules
 - Before claiming a change works: run `npx tsc --noEmit`, the tests, and `npm run build`; report real output.

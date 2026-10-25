@@ -3,6 +3,15 @@
 Audit date: 2026-10-25 (Claude). Based on the local folder `/Users/mafghani963/Jomlah` at commit `e5a26a0`.
 Labels: **[verified]** = checked in code or by running it · **[unverified]** = not checked / needs production access.
 
+## 0. Update 2026-10-25 (production facts, verified read-only) — read this first
+- **Why the live shop showed demo products:** Vercel production env `NEXT_PUBLIC_SUPABASE_ANON_KEY` held the placeholder `eyJ...dein-anon-key...` (visible in the client bundle). Only 2 env vars existed (URL + that key); `SUPABASE_SERVICE_ROLE_KEY`, Stripe and `NEXT_PUBLIC_APP_URL` were missing.
+- **Supabase `rbdarbzwbzpfjorgeavi`** holds all data (620 products, 1041 storage files, 106 categories, 25 brands, 2 slides, 3 profiles); no data changes after 2026-10-17. Free plan, dashboard shows "Grace period is over" (quota) → egress cuts matter. No migration history table entries (schema was built via SQL editor). Tables `orders`, `order_items`, `discount_codes`, `page_views` do not exist → Stripe orders/discounts/analytics cannot work until created.
+- **Security fix applied 2026-10-25** (`20261025000001`): role-protection trigger, cart_items RLS, staff-only writes on brand_logos/hero_slides/site_settings. Still open: `products` base table is publicly readable incl. `purchase_price`.
+- **Pending migrations for the release** (additive): `20261022000001/2` (inquiries) and `20261022000003` (POS stock columns) — check `to_regclass('public.inquiries')` before assuming they exist.
+- **Preview URLs:** `isPreviewDeploymentHost()` no longer redirects when `VERCEL_ENV=preview`; previews need branch-scoped `NEXT_PUBLIC_SUPABASE_ANON_KEY` and are behind Vercel login.
+- **Backup:** `/Users/mafghani963/Jomlah-Backups/2026-10-25` (tables, schema, all images; audit_log not included).
+- **Open business data questions:** delivery radius text says 71032 Böblingen while imprint/PDF say Coswig (Anhalt); invoice PDF prints placeholder USt-IdNr `DE123456789` and "Musterstraße 1"; AGB page is an unreviewed template.
+
 ## 1. What it is
 B2C/B2B online shop for jmle (food/grocery-style products with weights, VAT, max order quantities). Storefront in Arabic (RTL, default) and German; German legal pages (Impressum, Datenschutz, AGB). Admin back office for products, categories, brands, sliders, orders, inquiries/invoices, discounts, users, analytics, trash, image editing. [verified in code]
 
