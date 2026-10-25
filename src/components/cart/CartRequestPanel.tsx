@@ -9,6 +9,37 @@ import type { InquiryLine } from "@/lib/inquiry";
 
 type Place = { postalCode: string; name: string };
 
+/** Ergebnis einer Anfrage: "saved" = beim Shop gespeichert; "whatsapp" = nur vorbereitet, Kunde muss in WhatsApp senden. */
+type RequestResult = { kind: "saved" | "whatsapp"; reference?: string; whatsappUrl?: string };
+
+/** Fenster direkt im Klick öffnen, sonst blockieren mobile Browser es nach den await-Schritten als Popup. */
+function openPendingWindow(): Window | null {
+  const win = window.open("", "_blank");
+  if (win) win.opener = null;
+  return win;
+}
+
+function goToWhatsApp(win: Window | null, url: string) {
+  if (win && !win.closed) win.location.href = url;
+  else window.location.href = url;
+}
+
+/** Speichert die Anfrage; liefert die Kurz-Nr. oder null, wenn das Speichern scheitert. */
+async function saveInquiry(body: Record<string, unknown>): Promise<{ reference: string | null; error?: string }> {
+  try {
+    const response = await fetch("/api/inquiries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.id) return { reference: null, error: payload.error || "Anfrage konnte nicht gespeichert werden." };
+    return { reference: String(payload.id).slice(0, 8) };
+  } catch {
+    return { reference: null, error: "Anfrage konnte nicht gespeichert werden." };
+  }
+}
+
 export default function CartRequestPanel({
   lines,
   totalLabel,
@@ -22,7 +53,7 @@ export default function CartRequestPanel({
   const [contactOk, setContactOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [thanks, setThanks] = useState(false);
+  const [result, setResult] = useState<RequestResult | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -61,52 +92,49 @@ export default function CartRequestPanel({
   async function send(channel: "whatsapp" | "callback") {
     setError("");
     setBusy(true);
+    const pending = channel === "whatsapp" ? openPendingWindow() : null;
     try {
-      const response = await fetch("/api/inquiries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          channel,
-          phone: phone.trim(),
-          firstName: firstName.trim() || undefined,
-          lastName: lastName.trim() || undefined,
-          email: email.trim(),
-          street: street.trim(),
-          postalCode: postalCode.trim(),
-          city: city.trim(),
-          items: lines,
-        }),
+      const saved = await saveInquiry({
+        channel,
+        phone: phone.trim(),
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+        email: email.trim(),
+        street: street.trim(),
+        postalCode: postalCode.trim(),
+        city: city.trim(),
+        items: lines,
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "Anfrage konnte nicht gespeichert werden.");
 
-      if (channel === "whatsapp") {
-        await downloadQuotePdf({
-          protocol: String(payload.id).slice(0, 8),
-          phone: phone.trim(),
-          lines,
-          kind: "quote",
-          lang,
-        });
-        window.open(
-          whatsAppOrderUrl(
-            lines.map((line) => ({
-              name: line.name,
-              quantity: line.quantity,
-              lineTotal: line.unitPrice * line.quantity,
-            })),
-            lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0),
-            phone.trim(),
-            undefined,
-            lang
-          ),
-          "_blank",
-          "noopener,noreferrer"
-        );
+      if (channel === "callback") {
+        // Rückruf geht nur über die gespeicherte Anfrage — ohne Speichern kein Erfolg melden.
+        if (!saved.reference) {
+          setError(saved.error || "Anfrage fehlgeschlagen.");
+          return;
+        }
+        setResult({ kind: "saved", reference: saved.reference });
+        return;
       }
-      setThanks(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Anfrage fehlgeschlagen.");
+
+      // WhatsApp: Die Nachricht selbst ist die Bestellung, daher auch ohne gespeicherte Anfrage öffnen.
+      const reference = saved.reference ?? undefined;
+      let pdfDownloaded = false;
+      try {
+        await downloadQuotePdf({ protocol: reference ?? "—", phone: phone.trim(), lines, kind: "quote", lang });
+        pdfDownloaded = true;
+      } catch {
+        // PDF ist nur eine Beigabe; WhatsApp trotzdem öffnen.
+      }
+      const url = whatsAppOrderUrl(
+        lines.map((line) => ({ name: line.name, quantity: line.quantity, lineTotal: line.unitPrice * line.quantity })),
+        lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0),
+        phone.trim(),
+        undefined,
+        lang,
+        { reference, pdfDownloaded }
+      );
+      goToWhatsApp(pending, url);
+      setResult({ kind: "whatsapp", reference, whatsappUrl: url });
     } finally {
       setBusy(false);
     }
@@ -197,15 +225,32 @@ export default function CartRequestPanel({
           {t("requestOffer")}
         </button>
       </form>
-      <HomeDelivery lines={lines} busy={busy} onDone={() => setThanks(true)} onError={setError} />
+      <HomeDelivery lines={lines} busy={busy} onDone={setResult} onError={setError} />
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {thanks && (
+      {result && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-boutique" role="dialog">
-            <p className="font-ui text-lg font-semibold">{t("requestThanksTitle")}</p>
-            <p className="mt-2 text-sm text-luxury-charcoal/80">{t("requestThanksBody")}</p>
-            <button type="button" className="mt-4 min-h-11 rounded-xl bg-brand-orange px-5 text-white" onClick={() => setThanks(false)}>
+            <p className="font-ui text-lg font-semibold">
+              {result.kind === "saved" ? t("requestThanksTitle") : t("whatsappOpenedTitle")}
+            </p>
+            <p className="mt-2 text-sm text-luxury-charcoal/80">
+              {result.kind === "saved" ? t("requestThanksBody") : t("whatsappOpenedBody")}
+            </p>
+            {result.reference && (
+              <p className="mt-2 text-xs text-luxury-charcoal/70">{t("requestReference", { ref: result.reference })}</p>
+            )}
+            {result.whatsappUrl && (
+              <a
+                href={result.whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-[#25D366] px-5 text-sm font-semibold text-white"
+              >
+                {t("whatsappOpenAgain")}
+              </a>
+            )}
+            <button type="button" className="mt-3 min-h-11 rounded-xl bg-brand-orange px-5 text-white" onClick={() => setResult(null)}>
               {t("close")}
             </button>
           </div>
@@ -225,7 +270,7 @@ function HomeDelivery({
 }: {
   lines: InquiryLine[];
   busy: boolean;
-  onDone: () => void;
+  onDone: (result: RequestResult) => void;
   onError: (message: string) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -271,52 +316,54 @@ function HomeDelivery({
     if (!canSend || busy || sending) return;
     setSending(true);
     onError("");
+    const pending = openPendingWindow();
     try {
-      const response = await fetch("/api/inquiries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          channel: "delivery",
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          phone: phone.trim(),
-          street: `${street.trim()} ${house.trim()}`,
-          postalCode: place.postalCode,
-          city: place.city,
-          items: lines,
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "Lieferanfrage konnte nicht gespeichert werden.");
-      await downloadQuotePdf({
-        protocol: String(payload.id).slice(0, 8),
+      const name = `${firstName.trim()} ${lastName.trim()}`;
+      const address = `${street.trim()} ${house.trim()}, ${place.postalCode} ${place.city}`;
+      const saved = await saveInquiry({
+        channel: "delivery",
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         phone: phone.trim(),
-        lines,
-        kind: "delivery",
-        lang,
-        customer: `${firstName.trim()} ${lastName.trim()}, ${street.trim()} ${house.trim()}, ${place.postalCode} ${place.city}`,
+        street: `${street.trim()} ${house.trim()}`,
+        postalCode: place.postalCode,
+        city: place.city,
+        items: lines,
       });
-      const total = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-      window.open(
-        whatsAppOrderUrl(
-          lines.map((line) => ({
-            name: line.name,
-            quantity: line.quantity,
-            lineTotal: line.unitPrice * line.quantity,
-          })),
-          total,
-          phone.trim(),
-          lang === "ar"
-            ? `طلب توصيل jmle إلى ${place.postalCode} ${place.city}`
-            : `Lieferanfrage jmle nach ${place.postalCode} ${place.city}`,
-          lang
-        ),
-        "_blank",
-        "noopener,noreferrer"
+      const reference = saved.reference ?? undefined;
+      let pdfDownloaded = false;
+      try {
+        await downloadQuotePdf({
+          protocol: reference ?? "—",
+          phone: phone.trim(),
+          lines,
+          kind: "delivery",
+          lang,
+          customer: `${name}, ${address}`,
+        });
+        pdfDownloaded = true;
+      } catch {
+        // PDF ist nur eine Beigabe; WhatsApp trotzdem öffnen.
+      }
+      const url = whatsAppOrderUrl(
+        lines.map((line) => ({ name: line.name, quantity: line.quantity, lineTotal: line.unitPrice * line.quantity })),
+        lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0),
+        phone.trim(),
+        lang === "ar"
+          ? `طلب توصيل jmle إلى ${place.postalCode} ${place.city}`
+          : `Lieferanfrage jmle nach ${place.postalCode} ${place.city}`,
+        lang,
+        {
+          reference,
+          pdfDownloaded,
+          details: [
+            `${lang === "ar" ? "الاسم" : "Name"}: ${name}`,
+            `${lang === "ar" ? "العنوان" : "Adresse"}: ${address}`,
+          ],
+        }
       );
-      onDone();
-    } catch (err) {
-      onError(err instanceof Error ? err.message : "Lieferanfrage fehlgeschlagen.");
+      goToWhatsApp(pending, url);
+      onDone({ kind: "whatsapp", reference, whatsappUrl: url });
     } finally {
       setSending(false);
     }
