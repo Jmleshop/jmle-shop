@@ -4,6 +4,13 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { discountedPrice } from "@/lib/pricing";
 import { normalizeBadges } from "@/lib/product-badges";
 import { FALLBACK_CATEGORIES, FALLBACK_PRODUCTS } from "@/lib/fallback-catalog";
+
+/**
+ * Demo-Katalog nur in der lokalen Entwicklung. In Produktion würde er bei
+ * DB-/Key-Fehlern Fantasieprodukte anzeigen und über Kasse/Anfrage bestellbar
+ * machen — dort lieber einen leeren Zustand zeigen.
+ */
+const DEMO_FALLBACK = process.env.NODE_ENV !== "production";
 import { searchQueryVariants } from "@/lib/search";
 import {
   escapeIlikeTerm,
@@ -556,10 +563,10 @@ const getBrandLogosCached = unstable_cache(
 const getProductsCached = unstable_cache(
   async (): Promise<Product[]> => {
     const products = await fetchAllPublicProducts();
-    // Nie eine leere Seite: wenn die DB (noch) nichts liefert, Demo-Katalog zeigen.
-    return products.length ? products : FALLBACK_PRODUCTS;
+    // Lokal nie eine leere Seite: wenn die DB (noch) nichts liefert, Demo-Katalog zeigen.
+    return products.length || !DEMO_FALLBACK ? products : FALLBACK_PRODUCTS;
   },
-  ["catalog-products-v2"],
+  ["catalog-products-v3"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "products"] }
 );
 
@@ -582,7 +589,7 @@ export const getProductsByIdsAsync = cache(
 
 export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
   const dbTree = await getCategoriesCached();
-  const tree = dbTree.length ? dbTree : FALLBACK_CATEGORIES;
+  const tree = dbTree.length || !DEMO_FALLBACK ? dbTree : FALLBACK_CATEGORIES;
   const all: Category = {
     id: ALL_CATEGORY.id,
     name: ALL_CATEGORY.name,
@@ -609,7 +616,7 @@ export const getCategoriesAsync = cache(async (): Promise<Category[]> => {
 /** Nur Hauptkategorien (Oberkategorien) auf der Startseite — keine Unterkategorien. */
 export const getHomepageCategoriesAsync = cache(async (): Promise<Category[]> => {
   const tree = await getCategoriesCached();
-  const source = tree.length ? tree : FALLBACK_CATEGORIES;
+  const source = tree.length || !DEMO_FALLBACK ? tree : FALLBACK_CATEGORIES;
   return source
     .filter((c) => !c.parentId && c.showOnHomepage !== false)
     .map((c) => ({ ...c, children: [] }));
