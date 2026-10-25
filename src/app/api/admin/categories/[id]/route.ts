@@ -122,15 +122,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  // Beim Archivieren: Produkte behalten, nur Zuordnung lösen → „ohne Kategorie“
-  let productsDetached = 0;
-  if (parsed.data.archived) {
-    const detached = await detachProductsFromCategory(auth.supabase, id);
-    if (detached.error) {
-      return NextResponse.json({ error: detached.error }, { status: 500 });
-    }
-    productsDetached = detached.detached;
-  }
+  // Beim Archivieren die Produkt-Zuordnung NICHT lösen: sonst bringt das
+  // Wiederherstellen die Produkte nicht in die Kategorie zurück. Gelöst wird
+  // erst beim endgültigen Löschen (DELETE unten).
+  const productsDetached = 0;
 
   const { data, error } = await auth.supabase
     .from("categories")
