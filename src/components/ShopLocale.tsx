@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
@@ -21,11 +20,17 @@ const Ctx = createContext<{
 
 export function ShopLocaleProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [lang, setLangState] = useState<ShopLang>("ar");
+  // Kundenseite nur Arabisch (Inhaber-Entscheidung 2026-10-26). Der Kontext bleibt,
+  // damit Komponenten unverändert `lang`/`t` nutzen; ein früher gespeichertes "de"
+  // wird ignoriert und entfernt.
+  const lang: ShopLang = "ar";
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "de" || stored === "ar") setLangState(stored);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* Speicher evtl. gesperrt */
+    }
   }, []);
 
   useEffect(() => {
@@ -34,9 +39,9 @@ export function ShopLocaleProvider({ children }: { children: ReactNode }) {
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   }, [lang, pathname]);
 
+  // Keine Sprachwahl mehr; bleibt als No-op für bestehende Aufrufer.
   const setLang = (next: ShopLang) => {
-    setLangState(next);
-    localStorage.setItem(STORAGE_KEY, next);
+    void next;
   };
 
   const value = useMemo(

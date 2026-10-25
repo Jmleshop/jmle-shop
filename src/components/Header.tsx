@@ -32,7 +32,7 @@ export default function Header({
   const layout = layoutProp ?? defaultLayoutDocument();
   const { total, itemCount, user } = useCart();
   const { count: wishCount } = useWishlist();
-  const { lang, setLang, t } = useShopLocale();
+  const { lang, t } = useShopLocale();
   const { registerCartIcon, cartBumping } = useCartFly();
   const cartRef = useRef<HTMLAnchorElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -162,28 +162,15 @@ export default function Header({
     </Link>
   );
 
-  const langButton = (
-    <button
-      type="button"
-      onClick={() => setLang(lang === "ar" ? "de" : "ar")}
-      className="px-1.5 min-h-10 text-xs font-ui font-semibold text-luxury-charcoal hover:text-brand-orange"
-      aria-label={t("langSwitch")}
-    >
-      {t("langSwitch")}
-    </button>
-  );
-
   const iconTrail =
     cartPos === "start" ? (
       <>
         {cartLink}
-        {langButton}
         {wishLink}
         {accountLink}
       </>
     ) : (
       <>
-        {langButton}
         {wishLink}
         {accountLink}
         {cartLink}
@@ -341,12 +328,6 @@ export default function Header({
                 ))}
             </nav>
 
-            <div className="pt-4 mt-auto border-t border-orange-100">
-              <div className="flex gap-2" dir="ltr">
-                <button type="button" onClick={() => setLang("ar")} className={cn("min-h-12 flex-1 rounded-xl text-sm font-ui font-semibold", lang === "ar" ? "bg-brand-orange text-white" : "text-luxury-charcoal")}>العربية</button>
-                <button type="button" onClick={() => setLang("de")} className={cn("min-h-12 flex-1 rounded-xl text-sm font-ui font-semibold", lang === "de" ? "bg-brand-orange text-white" : "text-luxury-charcoal")}>Deutsch</button>
-              </div>
-            </div>
           </aside>
         </div>
       )}
