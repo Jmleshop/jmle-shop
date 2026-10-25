@@ -12,13 +12,14 @@ const lineSchema = z.object({
 
 const bodySchema = z.object({
   channel: z.enum(["whatsapp", "callback", "delivery"]),
-  firstName: z.string().trim().min(1).optional(),
-  lastName: z.string().trim().min(1).optional(),
-  phone: z.string().trim().min(6),
-  email: z.string().trim().email().optional().or(z.literal("")),
-  street: z.string().trim().optional(),
-  postalCode: z.string().trim().optional(),
-  city: z.string().trim().optional(),
+  // Längen begrenzen: öffentliches Formular, Daten landen in Admin-Rechnungen.
+  firstName: z.string().trim().min(1).max(80).optional(),
+  lastName: z.string().trim().min(1).max(80).optional(),
+  phone: z.string().trim().min(6).max(30).regex(/^[+\d\s()\/-]+$/),
+  email: z.string().trim().max(120).email().optional().or(z.literal("")),
+  street: z.string().trim().max(160).optional(),
+  postalCode: z.string().trim().max(10).optional(),
+  city: z.string().trim().max(80).optional(),
   items: z.array(lineSchema).min(1).max(100),
 });
 
@@ -87,11 +88,13 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !row) {
-      return NextResponse.json({ error: error?.message || "Speichern fehlgeschlagen" }, { status: 500 });
+      // Interne DB-Meldungen nur ins Server-Log, nicht an Kunden.
+      console.error("[inquiries] insert failed:", error?.message);
+      return NextResponse.json({ error: "Speichern fehlgeschlagen" }, { status: 500 });
     }
     return NextResponse.json({ id: row.id });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Speichern fehlgeschlagen";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[inquiries] failed:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: "Speichern fehlgeschlagen" }, { status: 500 });
   }
 }
