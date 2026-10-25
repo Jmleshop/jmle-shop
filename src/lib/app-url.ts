@@ -5,6 +5,8 @@ export const PRODUCTION_APP_URL = "https://jmle-shop.vercel.app";
 export const PRODUCTION_HOST = "jmle-shop.vercel.app";
 
 export function isPreviewDeploymentHost(host: string): boolean {
+  // In Vercel-Preview-Deployments bleibt die Vorschau-URL nutzbar (Test vor dem Livegang).
+  if ((process.env.VERCEL_ENV ?? process.env.NEXT_PUBLIC_VERCEL_ENV) === "preview") return false;
   const h = host.toLowerCase().split(":")[0].trim();
   if (!h) return false;
   if (h === "localhost" || h === "127.0.0.1") return false;
