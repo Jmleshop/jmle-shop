@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { BusinessAddressInline } from "@/components/LegalBusiness";
+import { BUSINESS_INFO } from "@/lib/business-info";
+
+export const metadata: Metadata = { title: "Allgemeine Geschäftsbedingungen (الشروط والأحكام) | jmle" };
 
 export default function AgbPage() {
   return (
@@ -7,7 +12,7 @@ export default function AgbPage() {
         <h2 className="text-lg font-medium text-luxury-black">Geltung</h2>
         <p>
           Diese Bedingungen gelten für Bestellungen im Online-Shop jmle durch Verbraucher mit
-          Wohnsitz in der Europäischen Union. Vertragspartner ist jmle, Coswig (Anhalt).
+          Wohnsitz in der Europäischen Union. Vertragspartner ist {BUSINESS_INFO.legalName}, <BusinessAddressInline />.
         </p>
 
         <h2 className="text-lg font-medium text-luxury-black pt-4">Vertragsschluss</h2>
@@ -20,7 +25,7 @@ export default function AgbPage() {
         <h2 className="text-lg font-medium text-luxury-black pt-4">Preise und Zahlung</h2>
         <p>
           Preise verstehen sich in Euro inklusive der gesetzlichen Mehrwertsteuer zuzüglich der
-          im Checkout genannten Versandkosten. Die Zahlung erfolgt über die angebotenen
+          im Warenkorb genannten Versandkosten. Die Zahlung erfolgt über die angebotenen
           Zahlungsarten.
         </p>
 
@@ -33,7 +38,7 @@ export default function AgbPage() {
           geeignet ist, wenn die Versiegelung entfernt wurde).
         </p>
 
-        <p className="pt-6 text-xs text-gray-400">
+        <p className="pt-6 text-xs text-gray-600">
           Vorlage. Vor der Veröffentlichung rechtlich prüfen und an Sortiment und Versand anpassen.
         </p>
       </section>

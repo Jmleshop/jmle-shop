@@ -1,4 +1,9 @@
+import type { Metadata } from "next";
 import LegalLayout from "@/components/LegalLayout";
+import { BusinessAddressInline } from "@/components/LegalBusiness";
+import { BUSINESS_INFO } from "@/lib/business-info";
+
+export const metadata: Metadata = { title: "Widerrufsbelehrung (حق الإلغاء) | jmle" };
 
 export default function WiderrufPage() {
   return (
@@ -18,8 +23,9 @@ export default function WiderrufPage() {
           Ausübung des Widerrufsrechts
         </h2>
         <p>
-          Um Ihr Widerrufsrecht auszuüben, müssen Sie uns (jmle, Musterstraße 1,
-          06869 Coswig (Anhalt), E-Mail: info@jmle.de) mittels einer eindeutigen
+          Um Ihr Widerrufsrecht auszuüben, müssen Sie uns ({BUSINESS_INFO.legalName},{" "}
+          <BusinessAddressInline />, Telefon: {BUSINESS_INFO.telephoneDisplay}, E-Mail:{" "}
+          {BUSINESS_INFO.email}) mittels einer eindeutigen
           Erklärung (z. B. ein mit der Post versandter Brief oder E-Mail) über Ihren
           Entschluss, diesen Vertrag zu widerrufen, informieren.
         </p>
@@ -42,7 +48,7 @@ export default function WiderrufPage() {
         </h2>
         <div className="bg-gray-50 p-4 border border-gray-200">
           <p>
-            An jmle, Musterstraße 1, 06869 Coswig (Anhalt), E-Mail: info@jmle.de
+            An {BUSINESS_INFO.legalName}, <BusinessAddressInline />, E-Mail: {BUSINESS_INFO.email}
           </p>
           <p className="mt-2">
             Hiermit widerrufe(n) ich/wir (*) den von mir/uns (*) abgeschlossenen
@@ -54,10 +60,10 @@ export default function WiderrufPage() {
           <p>Anschrift des/der Verbraucher(s)</p>
           <p>Unterschrift des/der Verbraucher(s) (nur bei Mitteilung auf Papier)</p>
           <p>Datum</p>
-          <p className="text-xs text-gray-400 mt-2">(*) Unzutreffendes streichen.</p>
+          <p className="text-xs text-gray-600 mt-2">(*) Unzutreffendes streichen.</p>
         </div>
 
-        <p className="text-xs text-gray-400 pt-6">
+        <p className="text-xs text-gray-600 pt-6">
           Diese Widerrufsbelehrung ist eine Vorlage. Lassen Sie sie rechtlich prüfen.
         </p>
       </section>

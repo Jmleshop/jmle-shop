@@ -2,6 +2,7 @@
 
 import { Document, Font, Page, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
 
+import { BUSINESS_INFO, businessAddressLine } from "@/lib/business-info";
 import { formatEuroDe } from "@/lib/pricing";
 import { lineGross, summarizeLines, type InquiryLine } from "@/lib/inquiry";
 import { SHOP_PHONE_DISPLAY } from "@/lib/whatsapp-order";
@@ -60,8 +61,8 @@ export async function downloadQuotePdf(input: {
         <Text style={[styles.brand, bold]}>jmle</Text>
         <Text style={styles.muted}>
           {ar
-            ? `مأكولات عربية · كوزفيغ · ${SHOP_PHONE_DISPLAY} · info@jmle.de`
-            : `Arabische Feinkost · Coswig (Anhalt) · ${SHOP_PHONE_DISPLAY} · info@jmle.de`}
+            ? `مأكولات عربية · ${SHOP_PHONE_DISPLAY} · ${BUSINESS_INFO.email}`
+            : `Arabische Feinkost · ${SHOP_PHONE_DISPLAY} · ${BUSINESS_INFO.email}`}
         </Text>
         <Text style={[styles.title, bold]}>{title}</Text>
         <Text style={styles.muted}>
@@ -89,9 +90,7 @@ export async function downloadQuotePdf(input: {
         {input.notes ? <Text style={[styles.muted, { marginTop: 12 }]}>{ar ? "ملاحظة" : "Anmerkung"}: {input.notes}</Text> : null}
         <Text style={[styles.muted, { marginTop: 24 }]}>
           {input.kind === "invoice"
-            ? ar
-              ? "الرقم الضريبي DE123456789 · jmle، Musterstraße 1، 06869 Coswig"
-              : "USt-IdNr. DE123456789 · jmle, Musterstraße 1, 06869 Coswig (Anhalt)"
+            ? invoiceFooter(ar)
             : ar
               ? "هذا ليس فاتورة، بل ملخص طلب غير ملزم."
               : "Dies ist keine Rechnung, sondern eine unverbindliche Bestellübersicht."}
@@ -111,4 +110,11 @@ export async function downloadQuotePdf(input: {
         : "preisvorschlag-jmle.pdf";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** Fußzeile der Rechnung: nur echte Angaben, fehlende USt-IdNr./Anschrift bleiben weg. */
+function invoiceFooter(ar: boolean): string {
+  const parts = [BUSINESS_INFO.legalName, businessAddressLine()].filter(Boolean);
+  if (BUSINESS_INFO.vatId) parts.unshift(`${ar ? "الرقم الضريبي" : "USt-IdNr."} ${BUSINESS_INFO.vatId}`);
+  return parts.join(" · ");
 }

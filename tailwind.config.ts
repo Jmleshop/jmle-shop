@@ -42,13 +42,11 @@ const config: Config = {
       fontFamily: {
         arabic: [
           "var(--font-tajawal)",
-          "var(--font-cairo)",
-          "var(--font-noto-arabic)",
           "sans-serif",
         ],
         display: ["var(--font-amiri)", "serif"],
         ui: ["var(--font-tajawal)", "sans-serif"],
-        body: ["var(--font-noto-arabic)", "sans-serif"],
+        body: ["var(--font-tajawal)", "sans-serif"],
       },
       boxShadow: {
         gold: "0 8px 30px -8px rgba(255, 107, 0, 0.4)",

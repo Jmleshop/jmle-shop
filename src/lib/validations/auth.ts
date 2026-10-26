@@ -1,41 +1,43 @@
 import { z } from "zod";
 
+// Meldungen auf Arabisch: werden nur auf der (rein arabischen) Kundenseite angezeigt.
+
 const emailSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .email("Ungültige E-Mail-Adresse")
-  .max(254, "E-Mail zu lang");
+  .email("البريد الإلكتروني غير صالح")
+  .max(254, "البريد الإلكتروني طويل جداً");
 
 /** Mind. 8 Zeichen, Buchstabe + Ziffer (DE-E-Commerce / OWASP-Basis) */
 const passwordSchema = z
   .string()
-  .min(8, "Passwort mindestens 8 Zeichen")
-  .max(128, "Passwort zu lang")
-  .regex(/[A-Za-zÄÖÜäöüß]/, "Passwort braucht mindestens einen Buchstaben")
-  .regex(/[0-9]/, "Passwort braucht mindestens eine Ziffer");
+  .min(8, "كلمة المرور 8 أحرف على الأقل")
+  .max(128, "كلمة المرور طويلة جداً")
+  .regex(/[A-Za-zÄÖÜäöüß]/, "كلمة المرور تحتاج إلى حرف واحد على الأقل")
+  .regex(/[0-9]/, "كلمة المرور تحتاج إلى رقم واحد على الأقل");
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, "Passwort erforderlich").max(128),
+  password: z.string().min(1, "كلمة المرور مطلوبة").max(128),
 });
 
 export const registerSchema = z.object({
   firstName: z
     .string()
     .trim()
-    .min(1, "Vorname erforderlich")
-    .max(80, "Vorname zu lang"),
+    .min(1, "الاسم الأول مطلوب")
+    .max(80, "الاسم الأول طويل جداً"),
   lastName: z
     .string()
     .trim()
-    .min(1, "Nachname erforderlich")
-    .max(80, "Nachname zu lang"),
+    .min(1, "اسم العائلة مطلوب")
+    .max(80, "اسم العائلة طويل جداً"),
   street: z
     .string()
     .trim()
-    .min(1, "Straße erforderlich")
-    .max(200, "Straße zu lang"),
+    .min(1, "الشارع مطلوب")
+    .max(200, "اسم الشارع طويل جداً"),
   email: emailSchema,
   password: passwordSchema,
 });
@@ -46,7 +48,7 @@ export const otpVerifySchema = z.object({
   token: z
     .string()
     .trim()
-    .regex(/^[0-9A-Za-z]{6,8}$/, "OTP muss 6–8 Zeichen sein"),
+    .regex(/^[0-9A-Za-z]{6,8}$/, "الرمز يجب أن يكون من 6 إلى 8 خانات"),
 });
 
 export const otpResendSchema = z.object({

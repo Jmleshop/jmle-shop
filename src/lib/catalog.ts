@@ -1,6 +1,7 @@
 import type { SiteConfig } from "@/types";
 
-export function formatPrice(price: number, locale = "ar-DE"): string {
+/** Arabisch mit lateinischen Ziffern (Inhaber-Entscheidung 2026-10-26). */
+export function formatPrice(price: number, locale = "ar-DE-u-nu-latn"): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "EUR",

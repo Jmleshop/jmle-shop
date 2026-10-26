@@ -119,7 +119,7 @@ export default function CartPage() {
             <div className="flex-1 flex flex-col justify-between min-w-0">
               <div>
                 <h3 className="font-ui font-medium text-luxury-ink truncate">
-                  {item.product ? productTitle(lang, item.product) : "Produkt"}
+                  {item.product ? productTitle(lang, item.product) : t("productFallback")}
                 </h3>
                 <p className="text-gold font-ui text-sm mt-0.5">
                   {formatPrice(item.product?.price ?? 0)}
@@ -197,7 +197,7 @@ export default function CartPage() {
         totals={{ discount: discountAmount, shipping, grandTotal }}
         lines={items.map((item) => ({
           productId: item.product?.id || item.id,
-          name: item.product ? productTitle(lang, item.product) : "Produkt",
+          name: item.product ? productTitle(lang, item.product) : t("productFallback"),
           quantity: item.quantity,
           unitPrice: item.product?.price ?? 0,
           vatRate: item.product?.vatRate ?? 19,

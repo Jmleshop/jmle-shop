@@ -34,6 +34,25 @@ async function localities(query: { postalCode: string; name: string }) {
   return rows.filter((row) => row.postalCode && row.name);
 }
 
+/** Ortsvorschläge zu einer PLZ — serverseitig, damit die Kunden-IP nicht an OpenPLZ geht. */
+export async function placesForPostalCode(code: string): Promise<Locality[]> {
+  const postalCode = code.trim();
+  if (!/^\d{3,5}$/.test(postalCode)) return [];
+  try {
+    const seen = new Set<string>();
+    const places: Locality[] = [];
+    for (const row of await localities({ postalCode, name: "" })) {
+      const key = `${row.postalCode} ${row.name}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      places.push({ postalCode: row.postalCode, name: row.name });
+    }
+    return places.slice(0, 8);
+  } catch {
+    return [];
+  }
+}
+
 async function geocode(postalCode: string, name: string) {
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("format", "jsonv2");

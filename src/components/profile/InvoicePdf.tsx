@@ -20,6 +20,7 @@ import {
   lineTotal,
 } from "@/lib/orders";
 import { vatIncludedFromGross } from "@/lib/shipping";
+import { BUSINESS_INFO, businessAddressLine } from "@/lib/business-info";
 
 const styles = StyleSheet.create({
   page: {
@@ -114,8 +115,9 @@ function InvoiceDoc({
         <View style={styles.header}>
           <View>
             <Text style={styles.brand}>jmle</Text>
-            <Text style={styles.muted}>Arabische Feinkost · Coswig (Anhalt)</Text>
-            <Text style={styles.muted}>0174 9500391 · info@jmle.de</Text>
+            <Text style={styles.muted}>{["Arabische Feinkost", businessAddressLine()].filter(Boolean).join(" · ")}</Text>
+            <Text style={styles.muted}>{BUSINESS_INFO.telephoneDisplay} · {BUSINESS_INFO.email}</Text>
+            {BUSINESS_INFO.vatId ? <Text style={styles.muted}>USt-IdNr. {BUSINESS_INFO.vatId}</Text> : null}
           </View>
           <View>
             <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 12 }}>
@@ -218,7 +220,7 @@ function DeliveryNoteDoc({
         <View style={styles.header}>
           <View>
             <Text style={styles.brand}>jmle</Text>
-            <Text style={styles.muted}>Lieferschein · Coswig (Anhalt)</Text>
+            <Text style={styles.muted}>{["Lieferschein", businessAddressLine()].filter(Boolean).join(" · ")}</Text>
           </View>
           <View>
             <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 12 }}>

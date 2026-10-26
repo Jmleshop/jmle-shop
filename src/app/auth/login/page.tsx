@@ -8,13 +8,13 @@ import { loginSchema } from "@/lib/validations/auth";
 
 function gateErrorMessage(code: string | null) {
   if (code === "no_profile") {
-    return "Anmeldung erforderlich — Profil fehlt. Bitte Support kontaktieren.";
+    return "الحساب بدون ملف شخصي — يرجى التواصل معنا. (Profil fehlt — bitte Support kontaktieren.)";
   }
   if (code === "not_staff" || code === "unauthorized") {
-    return "Kein Zugriff auf den Admin-Bereich mit diesem Konto.";
+    return "هذا الحساب لا يملك صلاحية لوحة الإدارة. (Kein Zugriff auf den Admin-Bereich.)";
   }
   if (code === "forbidden") {
-    return "Zugriff verweigert.";
+    return "تم رفض الوصول. (Zugriff verweigert.)";
   }
   return null;
 }
@@ -37,7 +37,7 @@ function LoginForm() {
 
     const parsed = loginSchema.safeParse({ email, password });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Ungültige Eingabe");
+      setError(parsed.error.issues[0]?.message ?? "المدخلات غير صالحة");
       setLoading(false);
       return;
     }
@@ -72,7 +72,7 @@ function LoginForm() {
       </p>
 
       {(fromGate || error) && (
-        <p className="text-red-500 text-sm text-center mb-4">{error || fromGate}</p>
+        <p className="text-red-700 text-sm text-center mb-4">{error || fromGate}</p>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>

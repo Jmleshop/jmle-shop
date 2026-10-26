@@ -7,6 +7,20 @@ import { getClientAppOrigin } from "@/lib/app-url";
 import { createClient } from "@/lib/supabase/client";
 import { registerSchema } from "@/lib/validations/auth";
 
+/** Supabase-Fehler (englisch) in verständliches Arabisch übersetzen. */
+function signUpErrorMessage(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("already registered") || m.includes("already exists")) {
+    return "هذا البريد الإلكتروني مسجّل مسبقاً. يمكنك تسجيل الدخول.";
+  }
+  if (m.includes("password")) return "كلمة المرور غير مقبولة. اختر كلمة مرور أقوى.";
+  if (m.includes("rate limit") || m.includes("too many")) {
+    return "محاولات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مجدداً.";
+  }
+  if (m.includes("email")) return "البريد الإلكتروني غير صالح.";
+  return "تعذّر إنشاء الحساب. يرجى المحاولة مرة أخرى.";
+}
+
 export default function RegisterPage() {
   const [form, setForm] = useState({
     firstName: "",
@@ -31,7 +45,7 @@ export default function RegisterPage() {
 
     const parsed = registerSchema.safeParse(form);
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Ungültige Eingabe");
+      setError(parsed.error.issues[0]?.message ?? "المدخلات غير صالحة");
       setLoading(false);
       return;
     }
@@ -52,7 +66,7 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(signUpErrorMessage(signUpError.message));
       setLoading(false);
       return;
     }
@@ -164,7 +178,7 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <p className="text-red-500 text-sm text-center">{error}</p>
+            <p className="text-red-700 text-sm text-center">{error}</p>
           )}
 
           <button

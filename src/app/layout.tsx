@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Amiri, Cairo, Noto_Sans_Arabic, Tajawal } from "next/font/google";
+import { Amiri, Tajawal } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
 import FooterNav from "@/components/FooterNav";
 import SiteFooterShell from "@/components/SiteFooterShell";
@@ -22,24 +22,12 @@ import {
 import { localBusinessJsonLd } from "@/lib/seo-jsonld";
 import "./globals.css";
 
-const notoArabic = Noto_Sans_Arabic({
-  subsets: ["arabic"],
-  variable: "--font-noto-arabic",
-  weight: ["300", "400", "500", "600"],
-  display: "swap",
-});
-
+// Designsystem (Inhaber-Entscheidung 2026-10-26): Tajawal für Text/UI,
+// Amiri nur für große Überschriften.
 const amiri = Amiri({
   subsets: ["arabic", "latin"],
   variable: "--font-amiri",
   weight: ["400", "700"],
-  display: "swap",
-});
-
-const cairo = Cairo({
-  subsets: ["arabic", "latin"],
-  variable: "--font-cairo",
-  weight: ["400", "600", "700"],
   display: "swap",
 });
 
@@ -55,12 +43,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(getAppUrl()),
     title: {
-      default: "jmle — Arabische Lebensmittel & Feinkost",
+      default: "jmle — مواد غذائية عربية في ألمانيا",
       template: "%s",
     },
     description:
-      "jmle Onlineshop für arabische Lebensmittel: Gewürze, Reis, Öle, Falafel & mehr — frisch, authentisch, schnell geliefert in Deutschland.",
+      "متجر jmle للمواد الغذائية العربية في ألمانيا: بهارات، أرز، زيوت، فلافل والمزيد — أصيلة وتوصيل سريع.",
     keywords: [
+      "مواد غذائية عربية",
+      "سوبرماركت عربي ألمانيا",
       "arabische Lebensmittel",
       "Falafel",
       "Gewürze",
@@ -80,15 +70,15 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       locale: "ar_DE",
       siteName: "jmle",
-      title: "jmle — Arabische Lebensmittel & Feinkost",
+      title: "jmle — مواد غذائية عربية في ألمانيا",
       description:
-        "Authentische arabische Lebensmittel online bestellen — Gewürze, Reis, Öle und mehr.",
+        "اطلب المواد الغذائية العربية الأصيلة أونلاين — بهارات، أرز، زيوت والمزيد.",
     },
     twitter: {
       card: "summary_large_image",
-      title: "jmle — Arabische Lebensmittel",
+      title: "jmle — مواد غذائية عربية",
       description:
-        "Authentische arabische Lebensmittel online bestellen bei jmle.",
+        "اطلب المواد الغذائية العربية الأصيلة أونلاين من jmle.",
     },
     robots: {
       index: true,
@@ -107,7 +97,7 @@ export default async function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body
-        className={`${notoArabic.variable} ${amiri.variable} ${tajawal.variable} ${cairo.variable} font-arabic antialiased bg-jmle-cream text-luxury-black min-h-screen flex flex-col`}
+        className={`${amiri.variable} ${tajawal.variable} font-arabic antialiased bg-jmle-cream text-luxury-black min-h-screen flex flex-col`}
       >
         <JsonLd data={localBusinessJsonLd(site)} />
         <ConfettiBackground />

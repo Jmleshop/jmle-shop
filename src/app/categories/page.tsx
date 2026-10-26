@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { getCategoriesAsync } from "@/lib/catalog-server";
@@ -5,6 +6,8 @@ import { ShopHeading, CategoryHeading } from "@/components/ShopText";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 export const revalidate = 300;
+
+export const metadata: Metadata = { title: "جميع الأقسام | jmle" };
 
 export default async function CategoriesPage() {
   const categories = await getCategoriesAsync();
@@ -16,7 +19,7 @@ export default async function CategoriesPage() {
         className="text-2xl md:text-3xl font-light mb-6 md:mb-8 tracking-wide text-center"
       />
       {categories.length === 0 ? (
-        <ShopHeading k="noCategories" as="p" className="text-center text-gray-400 py-12" />
+        <ShopHeading k="noCategories" as="p" className="text-center text-gray-600 py-12" />
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
           {categories.map((category) => (

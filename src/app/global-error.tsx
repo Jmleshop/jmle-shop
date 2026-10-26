@@ -18,7 +18,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="de">
+    <html lang="ar" dir="rtl">
       <body
         style={{
           margin: 0,
@@ -46,10 +46,10 @@ export default function GlobalError({
           }}
         >
           <h1 style={{ fontSize: "1.5rem", margin: "0 0 0.75rem", fontWeight: 600 }}>
-            Etwas ist schiefgelaufen
+            حدث خطأ ما
           </h1>
-          <p style={{ fontSize: "0.875rem", color: "#6b7280", margin: "0 0 1.5rem", lineHeight: 1.5 }}>
-            Bitte versuche es erneut oder kehre zur Startseite zurück.
+          <p style={{ fontSize: "0.875rem", color: "#4b5563", margin: "0 0 1.5rem", lineHeight: 1.5 }}>
+            يرجى المحاولة مرة أخرى أو العودة إلى الصفحة الرئيسية.
           </p>
           {error.digest ? (
             <p
@@ -84,7 +84,7 @@ export default function GlobalError({
                 padding: "0.75rem 1rem",
               }}
             >
-              Erneut versuchen
+              حاول مرة أخرى
             </button>
             <button
               type="button"
@@ -102,7 +102,7 @@ export default function GlobalError({
                 padding: "0.75rem 1rem",
               }}
             >
-              Zur Startseite
+              الصفحة الرئيسية
             </button>
           </div>
         </div>

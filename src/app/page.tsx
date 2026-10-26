@@ -27,12 +27,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const description =
     site.description ||
-    `${site.name}: arabische Lebensmittel, Falafel, Gewürze & Feinkost online bestellen — authentisch und schnell geliefert.`;
+    `${site.name}: اطلب المواد الغذائية العربية أونلاين — بهارات، فلافل، أرز وزيوت، أصيلة وتوصيل سريع في ألمانيا.`;
 
   return {
-    title: `${site.name} — Arabische Lebensmittel & Feinkost`,
+    title: `${site.name} — مواد غذائية عربية في ألمانيا`,
     description,
     keywords: [
+      "مواد غذائية عربية",
       "arabische Lebensmittel",
       "Falafel",
       "Gewürze",
@@ -45,7 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: "ar_DE",
       url: appUrl,
       siteName: site.name,
-      title: `${site.name} — Arabische Lebensmittel & Feinkost`,
+      title: `${site.name} — مواد غذائية عربية في ألمانيا`,
       description,
       ...(ogImage
         ? { images: [{ url: ogImage, width: 1200, height: 630, alt: site.name }] }
@@ -53,7 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: `${site.name} — Arabische Lebensmittel`,
+      title: `${site.name} — مواد غذائية عربية`,
       description,
       ...(ogImage ? { images: [ogImage] } : {}),
     },

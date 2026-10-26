@@ -42,8 +42,8 @@ export async function generateMetadata({
   const bilingual = category.nameEn
     ? `${category.name} / ${category.nameEn}`
     : category.name;
-  const title = `${bilingual} — arabische Lebensmittel | ${site.name}`;
-  const description = `${bilingual} online kaufen bei ${site.name}: arabische Lebensmittel, Gewürze & Feinkost — frisch, günstig, schnell geliefert.`;
+  const title = `${bilingual} — مواد غذائية عربية | ${site.name}`;
+  const description = `تسوّق ${bilingual} أونلاين من ${site.name}: مواد غذائية عربية وبهارات — أسعار مناسبة وتوصيل سريع.`;
 
   return {
     title,

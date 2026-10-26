@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useShopLocale } from "@/components/ShopLocale";
 import BrandMark from "@/components/BrandMark";
+import { BUSINESS_INFO } from "@/lib/business-info";
 
 export default function SiteFooter({
   logoUrl: _logoUrl = "",
@@ -71,22 +72,22 @@ export default function SiteFooter({
             <ul className="space-y-2.5 text-white/70 font-body">
               <li>
                 <Link href="/legal/impressum" className="hover:text-white transition-colors">
-                  بيانات الناشر
+                  {t("imprintLabel")}
                 </Link>
               </li>
               <li>
                 <Link href="/legal/datenschutz" className="hover:text-white transition-colors">
-                  الخصوصية
+                  {t("privacyLabel")}
                 </Link>
               </li>
               <li>
                 <Link href="/legal/widerruf" className="hover:text-white transition-colors">
-                  حق الإلغاء
+                  {t("withdrawalLabel")}
                 </Link>
               </li>
               <li>
                 <Link href="/legal/agb" className="hover:text-white transition-colors">
-                  الشروط والأحكام
+                  {t("termsLabel")}
                 </Link>
               </li>
             </ul>
@@ -94,14 +95,24 @@ export default function SiteFooter({
           <div>
             <h4 className="font-ui text-jmle-yellow mb-3 font-medium">{t("footerContact")}</h4>
             <ul className="space-y-2.5 text-white/70 font-body">
-              <li dir="ltr">0174 9500391</li>
-              <li dir="ltr">info@jmle.de</li>
-              <li>Coswig (Anhalt), Deutschland</li>
+              <li>
+                <a href={`tel:${BUSINESS_INFO.telephone}`} dir="ltr" className="hover:text-white transition-colors">
+                  {BUSINESS_INFO.telephoneDisplay}
+                </a>
+              </li>
+              <li>
+                <a href={`mailto:${BUSINESS_INFO.email}`} dir="ltr" className="hover:text-white transition-colors">
+                  {BUSINESS_INFO.email}
+                </a>
+              </li>
+              <li>
+                {[BUSINESS_INFO.addressLocality, t("countryGermany")].filter(Boolean).join("، ")}
+              </li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-white/10 pt-6 text-center text-xs text-white/45 font-ui">
+        <div className="border-t border-white/10 pt-6 text-center text-xs text-white/70 font-ui">
           <p>&copy; {new Date().getFullYear()} {siteName}. {t("rights")}</p>
         </div>
       </div>

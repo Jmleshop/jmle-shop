@@ -23,7 +23,7 @@ function VerifyForm() {
 
     const parsed = otpVerifySchema.safeParse({ email, token });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Ungültige Eingabe");
+      setError(parsed.error.issues[0]?.message ?? "المدخلات غير صالحة");
       setLoading(false);
       return;
     }
@@ -48,7 +48,7 @@ function VerifyForm() {
     setResent(false);
     const parsed = otpResendSchema.safeParse({ email });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "E-Mail fehlt");
+      setError(parsed.error.issues[0]?.message ?? "البريد الإلكتروني مفقود");
       return;
     }
     const { error: resendError } = await supabase.auth.resend({
@@ -92,7 +92,7 @@ function VerifyForm() {
         </div>
 
         {error && (
-          <p className="text-red-500 text-sm text-center">{error}</p>
+          <p className="text-red-700 text-sm text-center">{error}</p>
         )}
 
         {resent && (

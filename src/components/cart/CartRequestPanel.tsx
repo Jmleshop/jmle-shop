@@ -45,9 +45,9 @@ async function saveInquiry(
       body: JSON.stringify(body),
     });
     const payload = await response.json().catch(() => ({}));
-    // Server-Meldungen sind deutsch — im arabischen Shop die übersetzte Standardmeldung zeigen
+    // Server-Meldungen sind arabisch (Kundenseite nur Arabisch)
     if (!response.ok || !payload.id) {
-      return { reference: null, error: lang === "de" && payload.error ? String(payload.error) : fallback };
+      return { reference: null, error: payload.error ? String(payload.error) : fallback };
     }
     return { reference: String(payload.id).slice(0, 8) };
   } catch {
@@ -90,18 +90,12 @@ export default function CartRequestPanel({
       return;
     }
     const timer = window.setTimeout(() => {
-      void fetch(`https://openplzapi.org/de/Localities?postalCode=${encodeURIComponent(code)}`)
+      void fetch(`/api/postcodes?code=${encodeURIComponent(code)}`)
         .then((r) => (r.ok ? r.json() : []))
         .then((rows: Array<{ postalCode?: string; name?: string }>) => {
-          const seen = new Set<string>();
-          const next: Place[] = [];
-          for (const row of rows ?? []) {
-            const label = `${row.postalCode ?? ""} ${row.name ?? ""}`.trim();
-            if (!label || seen.has(label)) continue;
-            seen.add(label);
-            next.push({ postalCode: row.postalCode ?? code, name: row.name ?? "" });
-          }
-          setPlaces(next.slice(0, 8));
+          setPlaces(
+            (rows ?? []).map((row) => ({ postalCode: row.postalCode ?? code, name: row.name ?? "" }))
+          );
         })
         .catch(() => setPlaces([]));
     }, 250);
@@ -131,7 +125,7 @@ export default function CartRequestPanel({
       if (channel === "callback") {
         // Rückruf geht nur über die gespeicherte Anfrage — ohne Speichern kein Erfolg melden.
         if (!saved.reference) {
-          setError(saved.error || "Anfrage fehlgeschlagen.");
+          setError(saved.error || t("inquiryFailed"));
           return;
         }
         setResult({ kind: "saved", reference: saved.reference });

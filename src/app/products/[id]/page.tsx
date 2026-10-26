@@ -48,7 +48,7 @@ export async function generateMetadata({
   const price = product.price;
   const description =
     product.description?.slice(0, 155) ||
-    `${bilingual} kaufen — arabische Lebensmittel & Feinkost bei ${site.name}. Preis ab ${price.toFixed(2)} €.`;
+    `اشترِ ${bilingual} من ${site.name} — مواد غذائية عربية في ألمانيا. السعر ${price.toFixed(2)} €.`;
   const image = absoluteCdnImageUrl(
     product.images[0] || product.image,
     800

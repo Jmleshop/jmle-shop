@@ -24,32 +24,33 @@ const bodySchema = z.object({
   items: z.array(lineSchema).min(1).max(100),
 });
 
+// Fehlermeldungen auf Arabisch: Sie erscheinen direkt im Warenkorb der Kunden.
 export async function POST(request: Request) {
   let json: unknown;
   try {
     json = await request.json();
   } catch {
-    return NextResponse.json({ error: "Ungültige Anfrage" }, { status: 400 });
+    return NextResponse.json({ error: "طلب غير صالح." }, { status: 400 });
   }
 
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Bitte die Pflichtfelder prüfen." }, { status: 400 });
+    return NextResponse.json({ error: "يرجى التحقق من الحقول المطلوبة." }, { status: 400 });
   }
 
   const data = parsed.data;
   if ((data.channel === "callback" || data.channel === "delivery") && (!data.firstName || !data.lastName)) {
-    return NextResponse.json({ error: "Vor- und Nachname sind Pflicht." }, { status: 400 });
+    return NextResponse.json({ error: "الاسم الأول واسم العائلة مطلوبان." }, { status: 400 });
   }
   if (data.channel === "delivery" && (!data.street || !data.postalCode || !data.city)) {
-    return NextResponse.json({ error: "Bitte eine gültige Lieferadresse angeben." }, { status: 400 });
+    return NextResponse.json({ error: "يرجى إدخال عنوان توصيل صحيح." }, { status: 400 });
   }
   if (data.channel === "delivery") {
     // Liefergebiet serverseitig erneut prüfen — nicht nur dem Browser vertrauen
     const area = await checkDeliveryArea(`${data.postalCode} ${data.city}`);
     if (area.status !== "ok") {
       return NextResponse.json(
-        { error: "Diese Adresse liegt außerhalb unseres Liefergebiets." },
+        { error: "هذا العنوان خارج منطقة التوصيل لدينا." },
         { status: 400 }
       );
     }
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     const product = productMap.get(item.productId);
     if (!product) {
       return NextResponse.json(
-        { error: "Ein Produkt im Warenkorb ist nicht mehr verfügbar. Bitte Warenkorb prüfen." },
+        { error: "أحد المنتجات في السلة لم يعد متوفراً. يرجى مراجعة السلة." },
         { status: 400 }
       );
     }
@@ -101,11 +102,11 @@ export async function POST(request: Request) {
     if (error || !row) {
       // Interne DB-Meldungen nur ins Server-Log, nicht an Kunden.
       console.error("[inquiries] insert failed:", error?.message);
-      return NextResponse.json({ error: "Speichern fehlgeschlagen" }, { status: 500 });
+      return NextResponse.json({ error: "تعذّر حفظ الطلب. يرجى المحاولة مرة أخرى." }, { status: 500 });
     }
     return NextResponse.json({ id: row.id });
   } catch (error) {
     console.error("[inquiries] failed:", error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: "Speichern fehlgeschlagen" }, { status: 500 });
+    return NextResponse.json({ error: "تعذّر حفظ الطلب. يرجى المحاولة مرة أخرى." }, { status: 500 });
   }
 }

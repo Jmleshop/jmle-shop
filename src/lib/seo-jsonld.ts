@@ -1,4 +1,4 @@
-import { BUSINESS_INFO } from "@/lib/business-info";
+import { BUSINESS_INFO, hasBusinessAddress } from "@/lib/business-info";
 import { getAppUrl } from "@/lib/site-defaults";
 import { absoluteCdnImageUrl } from "@/lib/sharp-image";
 import type { Category, Product, SiteConfig } from "@/types";
@@ -15,20 +15,13 @@ export function localBusinessJsonLd(site: SiteConfig): JsonLd {
     name: site.name || BUSINESS_INFO.legalName,
     description:
       site.description ||
-      "Arabische Lebensmittel, Gewürze und Feinkost — jmle Onlineshop",
+      "مواد غذائية عربية وبهارات — متجر jmle أونلاين",
     url: appUrl,
     email: BUSINESS_INFO.email,
     telephone: BUSINESS_INFO.telephone,
     priceRange: BUSINESS_INFO.priceRange,
     currenciesAccepted: site.currency || "EUR",
-    paymentAccepted: "Credit Card, Debit Card, Stripe",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: BUSINESS_INFO.streetAddress,
-      postalCode: BUSINESS_INFO.postalCode,
-      addressLocality: BUSINESS_INFO.addressLocality,
-      addressCountry: BUSINESS_INFO.addressCountry,
-    },
+    paymentAccepted: "Cash, Bank Transfer",
     openingHours: [...BUSINESS_INFO.openingHours],
     areaServed: {
       "@type": "Country",
@@ -36,6 +29,15 @@ export function localBusinessJsonLd(site: SiteConfig): JsonLd {
     },
     knowsLanguage: ["ar", "de"],
   };
+  if (hasBusinessAddress()) {
+    data.address = {
+      "@type": "PostalAddress",
+      streetAddress: BUSINESS_INFO.streetAddress,
+      postalCode: BUSINESS_INFO.postalCode,
+      addressLocality: BUSINESS_INFO.addressLocality,
+      addressCountry: BUSINESS_INFO.addressCountry,
+    };
+  }
   if (logo) {
     data.logo = logo;
     data.image = logo;
