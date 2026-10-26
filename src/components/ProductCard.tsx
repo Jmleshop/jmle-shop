@@ -16,7 +16,6 @@ import { vercelOptimizedImageSrc } from "@/lib/sharp-image";
 import { maxBuyQuantity } from "@/lib/pricing";
 import { PRODUCT_BADGES, normalizeBadges } from "@/lib/product-badges";
 import {
-  Button,
   DiscountBadge,
   OriginBadge,
   SealBadge,
@@ -39,9 +38,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { addItem } = useCart();
-  const { flyToCart } = useCartFly();
-  const { lang, t } = useShopLocale();
+  const { lang } = useShopLocale();
   const title = useAutoTranslate(
     lang,
     lang === "de" ? product.nameDe : product.name,
@@ -50,35 +47,10 @@ export default function ProductCard({ product }: ProductCardProps) {
   const imgRef = useRef<HTMLDivElement>(null);
   const out = product.stock <= 0;
   const seals = detectSeals(product);
-  const max = maxBuyQuantity(product.stock, product.maxOrderQuantity);
-  const [qty, setQty] = useState(1);
-  const [added, setAdded] = useState(false);
 
   const activeBadges = normalizeBadges(product.badges);
   const highlights = PRODUCT_BADGES.filter((b) => activeBadges.includes(b.key));
   const customNote = (product.customNote ?? "").trim();
-
-  const changeQty = (delta: number) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setQty((q) => Math.max(1, Math.min(max || 1, q + delta)));
-  };
-
-  const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (out) return;
-    const rect = imgRef.current?.getBoundingClientRect();
-    if (rect) {
-      flyToCart({
-        image: vercelOptimizedImageSrc(product.image, 96),
-        fromRect: rect,
-      });
-    }
-    await addItem(product.id, Math.max(1, Math.min(max || 1, qty)));
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1800);
-  };
 
   return (
     <article
@@ -89,43 +61,56 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="absolute top-1 end-1 z-30 sm:top-2 sm:end-2">
         <WishlistButton productId={product.id} size="sm" />
       </div>
-      <Link href={`/products/${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/40">
-        <div ref={imgRef} className="product-image-frame">
-          <SafeShopImage
-            src={product.image}
-            alt=""
-            fill
-            className="product-image-media"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 320px"
-          />
-          <div className="absolute inset-x-0 top-0 p-1 sm:p-2 flex gap-1 justify-between items-start pointer-events-none">
-            <div className="flex flex-wrap gap-1">
-              <StockBadge stock={product.stock} />
-              <DiscountBadge percent={product.discountPercent} />
+      <div className="relative">
+        <Link
+          href={`/products/${product.id}`}
+          tabIndex={-1}
+          aria-hidden
+          className="block"
+        >
+          <div ref={imgRef} className="product-image-frame">
+            <SafeShopImage
+              src={product.image}
+              alt=""
+              fill
+              className="product-image-media"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 320px"
+            />
+            <div className="absolute inset-x-0 top-0 p-1 sm:p-2 flex gap-1 justify-between items-start pointer-events-none">
+              <div className="flex flex-wrap gap-1">
+                <StockBadge stock={product.stock} />
+                <DiscountBadge percent={product.discountPercent} />
+              </div>
+              <div className="hidden sm:flex flex-col items-end gap-1.5 pe-12">
+                {highlights.map((b) => (
+                  <span
+                    key={b.key}
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold font-ui shadow-gold-sm border border-white/70 ${b.className}`}
+                  >
+                    {lang === "de" ? b.labelDe : b.labelAr}
+                  </span>
+                ))}
+                {customNote && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold font-ui shadow-gold-sm border border-white/70 bg-jmle-mahogany text-white max-w-[9rem] truncate">
+                    {customNote}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="hidden sm:flex flex-col items-end gap-1.5 pe-12">
-              {highlights.map((b) => (
-                <span
-                  key={b.key}
-                  className={`px-2 py-0.5 rounded-full text-xs font-bold font-ui shadow-gold-sm border border-white/70 ${b.className}`}
-                >
-                  {lang === "de" ? b.labelDe : b.labelAr}
-                </span>
+            <div className="absolute inset-x-0 bottom-0 hidden p-2 flex-wrap gap-1.5 justify-start sm:flex">
+              <OriginBadge country={product.originCountry} />
+              {seals.map((s) => (
+                <SealBadge key={s} type={s} />
               ))}
-              {customNote && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold font-ui shadow-gold-sm border border-white/70 bg-jmle-mahogany text-white max-w-[9rem] truncate">
-                  {customNote}
-                </span>
-              )}
             </div>
           </div>
-          <div className="absolute inset-x-0 bottom-0 hidden p-2 flex-wrap gap-1.5 justify-start sm:flex">
-            <OriginBadge country={product.originCountry} />
-            {seals.map((s) => (
-              <SealBadge key={s} type={s} />
-            ))}
-          </div>
-        </div>
+        </Link>
+        {!out && <QuickAdd product={product} title={title} imgRef={imgRef} />}
+      </div>
+      <Link
+        href={`/products/${product.id}`}
+        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-orange/40"
+      >
         <div className="bg-white/95 p-1.5 sm:p-3 text-center">
           <h3 className="font-ui text-xs sm:text-sm font-medium text-luxury-ink mb-0.5 line-clamp-2 min-h-[2.2em] sm:min-h-[2.5rem] leading-snug">
             {title}
@@ -139,59 +124,117 @@ export default function ProductCard({ product }: ProductCardProps) {
           <ProductPrice product={product} />
         </div>
       </Link>
-      <div className="bg-white/95 px-1.5 pb-1.5 sm:px-3 sm:pb-3">
-        {out ? (
-          <p className="w-full py-1.5 sm:py-2.5 text-center text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg sm:rounded-xl min-h-9 sm:min-h-11 flex items-center justify-center">
-            {t("outOfStock")}
-          </p>
-        ) : (
-          <div className="flex items-stretch gap-1 sm:gap-2">
-            <div className="flex items-center rounded-lg sm:rounded-xl border border-amber-200/80 bg-white shrink-0">
-              <button
-                type="button"
-                onClick={changeQty(-1)}
-                disabled={qty <= 1}
-                aria-label={t("qtyDecrease")}
-                className="w-8 min-h-11 flex items-center justify-center text-luxury-charcoal hover:text-gold disabled:opacity-40"
-              >
-                <Minus size={14} aria-hidden />
-              </button>
-              <span
-                aria-live="polite"
-                className="w-6 text-center text-sm font-ui font-semibold tabular-nums"
-              >
-                {qty}
-              </span>
-              <button
-                type="button"
-                onClick={changeQty(1)}
-                disabled={qty >= (max || 1)}
-                aria-label={t("qtyIncrease")}
-                className="w-8 min-h-11 flex items-center justify-center text-luxury-charcoal hover:text-gold disabled:opacity-40"
-              >
-                <Plus size={14} aria-hidden />
-              </button>
-            </div>
-            <Button
-              fullWidth
-              size="sm"
-              className={`min-h-11 px-2 sm:px-3 ${
-                added ? "bg-emerald-600 hover:bg-emerald-600 text-white" : ""
-              }`}
-              leadingIcon={
-                added ? <Check size={16} aria-hidden /> : <ShoppingBag size={16} aria-hidden />
-              }
-              onClick={handleAddToCart}
-              aria-label={`${t("addToCart")} ${title}`}
-            >
-              <span className="text-xs sm:text-sm">
-                {added ? t("added") : t("addToCart")}
-              </span>
-            </Button>
-          </div>
-        )}
-      </div>
     </article>
+  );
+}
+
+/**
+ * Kompakter Warenkorb-Button auf dem Produktbild. Erst ein Klick öffnet
+ * die Mengenauswahl; bei Höchstmenge 1 wird direkt hinzugefügt.
+ */
+function QuickAdd({
+  product,
+  title,
+  imgRef,
+}: {
+  product: Product;
+  title: string;
+  imgRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const { addItem } = useCart();
+  const { flyToCart } = useCartFly();
+  const { t } = useShopLocale();
+  const max = Math.max(1, maxBuyQuantity(product.stock, product.maxOrderQuantity));
+  const [open, setOpen] = useState(false);
+  const [qty, setQty] = useState(1);
+  const [added, setAdded] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!panelRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const add = async (amount: number) => {
+    const rect = imgRef.current?.getBoundingClientRect();
+    if (rect) {
+      flyToCart({ image: vercelOptimizedImageSrc(product.image, 96), fromRect: rect });
+    }
+    await addItem(product.id, Math.max(1, Math.min(max, amount)));
+    setOpen(false);
+    setQty(1);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1800);
+  };
+
+  const stepBtn =
+    "flex h-10 w-10 items-center justify-center rounded-full text-luxury-charcoal hover:bg-jmle-warm hover:text-brand-orange disabled:opacity-40";
+
+  if (open) {
+    return (
+      <div
+        ref={panelRef}
+        role="group"
+        aria-label={`${t("qtyLabel")} — ${title}`}
+        className="absolute inset-x-1.5 bottom-1.5 z-20 flex items-center gap-1 rounded-full bg-white/95 p-1 shadow-boutique ring-1 ring-orange-100 backdrop-blur animate-fade-up sm:inset-x-2 sm:bottom-2"
+      >
+        <button
+          type="button"
+          onClick={() => setQty((q) => Math.max(1, q - 1))}
+          disabled={qty <= 1}
+          aria-label={t("qtyDecrease")}
+          className={stepBtn}
+        >
+          <Minus size={16} aria-hidden />
+        </button>
+        <span aria-live="polite" className="min-w-6 flex-1 text-center text-base font-ui font-semibold tabular-nums">
+          {qty}
+        </span>
+        <button
+          type="button"
+          onClick={() => setQty((q) => Math.min(max, q + 1))}
+          disabled={qty >= max}
+          aria-label={t("qtyIncrease")}
+          className={stepBtn}
+        >
+          <Plus size={16} aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={() => void add(qty)}
+          aria-label={`${t("addToCart")} ${title}`}
+          autoFocus
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-orange text-white shadow-gold-sm hover:bg-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50 focus-visible:ring-offset-1"
+        >
+          <Check size={18} aria-hidden />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => (max <= 1 ? void add(1) : setOpen(true))}
+      aria-label={added ? t("added") : `${t("addToCart")} ${title}`}
+      aria-haspopup={max > 1 ? "dialog" : undefined}
+      className={`absolute bottom-1.5 end-1.5 z-20 flex h-11 w-11 items-center justify-center rounded-full text-white shadow-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50 focus-visible:ring-offset-2 sm:bottom-2 sm:end-2 ${
+        added ? "bg-emerald-600" : "bg-brand-orange hover:bg-brand-red"
+      }`}
+    >
+      {added ? <Check size={20} aria-hidden /> : <ShoppingBag size={20} aria-hidden />}
+    </button>
   );
 }
 

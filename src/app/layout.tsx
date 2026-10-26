@@ -11,6 +11,7 @@ import JsonLd from "@/components/JsonLd";
 import { CartProvider } from "@/context/CartContext";
 import { CartFlyProvider } from "@/context/CartFlyContext";
 import { ShopLocaleProvider } from "@/components/ShopLocale";
+import { sanitizeShopTexts } from "@/lib/shop-i18n";
 import { WishlistProvider } from "@/context/WishlistContext";
 import AppToaster from "@/components/AppToaster";
 import { getAppUrl } from "@/lib/app-url";
@@ -103,7 +104,7 @@ export default async function RootLayout({
         <ConfettiBackground />
         <CartProvider>
           <WishlistProvider>
-            <ShopLocaleProvider>
+            <ShopLocaleProvider overrides={sanitizeShopTexts(site.shopTexts)}>
             <CartFlyProvider>
             <AppToaster />
             <SiteHeader />

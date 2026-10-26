@@ -223,7 +223,7 @@ export default function Header({
             </nav>
           </div>
 
-          <div className="flex-1 min-w-0 max-w-xl mx-auto">
+          <div className="flex-1 min-w-0 max-w-2xl mx-auto">
             <HeaderSearch open onClose={() => {}} persistent inline />
           </div>
 

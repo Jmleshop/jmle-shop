@@ -202,14 +202,13 @@ export default function HeaderSearch({
         <div className="relative">
           <span
             className={cn(
-              "pointer-events-none absolute inset-y-0 start-2.5 flex items-center text-gold/80",
-              inline ? "start-2.5" : "start-3"
+              "pointer-events-none absolute inset-y-0 start-3 flex items-center text-brand-orange"
             )}
           >
             {loading ? (
-              <Loader2 size={inline ? 16 : 18} className="animate-spin" aria-hidden />
+              <Loader2 size={18} className="animate-spin" aria-hidden />
             ) : (
-              <Search size={inline ? 16 : 18} aria-hidden />
+              <Search size={18} aria-hidden />
             )}
           </span>
           <input
@@ -230,12 +229,19 @@ export default function HeaderSearch({
               activeIndex >= 0 ? `${listId}-opt-${activeIndex}` : undefined
             }
             className={cn(
-              "w-full bg-white border border-amber-200/60 focus:outline-none focus:border-gold focus:ring-2 focus:ring-gold/20",
+              // text-base (16px): iOS zoomt sonst beim Antippen ins Feld hinein
+              "w-full bg-white border-2 border-brand-orange/40 text-base text-luxury-ink placeholder:text-gray-500 shadow-sm focus:outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 [&::-webkit-search-cancel-button]:hidden",
               inline
-                ? "min-h-9 sm:min-h-10 ps-9 pe-3 py-1.5 text-sm rounded-full shadow-sm"
-                : "min-h-12 ps-10 pe-4 py-2.5 text-sm rounded-full"
+                ? "min-h-11 lg:min-h-12 ps-10 pe-[4.5rem] py-2 rounded-full"
+                : "min-h-12 ps-10 pe-[4.5rem] py-2.5 rounded-full"
             )}
           />
+          <button
+            type="submit"
+            className="absolute inset-y-1 end-1 inline-flex items-center rounded-full bg-brand-orange px-3.5 text-sm font-ui font-semibold text-white hover:bg-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
+          >
+            {t("searchBtn")}
+          </button>
         </div>
 
         {showPanel && (

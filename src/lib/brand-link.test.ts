@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   filterProductsForBrand,
+  hasBrandLogo,
   productMatchesBrand,
   resolveProductBrandId,
 } from "@/lib/brand-link";
@@ -57,5 +58,14 @@ describe("brand-link", () => {
       shamsin.map((p) => p.id),
       ["a"]
     );
+  });
+});
+
+describe("hasBrandLogo", () => {
+  it("treats empty values and the placeholder as missing", () => {
+    assert.equal(hasBrandLogo(""), false);
+    assert.equal(hasBrandLogo(null), false);
+    assert.equal(hasBrandLogo("/placeholder.svg"), false);
+    assert.equal(hasBrandLogo("https://x.supabase.co/storage/v1/object/public/product-images/brands/a.webp"), true);
   });
 });

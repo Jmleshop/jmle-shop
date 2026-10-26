@@ -126,3 +126,15 @@ Local `.env.local` state [verified by shape, values not read]: Supabase URL + pu
 - Shared admin states: `src/components/admin/AdminState.tsx` (`AdminPageHeader`, `AdminLoading`, `AdminError` with retry, `AdminEmpty`, `AdminNotice`).
 - `/api/admin/inquiries` PATCH sanitizes invoice lines (`sanitizeInquiryLines`: qty 1–9999, price ≥ 0, VAT 0/7/19).
 - Not done: WhatsApp Business Cloud API notifications (needs Meta business account, phone number id, access token, approved template), automatic PDF on order (manual invoice PDF exists in the editor), media/performance work.
+
+## 14. Shop feedback round (2026-10-26, branch `feat/shop-feedback-2026-10-26`, not yet deployed)
+- **Banner sharpness:** uploads to `banners/` were capped at 1280 px (`MAX_EDGE_BANNER`) and next/image delivered at most 1080 px (`deviceSizes`). Now 2560 px / up to 1.5 MB on upload; `deviceSizes` up to 2560, banner quality 85 (`BANNER_IMAGE_QUALITY`, `qualities: [75, 85]`). The two live banners are 910×350 and 1280×397 originals — they must be **re-uploaded** in higher resolution to look sharp.
+- **Carousels:** `ScrollCarousel` has a continuous mode (`speed` px/s, `reverse`): the list is repeated as `aria-hidden`/`inert` copies and wraps invisibly by one period; swipe/arrows still work (pause 3 s after touch, pause on hover, off with reduced motion). Brands 28 px/s, product rows 26/22 px/s (second row reversed).
+- **Shop texts editable:** `/admin/texts` edits Arabic overrides for every `shop-i18n` key, stored in `site_settings` key `site` → `shopTexts` (sanitized by `sanitizeShopTexts`, known keys only, ≤ 500 chars). `ShopLocaleProvider` receives them from the root layout; `t()` uses override → default. Server-side `shopText()` calls without overrides still show defaults.
+- Homepage section titles without Arabic letters (old "Marken") fall back to the Arabic default for brands/categories sections.
+- **Device preview button:** only for role `admin` (also in dev); customers never saw it (it was shown because the owner was logged in).
+- `/shop`: removed the orange header that showed the shop name ("Jmle"); the page heading is "جميع المنتجات" / search results.
+- **Product cards:** quantity stepper + button replaced by a round cart button on the image (`QuickAdd` in `ProductCard.tsx`); click opens − qty + ✓; max quantity 1 adds directly.
+- Product page price: `ProductPrice size="lg"` (4xl/5xl, brand orange).
+- **Search:** 16 px font (iOS zoomed into the 14 px field on tap), thicker border, visible "بحث" submit button; desktop field wider.
+- **Brands admin:** `/admin/brands` (sidebar "Katalog & Lager") — logo grid with names, edit/hide/delete. 8 brands in production have `image = /placeholder.svg` (no logo): hidden in the shop ticker (`hasBrandLogo`), flagged in admin.

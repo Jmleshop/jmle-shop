@@ -7,6 +7,7 @@ import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import { useShopLocale } from "@/components/ShopLocale";
 import { cn } from "@/lib/cn";
 import ScrollCarousel from "@/components/ScrollCarousel";
+import { hasBrandLogo } from "@/lib/brand-link";
 
 interface BrandLogoTickerProps {
   logos: BrandLogo[];
@@ -62,7 +63,9 @@ export default function BrandLogoTicker({
   title,
 }: BrandLogoTickerProps) {
   const { t } = useShopLocale();
-  if (!logos.length) return null;
+  // Marken ohne Logo-Bild würden nur als Platzhalter-Punkt erscheinen
+  const withImage = logos.filter((logo) => hasBrandLogo(logo.image));
+  if (!withImage.length) return null;
 
   const heading = (title ?? "").trim();
 
@@ -78,10 +81,10 @@ export default function BrandLogoTicker({
       ) : null}
       <ScrollCarousel
         label={heading || t("brandPartners")}
-        autoplayMs={3500}
+        speed={28}
         trackClassName="items-center [gap:var(--layout-brands-gap,0.25rem)] px-2 md:px-12"
       >
-        {logos.map((logo) => (
+        {withImage.map((logo) => (
           <LogoItem key={logo.id} logo={logo} />
         ))}
       </ScrollCarousel>

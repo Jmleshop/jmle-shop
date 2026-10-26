@@ -3,7 +3,8 @@
  * Kleinere Kanten + WebP q78 → deutlich weniger Storage (Vercel/Supabase).
  */
 export const MAX_EDGE_PRODUCT = 800;
-export const MAX_EDGE_BANNER = 1280;
+/** Banner laufen auf Desktop/Retina über die volle Breite → 2560 px statt 1280. */
+export const MAX_EDGE_BANNER = 2560;
 /** Logos: höhere Kante für scharfe Header-Darstellung, Datei bleibt klein. */
 export const MAX_EDGE_LOGO = 1600;
 /** WebP-Qualität: kompakt, aber gestochen scharf (kein Verpixeln). */
@@ -13,6 +14,8 @@ export const STORAGE_WEBP_QUALITY_PCT = 86;
 export const LOGO_WEBP_QUALITY = 0.92;
 /** Ziel-Obergrenze Upload-Datei (MB) nach Kompression. */
 export const STORAGE_MAX_MB = 0.55;
+/** Banner: größere Fläche, daher mehr Spielraum vor dem Nachkomprimieren. */
+export const BANNER_MAX_MB = 1.5;
 
 export function isLogoFolder(folder: string): boolean {
   return /^(brand|brands|logo|logos)$/.test(folder.trim().toLowerCase());

@@ -63,7 +63,8 @@ export function EmptyCategoryNotice() {
 function sectionHeading(
   section: HomepageSection,
   lang: "ar" | "de",
-  titleOverrides?: LayoutDocument["sectionTitles"]
+  titleOverrides: LayoutDocument["sectionTitles"] | undefined,
+  t: (key: "brandPartners" | "shopByCategory") => string
 ): string {
   const override = titleOverrides?.[section.id];
   if (override) {
@@ -73,7 +74,13 @@ function sectionHeading(
   if (lang === "de") {
     return (section.titleDe || section.title || "").trim();
   }
-  return (section.titleAr || section.title || "").trim();
+  const ar = (section.titleAr || section.title || "").trim();
+  // Kundenseite ist nur Arabisch: alte deutsche Titel (z. B. „Marken“) ersetzen
+  if (ar && !/[\u0600-\u06FF]/.test(ar)) {
+    if (section.type === "brands") return t("brandPartners");
+    if (section.type === "categories") return t("shopByCategory");
+  }
+  return ar;
 }
 
 function isBuilderFrame(): boolean {
@@ -122,7 +129,7 @@ export function HomepageSectionsRenderer({
   bestsellers: Product[];
   allProducts: Product[];
 }) {
-  const { lang } = useShopLocale();
+  const { lang, t } = useShopLocale();
   const [overrideSections, setOverrideSections] = useState<HomepageSection[] | null>(
     null
   );
@@ -180,7 +187,7 @@ export function HomepageSectionsRenderer({
   return (
     <div className="home-sections-stack w-full">
       {activeSections.map((section) => {
-        const title = sectionHeading(section, lang, titleOverrides ?? undefined);
+        const title = sectionHeading(section, lang, titleOverrides ?? undefined, t);
         if (section.type === "slider" || section.type === "single") {
           const zone = section.zone || section.id;
           const slides = orderSlides(

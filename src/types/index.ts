@@ -44,6 +44,8 @@ export interface SiteConfig {
   homepageSections?: HomepageSection[];
   description?: string;
   ogImage?: string;
+  /** Admin-Overrides für arabische Shop-Texte (Schlüssel aus shop-i18n) */
+  shopTexts?: Record<string, string>;
 }
 
 export interface Slide {

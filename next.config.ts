@@ -45,8 +45,9 @@ const nextConfig: NextConfig = {
   images: {
     // Delivery: AVIF/WebP at shop quality; cap srcset widths to limit Supabase egress
     formats: ["image/avif", "image/webp"],
-    qualities: [75],
-    deviceSizes: [640, 750, 828, 1080],
+    // 85 nur für Banner; große Breiten nur für Banner (Produktbilder bleiben ≤ 384/640)
+    qualities: [75, 85],
+    deviceSizes: [640, 750, 828, 1080, 1440, 1920, 2560],
     imageSizes: [64, 96, 128, 256, 384],
     // Keep optimized derivatives on the CDN for a year (browser + Vercel)
     minimumCacheTTL: 60 * 60 * 24 * 365,

@@ -3,6 +3,8 @@ import {
   LOGO_WEBP_QUALITY,
   MAX_EDGE_PRODUCT,
   STORAGE_MAX_MB,
+  BANNER_MAX_MB,
+  MAX_EDGE_BANNER,
   STORAGE_WEBP_QUALITY,
   maxEdgeForFolder,
 } from "@/lib/image-bounds";
@@ -61,7 +63,12 @@ export async function compressImageFile(
   try {
     const imageCompression = (await import("browser-image-compression")).default;
     const compressed = await imageCompression(file, {
-      maxSizeMB: quality >= LOGO_WEBP_QUALITY ? 0.9 : STORAGE_MAX_MB,
+      maxSizeMB:
+        quality >= LOGO_WEBP_QUALITY
+          ? 0.9
+          : maxEdge >= MAX_EDGE_BANNER
+            ? BANNER_MAX_MB
+            : STORAGE_MAX_MB,
       maxWidthOrHeight: maxEdge,
       useWebWorker: true,
       fileType: "image/webp",

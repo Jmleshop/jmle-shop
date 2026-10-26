@@ -7,8 +7,8 @@ import Link from "next/link";
 import type { Slide } from "@/types";
 import { cn } from "@/lib/cn";
 import {
+  BANNER_IMAGE_QUALITY,
   originalImageSrc,
-  SHOP_IMAGE_QUALITY,
   vercelOptimizedImageSrc,
 } from "@/lib/sharp-image";
 import { useShopLocale } from "@/components/ShopLocale";
@@ -77,10 +77,10 @@ function BannerSlideContent({
         src={originalImageSrc(slide.image) || "/placeholder.svg"}
         alt={title || slideTitle(lang, slide) || "Banner"}
         fill
-        quality={SHOP_IMAGE_QUALITY}
+        quality={BANNER_IMAGE_QUALITY}
         priority={priority}
         className="layout-banner-media"
-        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 100vw, 1280px"
+        sizes="(max-width: 1280px) 100vw, 1280px"
         draggable={false}
         onLoad={onImageLoad ? (e) => onImageLoad(e.currentTarget) : undefined}
       />

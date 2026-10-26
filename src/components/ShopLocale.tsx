@@ -8,7 +8,12 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { shopText, type ShopLang, type ShopMsgKey } from "@/lib/shop-i18n";
+import {
+  shopText,
+  type ShopLang,
+  type ShopMsgKey,
+  type ShopTextOverrides,
+} from "@/lib/shop-i18n";
 
 const STORAGE_KEY = "jmle-shop-lang";
 
@@ -18,7 +23,14 @@ const Ctx = createContext<{
   t: (key: ShopMsgKey, vars?: Record<string, string | number>) => string;
 } | null>(null);
 
-export function ShopLocaleProvider({ children }: { children: ReactNode }) {
+export function ShopLocaleProvider({
+  children,
+  overrides,
+}: {
+  children: ReactNode;
+  /** Im Admin unter „Shop-Texte“ geänderte arabische Texte */
+  overrides?: ShopTextOverrides;
+}) {
   const pathname = usePathname();
   // Kundenseite nur Arabisch (Inhaber-Entscheidung 2026-10-26). Der Kontext bleibt,
   // damit Komponenten unverändert `lang`/`t` nutzen; ein früher gespeichertes "de"
@@ -49,9 +61,9 @@ export function ShopLocaleProvider({ children }: { children: ReactNode }) {
       lang,
       setLang,
       t: (key: ShopMsgKey, vars?: Record<string, string | number>) =>
-        shopText(lang, key, vars),
+        shopText(lang, key, vars, overrides),
     }),
-    [lang]
+    [lang, overrides]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

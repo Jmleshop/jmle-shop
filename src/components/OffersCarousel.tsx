@@ -94,8 +94,9 @@ export default function OffersCarousel({
 
       <ScrollCarousel
         label={heading || t("homeFeatured")}
-        // Zweite Reihe leicht versetzt, damit beide Reihen nicht synchron springen
-        autoplayMs={reverse ? 5200 : 4400}
+        // Ruhiger Dauerlauf; die zweite Reihe läuft in Gegenrichtung
+        speed={reverse ? 22 : 26}
+        reverse={reverse}
         trackClassName="px-2 md:px-12"
       >
         {visible.map((p) => (

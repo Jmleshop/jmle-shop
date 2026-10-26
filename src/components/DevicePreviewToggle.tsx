@@ -25,16 +25,22 @@ function DevicePreviewInner() {
       return;
     }
 
-    // Der Handy-Ansicht-Button bleibt dauerhaft sichtbar und kann nicht mehr
-    // versehentlich ausgeblendet werden.
-    if (process.env.NODE_ENV === "development") {
-      setVisible(true);
-      return;
-    }
-
-    fetch("/api/admin/me")
-      .then((r) => setVisible(r.ok))
-      .catch(() => setVisible(false));
+    // Nur für angemeldete Administratoren (Rolle "admin") — Kunden und
+    // Mitarbeiter sehen den Handy-Ansicht-Button nie, auch nicht lokal.
+    let cancelled = false;
+    fetch("/api/admin/me", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) return false;
+        const data = (await r.json().catch(() => null)) as { role?: string } | null;
+        return data?.role === "admin";
+      })
+      .catch(() => false)
+      .then((ok) => {
+        if (!cancelled) setVisible(ok);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, isNestedPreview]);
 
   const buildPreviewUrl = () => {
@@ -112,7 +118,7 @@ function DevicePreviewInner() {
             </div>
           </div>
           <p className="mt-3 text-xs text-white/70 font-ui">
-            Viewport ~375px · nur Vorschau (Dev / Admin)
+            Viewport ~375px · nur für Administratoren sichtbar
           </p>
         </div>
       )}

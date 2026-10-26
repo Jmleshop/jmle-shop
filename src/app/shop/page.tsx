@@ -68,16 +68,6 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           products: result.products,
         })}
       />
-      <div className="bg-gradient-to-r from-gold to-jmle-orange-dark text-white py-8 px-4 text-center">
-        <h1 className="font-display text-2xl md:text-3xl tracking-wide">
-          {site.name}
-        </h1>
-        <p className="mt-2 text-sm text-white/90 font-ui">
-          {filters.q
-            ? `${result.total} · «${filters.q}»`
-            : `${result.total}`}
-        </p>
-      </div>
       <CatalogShop
         products={result.products}
         total={result.total}

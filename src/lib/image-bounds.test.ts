@@ -27,7 +27,7 @@ describe("image-bounds", () => {
     assert.equal(maxEdgeForFolder("products"), MAX_EDGE_PRODUCT);
     assert.equal(maxEdgeForFolder("banners"), MAX_EDGE_BANNER);
     assert.ok(MAX_EDGE_PRODUCT <= 800);
-    assert.ok(MAX_EDGE_BANNER <= 1280);
+    assert.ok(MAX_EDGE_BANNER <= 2560);
     assert.ok(MAX_EDGE_LOGO >= 1200);
   });
 });
