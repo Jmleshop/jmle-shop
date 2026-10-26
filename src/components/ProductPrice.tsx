@@ -14,11 +14,15 @@ export function ProductPrice({
   product,
   align = "center",
   showUnitPrice = true,
+  size = "sm",
 }: {
   product: Product;
   align?: "center" | "start";
   showUnitPrice?: boolean;
+  /** "lg" = große Preisanzeige auf der Produktseite */
+  size?: "sm" | "lg";
 }) {
+  const large = size === "lg";
   const { t } = useShopLocale();
   const discounted = product.discountPercent > 0;
   const alignCls =
@@ -42,22 +46,39 @@ export function ProductPrice({
           align === "center" && "justify-center"
         )}
       >
+        {large ? (
+          <span
+            className={cn(
+              "font-ui font-extrabold tabular-nums leading-none tracking-tight text-4xl md:text-5xl",
+              discounted ? "text-red-700" : "text-brand-orange"
+            )}
+          >
+            {formatEuroDe(product.price)}
+          </span>
+        ) : null}
         {discounted && product.originalPrice != null && (
-          <span className="text-gray-400 text-xs line-through font-ui">
+          <span
+            className={cn(
+              "text-gray-400 line-through font-ui",
+              large ? "text-lg" : "text-xs"
+            )}
+          >
             {formatEuroDe(product.originalPrice)}
           </span>
         )}
         <DiscountBadge percent={product.discountPercent} />
-        <span
-          className={cn(
-            "font-ui font-semibold",
-            discounted ? "text-red-700 text-base" : "text-gold text-sm"
-          )}
-        >
-          {formatEuroDe(product.price)}
-        </span>
+        {large ? null : (
+          <span
+            className={cn(
+              "font-ui font-semibold",
+              discounted ? "text-red-700 text-base" : "text-gold text-sm"
+            )}
+          >
+            {formatEuroDe(product.price)}
+          </span>
+        )}
       </div>
-      <span className="text-xs text-gray-400 font-ui">
+      <span className={cn("text-gray-400 font-ui", large ? "text-sm mt-1" : "text-xs")}>
         {t("vatIncluded", { rate: product.vatRate })}
       </span>
       {unitLabel && (

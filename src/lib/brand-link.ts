@@ -245,3 +245,9 @@ export async function syncProductBrandLinks(
     matches,
   };
 }
+
+/** Echtes Logo hinterlegt? (leere Werte und der Platzhalter zählen nicht) */
+export function hasBrandLogo(image: string | null | undefined): boolean {
+  const value = (image ?? "").trim();
+  return Boolean(value) && !/\/placeholder\.svg$/i.test(value);
+}

@@ -443,12 +443,42 @@ const messages = {
 
 export type ShopMsgKey = keyof (typeof messages)["de"];
 
+/** Vom Admin überschriebene Kundentexte (nur Arabisch, site_settings → site.shopTexts). */
+export type ShopTextOverrides = Partial<Record<ShopMsgKey, string>>;
+
+export const SHOP_TEXT_MAX_LENGTH = 500;
+
+/** Alle Text-Schlüssel mit arabischem Standard und deutscher Übersetzung (Admin-Editor). */
+export function shopTextCatalog(): { key: ShopMsgKey; ar: string; de: string }[] {
+  return (Object.keys(messages.de) as ShopMsgKey[]).map((key) => ({
+    key,
+    ar: messages.ar[key],
+    de: messages.de[key],
+  }));
+}
+
+/** Nur bekannte Schlüssel, nur nicht-leere Strings, Länge begrenzt. */
+export function sanitizeShopTexts(input: unknown): ShopTextOverrides {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const out: ShopTextOverrides = {};
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (!(key in messages.ar) || typeof value !== "string") continue;
+    const text = value.trim().slice(0, SHOP_TEXT_MAX_LENGTH);
+    if (text && text !== messages.ar[key as ShopMsgKey]) {
+      out[key as ShopMsgKey] = text;
+    }
+  }
+  return out;
+}
+
 export function shopText(
   lang: ShopLang,
   key: ShopMsgKey,
-  vars?: Record<string, string | number>
+  vars?: Record<string, string | number>,
+  overrides?: ShopTextOverrides
 ): string {
-  let text: string = messages[lang][key];
+  let text: string =
+    (lang === "ar" ? overrides?.[key]?.trim() : "") || messages[lang][key];
   if (vars) {
     for (const [name, value] of Object.entries(vars)) {
       text = text.replaceAll(`{${name}}`, String(value));

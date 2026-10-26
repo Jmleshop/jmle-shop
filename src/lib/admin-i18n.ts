@@ -27,6 +27,12 @@ export const adminMessages = {
     sliders: "Slider & Banner",
     pageBuilder: "Page-Builder",
     siteSettings: "Site-Einstellungen",
+    shopTexts: "Shop-Texte",
+    shopTextsHint:
+      "Alle arabischen Texte des Shops (Buttons, Überschriften, Hinweise). Leeres Feld = Standardtext. Platzhalter wie {count} bitte stehen lassen.",
+    brandsAdmin: "Marken",
+    brandsAdminHint:
+      "Logo und Name jeder Marke. Ein Klick auf das Logo öffnet die Bearbeitung.",
     siteLogo: "Marken-Logo",
     siteLogoHint:
       "Upload, Drag & Drop oder Strg+V. Erscheint im Header als Link zur Startseite.",
@@ -156,6 +162,12 @@ export const adminMessages = {
     sliders: "السلايدر واللافتات",
     pageBuilder: "منشئ الصفحات",
     siteSettings: "إعدادات الموقع",
+    shopTexts: "نصوص المتجر",
+    shopTextsHint:
+      "جميع النصوص العربية في المتجر (الأزرار، العناوين، التنبيهات). الحقل الفارغ = النص الافتراضي. اترك العناصر مثل {count} كما هي.",
+    brandsAdmin: "العلامات التجارية",
+    brandsAdminHint:
+      "شعار واسم كل علامة. اضغط على الشعار لفتح التعديل.",
     siteLogo: "شعار العلامة",
     siteLogoHint:
       "رفع صورة، سحب وإفلات، أو Ctrl+V. يظهر الشعار في الترويسة كرابط للصفحة الرئيسية.",

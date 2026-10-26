@@ -2,6 +2,8 @@ import { getAppUrl } from "@/lib/app-url";
 
 /** Next.js Image quality for shop delivery (sharp WebP/AVIF). */
 export const SHOP_IMAGE_QUALITY = 75;
+/** Banner: großflächig, Kompressionsartefakte fallen stärker auf. */
+export const BANNER_IMAGE_QUALITY = 85;
 
 /** Long-lived cache for optimized image responses (Vercel CDN + browsers). */
 export const SHOP_IMAGE_CACHE_CONTROL =

@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import { DEFAULT_SITE_CONFIG } from "@/lib/site-defaults";
 import { normalizeHomepageSections } from "@/lib/homepage-sections";
+import { sanitizeShopTexts } from "@/lib/shop-i18n";
 import { readSiteLogo, writeSiteLogo } from "@/lib/site-logo";
 import {
   friendlySiteSettingsError,
@@ -101,6 +102,10 @@ export async function PUT(request: Request) {
     ...prev,
     ...restBody,
     logo: logoUrl || "",
+    // Shop-Texte: nur bekannte Schlüssel; fehlt das Feld, bleibt der alte Stand
+    shopTexts: sanitizeShopTexts(
+      "shopTexts" in body ? body.shopTexts : prev.shopTexts
+    ),
     zoneLabels: {
       ...(DEFAULT_SITE_CONFIG.zoneLabels ?? {}),
       ...((prev.zoneLabels as Record<string, string> | undefined) ?? {}),
