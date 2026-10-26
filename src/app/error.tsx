@@ -33,7 +33,7 @@ export default function AppError({
           {t("errorHint")}
         </p>
         {error.digest ? (
-          <p className="mb-6 font-mono text-[11px] text-gray-400">
+          <p className="mb-6 font-mono text-xs text-gray-400">
             Ref: {error.digest}
           </p>
         ) : null}

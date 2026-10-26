@@ -111,7 +111,7 @@ function DevicePreviewInner() {
               />
             </div>
           </div>
-          <p className="mt-3 text-[11px] text-white/70 font-ui">
+          <p className="mt-3 text-xs text-white/70 font-ui">
             Viewport ~375px · nur Vorschau (Dev / Admin)
           </p>
         </div>

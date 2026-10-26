@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import {
-  isAuthError,
-  requireStaff,
-  staffDataClient,
-} from "@/lib/admin-server";
+import { isAuthError, requireStaff, staffDataClient, requireAdmin } from "@/lib/admin-server";
 import {
   PRODUCT_SELECT,
   PRODUCT_SELECT_BASE,
@@ -149,8 +145,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 /**
  * Endgültiges Löschen — nur wenn bereits im Papierkorb (deleted_at gesetzt).
  */
+// Endgültig löschen nur für Admins (Inhaber-Entscheidung 2026-10-26); Mitarbeiter archivieren/deaktivieren.
 export async function DELETE(_request: Request, { params }: RouteParams) {
-  const auth = await requireStaff();
+  const auth = await requireAdmin();
   if (isAuthError(auth)) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

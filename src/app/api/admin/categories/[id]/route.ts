@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { isAuthError, requireStaff } from "@/lib/admin-server";
+import { isAuthError, requireStaff, requireAdmin } from "@/lib/admin-server";
 import {
   categoryUpdateSchema,
   productArchiveSchema,
@@ -147,8 +147,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  * Produkte werden NIEMALS mitgelöscht: category_id → NULL (FK ON DELETE SET NULL).
  * Blockiert nur bei vorhandenen Unterkategorien.
  */
+// Endgültig löschen nur für Admins (Inhaber-Entscheidung 2026-10-26); Mitarbeiter archivieren/deaktivieren.
 export async function DELETE(_request: Request, { params }: RouteParams) {
-  const auth = await requireStaff();
+  const auth = await requireAdmin();
   if (isAuthError(auth)) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { isAuthError, requireStaff } from "@/lib/admin-server";
+import { isAuthError, requireStaff, requireAdmin } from "@/lib/admin-server";
 import type { SliderZone } from "@/types";
 
 function bust() {
@@ -188,8 +188,9 @@ export async function PATCH(request: Request) {
   return NextResponse.json({ success: true });
 }
 
+// Endgültig löschen nur für Admins (Inhaber-Entscheidung 2026-10-26); Mitarbeiter archivieren/deaktivieren.
 export async function DELETE(request: Request) {
-  const auth = await requireStaff();
+  const auth = await requireAdmin();
   if (isAuthError(auth)) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }

@@ -276,7 +276,7 @@ export default function CatalogFilters({
           <p className="text-sm text-gray-600" aria-live="polite">
             {t("shopResults", { count: resultCount })}
             {hasActive ? (
-              <span className="ms-2 inline-flex items-center rounded-full bg-gold/15 px-2 py-0.5 text-[11px] text-gold">
+              <span className="ms-2 inline-flex items-center rounded-full bg-gold/15 px-2 py-0.5 text-xs text-gold">
                 {t("shopActiveFilters")}
               </span>
             ) : null}

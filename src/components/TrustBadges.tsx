@@ -26,7 +26,7 @@ export default function TrustBadges({ className = "" }: { className?: string }) 
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-jmle-warm text-gold">
             <Icon size={16} strokeWidth={1.75} aria-hidden />
           </span>
-          <span className="text-[11px] leading-snug font-ui text-luxury-charcoal">
+          <span className="text-xs leading-snug font-ui text-luxury-charcoal">
             {t(key)}
           </span>
         </li>

@@ -57,12 +57,12 @@ export function ProductPrice({
           {formatEuroDe(product.price)}
         </span>
       </div>
-      <span className="text-[10px] text-gray-400 font-ui">
+      <span className="text-xs text-gray-400 font-ui">
         {t("vatIncluded", { rate: product.vatRate })}
       </span>
       {unitLabel && (
         <span
-          className="text-[10px] sm:text-[11px] text-gray-500 font-ui tabular-nums"
+          className="text-xs sm:text-xs text-gray-500 font-ui tabular-nums"
           aria-label="Grundpreis"
         >
           {unitLabel}
@@ -89,7 +89,7 @@ export function BasePriceHint({
   if (!label) return null;
   return (
     <span
-      className={cn("text-[10px] text-gray-500 font-ui tabular-nums", className)}
+      className={cn("text-xs text-gray-500 font-ui tabular-nums", className)}
       aria-label="Grundpreis"
     >
       {label}

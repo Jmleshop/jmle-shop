@@ -58,7 +58,7 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
           sizes="96px"
         />
       </div>
-      <span className="font-ui text-[11px] sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.4em] w-full">
+      <span className="font-ui text-xs sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.4em] w-full">
         {label}
       </span>
     </Link>

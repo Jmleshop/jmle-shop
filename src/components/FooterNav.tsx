@@ -70,14 +70,14 @@ export default function FooterNav() {
                 />
                 {badge != null && badge > 0 && (
                   <span
-                    className="absolute -top-1.5 -start-2.5 text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-gold-sm border border-white/80 bg-gold text-white"
+                    className="absolute -top-1.5 -start-2.5 text-xs font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-gold-sm border border-white/80 bg-gold text-white"
                     aria-hidden
                   >
                     {badge > 99 ? "99+" : badge}
                   </span>
                 )}
               </span>
-              <span className="text-[10px] font-ui font-medium">{label}</span>
+              <span className="text-xs font-ui font-medium">{label}</span>
             </Link>
           );
         })}

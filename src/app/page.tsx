@@ -81,15 +81,20 @@ export default async function HomePage() {
     ? (await getProductsAsync()).slice(0, 48)
     : [];
 
+  const site = await getSiteConfigAsync();
+
   return (
-    <HomepageSectionsRenderer
-      sections={sections}
-      slidesByZone={slidesByZone}
-      brands={brands}
-      categories={categories}
-      offers={offers}
-      bestsellers={bestsellers}
-      allProducts={allProducts}
-    />
+    <>
+      <h1 className="sr-only">{site.name} — مواد غذائية عربية في ألمانيا</h1>
+      <HomepageSectionsRenderer
+        sections={sections}
+        slidesByZone={slidesByZone}
+        brands={brands}
+        categories={categories}
+        offers={offers}
+        bestsellers={bestsellers}
+        allProducts={allProducts}
+      />
+    </>
   );
 }

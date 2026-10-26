@@ -70,7 +70,7 @@ export default function OrderCostBreakdown({
         {row(t("total"), formatEuroDe(total), { strong: true })}
       </div>
       {showVatNote && (
-        <p className="text-[11px] text-gray-400 font-ui pt-1">
+        <p className="text-xs text-gray-400 font-ui pt-1">
           {t("vatNote", {
             food: formatEuroDe(vat7),
             shipping: shipping > 0 ? t("vatShipping", { amount: formatEuroDe(vat19) }) : "",

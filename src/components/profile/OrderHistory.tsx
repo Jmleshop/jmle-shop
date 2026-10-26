@@ -177,7 +177,7 @@ export default function OrderHistory({
                     </p>
                     {profile?.street && <p>{profile.street}</p>}
                     <p dir="ltr">{order.customer_email || profile?.email}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       Adresse aus Kundenkonto (Stripe-Lieferadresse ggf. in
                       Stripe-Dashboard)
                     </p>

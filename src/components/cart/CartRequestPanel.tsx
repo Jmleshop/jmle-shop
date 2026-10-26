@@ -446,8 +446,8 @@ export default function CartRequestPanel({
 
       {result && createPortal(
         <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-boutique" role="dialog" aria-modal="true">
-            <p className="font-ui text-lg font-semibold">
+          <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-boutique" role="dialog" aria-modal="true" aria-labelledby="request-result-title">
+            <p id="request-result-title" className="font-ui text-lg font-semibold">
               {result.kind === "saved" ? t("requestThanksTitle") : t("whatsappOpenedTitle")}
             </p>
             <p className="mt-2 text-sm text-luxury-charcoal/80">

@@ -259,7 +259,7 @@ export default function HeaderSearch({
             )}
             {brands.length > 0 && (
               <li
-                className="px-3 pt-2 pb-1 text-[11px] font-ui uppercase tracking-wide text-gray-400"
+                className="px-3 pt-2 pb-1 text-xs font-ui uppercase tracking-wide text-gray-400"
                 role="presentation"
               >
                 {t("searchBrands")}
@@ -302,7 +302,7 @@ export default function HeaderSearch({
                         <span className="block text-sm font-ui text-luxury-ink truncate">
                           {brand.name}
                         </span>
-                        <span className="block text-[11px] text-gray-400">
+                        <span className="block text-xs text-gray-400">
                           {t("searchBrandHint")}
                         </span>
                       </span>
@@ -352,7 +352,7 @@ export default function HeaderSearch({
                       </span>
                       {product.nameDe && lang === "ar" && (
                         <span
-                          className="block text-[11px] text-gray-400 truncate"
+                          className="block text-xs text-gray-400 truncate"
                           dir="ltr"
                         >
                           {product.nameDe}
@@ -362,7 +362,7 @@ export default function HeaderSearch({
                     <span className="text-xs font-ui font-semibold text-gold shrink-0 text-end">
                       {formatEuroDe(product.price)}
                       {onSale && (
-                        <span className="block text-[10px] font-normal text-gray-400 line-through">
+                        <span className="block text-xs font-normal text-gray-400 line-through">
                           {formatEuroDe(listPrice)}
                         </span>
                       )}

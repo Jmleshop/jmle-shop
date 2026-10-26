@@ -124,7 +124,7 @@ export default function Header({
       {itemCount > 0 && (
         <span
           className={cn(
-            "absolute top-0.5 start-0.5 bg-brand-red text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-white/80",
+            "absolute top-0.5 start-0.5 bg-brand-red text-white text-xs font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-white/80",
             cartBumping && "animate-cart-glow"
           )}
         >
@@ -145,7 +145,7 @@ export default function Header({
     >
       <Heart size={20} aria-hidden />
       {wishCount > 0 && (
-        <span className="absolute top-0.5 start-0.5 bg-brand-red text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-white/80">
+        <span className="absolute top-0.5 start-0.5 bg-brand-red text-white text-xs font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center border border-white/80">
           {wishCount > 99 ? "99+" : wishCount}
         </span>
       )}

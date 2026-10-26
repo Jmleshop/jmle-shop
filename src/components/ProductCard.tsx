@@ -93,7 +93,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div ref={imgRef} className="product-image-frame">
           <SafeShopImage
             src={product.image}
-            alt={product.nameDe ? `${title} – ${product.name}` : title}
+            alt=""
             fill
             className="product-image-media"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 320px"
@@ -107,13 +107,13 @@ export default function ProductCard({ product }: ProductCardProps) {
               {highlights.map((b) => (
                 <span
                   key={b.key}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-ui shadow-gold-sm border border-white/70 ${b.className}`}
+                  className={`px-2 py-0.5 rounded-full text-xs font-bold font-ui shadow-gold-sm border border-white/70 ${b.className}`}
                 >
                   {lang === "de" ? b.labelDe : b.labelAr}
                 </span>
               ))}
               {customNote && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-ui shadow-gold-sm border border-white/70 bg-jmle-mahogany text-white max-w-[9rem] truncate">
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold font-ui shadow-gold-sm border border-white/70 bg-jmle-mahogany text-white max-w-[9rem] truncate">
                   {customNote}
                 </span>
               )}
@@ -127,10 +127,10 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         </div>
         <div className="bg-white/95 p-1.5 sm:p-3 text-center">
-          <h3 className="font-ui text-[11px] sm:text-sm font-medium text-luxury-ink mb-0.5 line-clamp-2 min-h-[2.2em] sm:min-h-[2.5rem] leading-snug">
+          <h3 className="font-ui text-xs sm:text-sm font-medium text-luxury-ink mb-0.5 line-clamp-2 min-h-[2.2em] sm:min-h-[2.5rem] leading-snug">
             {title}
             {product.weightValue != null && (
-              <span className="hidden sm:inline text-[11px] text-gray-500 font-normal">
+              <span className="hidden sm:inline text-xs text-gray-500 font-normal">
                 {" "}
                 · {product.weightValue} {product.weightUnit}
               </span>
@@ -141,7 +141,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       </Link>
       <div className="bg-white/95 px-1.5 pb-1.5 sm:px-3 sm:pb-3">
         {out ? (
-          <p className="w-full py-1.5 sm:py-2.5 text-center text-[10px] sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg sm:rounded-xl min-h-9 sm:min-h-11 flex items-center justify-center">
+          <p className="w-full py-1.5 sm:py-2.5 text-center text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-lg sm:rounded-xl min-h-9 sm:min-h-11 flex items-center justify-center">
             {t("outOfStock")}
           </p>
         ) : (
@@ -184,7 +184,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               onClick={handleAddToCart}
               aria-label={`${t("addToCart")} ${title}`}
             >
-              <span className="text-[11px] sm:text-sm">
+              <span className="text-xs sm:text-sm">
                 {added ? t("added") : t("addToCart")}
               </span>
             </Button>
