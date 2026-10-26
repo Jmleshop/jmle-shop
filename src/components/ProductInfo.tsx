@@ -136,7 +136,7 @@ export default function ProductInfo({
         </p>
       )}
 
-      <div className="mb-2 rounded-2xl border border-orange-200/70 bg-gradient-to-br from-white to-jmle-warm/60 p-4 sm:p-5 shadow-gold-sm">
+      <div className="mb-2">
         <ProductPrice product={product} align="start" showUnitPrice size="lg" />
       </div>
 

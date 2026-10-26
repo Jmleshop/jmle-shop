@@ -4,6 +4,7 @@ import type { Product } from "@/types";
 import { useShopLocale } from "@/components/ShopLocale";
 import { formatEuroDe, formatBasePriceLabel } from "@/lib/pricing";
 import { DiscountBadge, Badge } from "@/components/ui";
+import { Flame } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /**
@@ -43,35 +44,48 @@ export function ProductPrice({
       <div
         className={cn(
           "flex flex-wrap items-center gap-2",
+          large && "gap-x-3 gap-y-2",
           align === "center" && "justify-center"
         )}
       >
         {large ? (
-          <span
-            className={cn(
-              "font-ui font-extrabold tabular-nums leading-none tracking-tight text-4xl md:text-5xl",
-              discounted ? "text-red-700" : "text-brand-orange"
-            )}
-          >
+          <span className="font-ui font-bold tabular-nums leading-none text-[1.75rem] text-[#e06666]">
             {formatEuroDe(product.price)}
           </span>
         ) : null}
         {discounted && product.originalPrice != null && (
           <span
             className={cn(
-              "text-gray-400 line-through font-ui",
-              large ? "text-lg" : "text-xs"
+              "text-gray-400 line-through font-ui tabular-nums",
+              large ? "text-xl" : "text-xs"
             )}
           >
             {formatEuroDe(product.originalPrice)}
           </span>
         )}
-        <DiscountBadge percent={product.discountPercent} />
+        {large ? (
+          discounted &&
+          product.originalPrice != null &&
+          product.originalPrice > product.price && (
+            <span className="inline-flex items-stretch rounded-md bg-[#e05252] text-white text-sm font-ui font-bold leading-none">
+              <span className="flex items-center px-2 border-e border-dashed border-white/70">
+                <Flame size={16} aria-hidden />
+              </span>
+              <span className="flex items-center px-2.5 py-1.5">
+                {t("youSave", {
+                  amount: formatEuroDe(product.originalPrice - product.price),
+                })}
+              </span>
+            </span>
+          )
+        ) : (
+          <DiscountBadge percent={product.discountPercent} />
+        )}
         {large ? null : (
           <span
             className={cn(
               "font-ui font-semibold",
-              discounted ? "text-red-700 text-base" : "text-gold text-sm"
+              discounted ? "text-red-700 text-sm" : "text-gold text-sm"
             )}
           >
             {formatEuroDe(product.price)}

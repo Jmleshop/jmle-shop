@@ -10,6 +10,34 @@ function supabaseHostname(): string {
   return "rbdarbzwbzpfjorgeavi.supabase.co";
 }
 
+/**
+ * NEXT_PUBLIC_* landet im Browser-Bundle. Geheime Supabase-Schlüssel dort
+ * würden öffentlich — Build sofort abbrechen.
+ */
+function assertNoSecretInPublicEnv() {
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!name.startsWith("NEXT_PUBLIC_") || !value) continue;
+    const v = value.trim();
+    let serviceRoleJwt = false;
+    if (v.startsWith("eyJ")) {
+      try {
+        const payload = JSON.parse(
+          Buffer.from(v.split(".")[1] ?? "", "base64url").toString("utf8")
+        ) as { role?: string };
+        serviceRoleJwt = payload.role === "service_role";
+      } catch {
+        /* kein JWT */
+      }
+    }
+    if (v.startsWith("sb_secret_") || serviceRoleJwt) {
+      throw new Error(
+        `${name} enthält einen GEHEIMEN Supabase-Schlüssel. Dort gehört der öffentliche (publishable/anon) Schlüssel hin.`
+      );
+    }
+  }
+}
+assertNoSecretInPublicEnv();
+
 /** Never ship local ONNX/WASM runtimes / unused sharp platforms into Vercel bundles. */
 const HEAVY_TRACE_EXCLUDES = [
   "node_modules/@imgly/background-removal-node/**",
