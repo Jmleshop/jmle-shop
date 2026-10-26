@@ -136,7 +136,7 @@ export default function ProductInfo({
         </p>
       )}
 
-      <div className="mb-2">
+      <div className="mt-5 mb-2">
         <ProductPrice product={product} align="start" showUnitPrice size="lg" />
       </div>
 

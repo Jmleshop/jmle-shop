@@ -49,7 +49,12 @@ export function ProductPrice({
         )}
       >
         {large ? (
-          <span className="font-ui font-bold tabular-nums leading-none text-[1.75rem] text-[#e06666]">
+          <span
+            className={cn(
+              "font-ui font-bold tabular-nums leading-none text-2xl",
+              discounted ? "text-[#e06666]" : "text-brand-orange"
+            )}
+          >
             {formatEuroDe(product.price)}
           </span>
         ) : null}
@@ -57,7 +62,7 @@ export function ProductPrice({
           <span
             className={cn(
               "text-gray-400 line-through font-ui tabular-nums",
-              large ? "text-xl" : "text-xs"
+              large ? "text-lg" : "text-xs"
             )}
           >
             {formatEuroDe(product.originalPrice)}
