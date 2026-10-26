@@ -12,6 +12,7 @@ import { useShopLocale } from "@/components/ShopLocale";
 import { whatsAppOrderUrl } from "@/lib/whatsapp-order";
 import { downloadQuotePdf } from "@/components/cart/QuotePdf";
 import type { InquiryLine } from "@/lib/inquiry";
+import { CARD_CHECKOUT_ENABLED } from "@/lib/features";
 
 type CartTotals = { discount: number; shipping: number; grandTotal: number };
 
@@ -336,9 +337,11 @@ export default function CartRequestPanel({
                   <Button fullWidth size="lg" disabled={!choice} onClick={() => setStep("form")}>
                     {t("continueBtn")}
                   </Button>
-                  <Link href="/checkout" className="block py-2 text-center text-xs text-luxury-charcoal/70 underline">
-                    {t("payByCard")}
-                  </Link>
+                  {CARD_CHECKOUT_ENABLED && (
+                    <Link href="/checkout" className="block py-2 text-center text-xs text-luxury-charcoal/70 underline">
+                      {t("payByCard")}
+                    </Link>
+                  )}
                 </div>
               )}
 
