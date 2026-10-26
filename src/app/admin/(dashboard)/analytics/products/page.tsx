@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAdminI18n } from "@/components/admin/AdminI18n";
+import { AdminError, AdminLoading, AdminNotice } from "@/components/admin/AdminState";
 import { formatEuroDe } from "@/lib/pricing";
 import AnalyticsPeriodFilter, {
   useAnalyticsFilter,
@@ -16,12 +18,14 @@ import ProductAnalyticsModal, {
 } from "@/components/admin/analytics/ProductAnalyticsModal";
 
 type ProductsPayload = {
+  ordersUnavailable?: boolean;
   bestsellers: { id: string; name: string; value: number; pct: number }[];
   ranking: { id: string; name: string; units: number; profit: number; revenue: number }[];
   detail: ProductAnalyticsDetail | null;
 };
 
 export default function ProductsAnalyticsPage() {
+  const { t } = useAdminI18n();
   const { state, setState, queryString } = useAnalyticsFilter("month");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [data, setData] = useState<ProductsPayload | null>(null);
@@ -82,9 +86,18 @@ export default function ProductsAnalyticsPage() {
 
       <AnalyticsPeriodFilter value={state} onChange={setState} />
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      {loading || !data ? (
-        <p className="text-gray-500">…</p>
+      {data?.ordersUnavailable ? (
+        <AdminNotice>
+          {t("ordersTableMissing")}{" "}
+          <Link href="/admin/orders" className="font-medium underline">
+            {t("orders")}
+          </Link>
+        </AdminNotice>
+      ) : null}
+      {error ? (
+        <AdminError message={error} />
+      ) : loading || !data ? (
+        <AdminLoading />
       ) : (
         <>
           <div className="grid lg:grid-cols-2 gap-4">

@@ -198,6 +198,7 @@ export interface FoodProduct {
   product_number: string | null;
   max_order_quantity: number | null;
   stock_quantity: number;
+  min_stock_alert?: number | null;
   status?: "published" | "draft";
   badges?: string[];
   custom_note?: string;

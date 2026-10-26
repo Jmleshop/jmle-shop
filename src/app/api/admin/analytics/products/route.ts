@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isMissingTableError } from "@/lib/supabase-errors";
 import { isAuthError, requireAdmin } from "@/lib/admin-server";
 import { roundMoney } from "@/lib/pricing";
 import {
@@ -22,13 +23,16 @@ export async function GET(request: Request) {
     .gte("created_at", ranges.current.start.toISOString())
     .lte("created_at", ranges.current.end.toISOString());
 
-  if (error) {
+  // Tabelle `orders` fehlt, solange Online-Zahlung aus ist → leere Auswertung statt 500.
+  const ordersUnavailable = isMissingTableError(error);
+  if (error && !ordersUnavailable) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   const orderIds = (orders ?? []).map((o) => o.id);
   if (!orderIds.length) {
     return NextResponse.json({
+      ordersUnavailable,
       bestsellers: [],
       ranking: [],
       detail: null,

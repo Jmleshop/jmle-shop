@@ -46,3 +46,33 @@ export function summarizeLines(lines: InquiryLine[]) {
   ) / 100;
   return { subtotal, vat, total: subtotal };
 }
+
+/**
+ * Rechnungszeilen aus dem Admin-Editor serverseitig bereinigen: ungültige Zeilen verwerfen,
+ * Mengen auf 1–9999 begrenzen, Preise ≥ 0 auf Cent runden, MwSt. nur 0/7/19 %.
+ * Gibt null zurück, wenn `raw` kein Array ist.
+ */
+export function sanitizeInquiryLines(raw: unknown): InquiryLine[] | null {
+  if (!Array.isArray(raw)) return null;
+  const lines: InquiryLine[] = [];
+  for (const entry of raw.slice(0, 200)) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const productId = typeof row.productId === "string" ? row.productId.slice(0, 100) : "";
+    const name = typeof row.name === "string" ? row.name.trim().slice(0, 200) : "";
+    const quantity = Math.trunc(Number(row.quantity));
+    const unitPrice = Number(row.unitPrice);
+    const vatRate = Number(row.vatRate);
+    if (!name || !Number.isFinite(quantity) || quantity < 1 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+      continue;
+    }
+    lines.push({
+      productId,
+      name,
+      quantity: Math.min(quantity, 9999),
+      unitPrice: Math.round(unitPrice * 100) / 100,
+      vatRate: [0, 7, 19].includes(vatRate) ? vatRate : 19,
+    });
+  }
+  return lines;
+}

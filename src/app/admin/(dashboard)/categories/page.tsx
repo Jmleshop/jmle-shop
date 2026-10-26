@@ -36,6 +36,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 import ImageUpload from "@/components/admin/ImageUpload";
 import SwipeToDeleteRow from "@/components/admin/SwipeToDeleteRow";
 import { softDeleteWithUndo } from "@/lib/admin-soft-delete";
@@ -199,6 +200,9 @@ export default function AdminCategoriesPage() {
   const [excelDragOver, setExcelDragOver] = useState(false);
   const [excelResult, setExcelResult] = useState<ExcelImportResult | null>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+  // Ref statt nur State: ein zweiter Klick/Enter im selben Render darf keinen zweiten Request starten.
+  const savingRef = useRef(false);
 
   const toggleSelect = (id: string) =>
     setSelected((prev) => {
@@ -329,25 +333,37 @@ export default function AdminCategoriesPage() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setError("");
     const url = editingId
       ? `/api/admin/categories/${editingId}`
       : "/api/admin/categories";
-    const res = await fetch(url, {
-      method: editingId ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        parent_id: form.kind === "sub" ? form.parent_id : "",
-        show_on_homepage: form.kind === "main" ? form.show_on_homepage : false,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Fehler");
-      return;
+    try {
+      const res = await fetch(url, {
+        method: editingId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          parent_id: form.kind === "sub" ? form.parent_id : "",
+          show_on_homepage: form.kind === "main" ? form.show_on_homepage : false,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || t("saveFailed"));
+        return;
+      }
+      setShowForm(false);
+      toast.success(t("saved"));
+      load();
+    } catch {
+      setError(t("networkError"));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
-    setShowForm(false);
-    load();
   };
 
   const onDragStart = ({ active }: DragStartEvent) => {
@@ -648,8 +664,10 @@ export default function AdminCategoriesPage() {
               folder="categories"
               enableEditor
             />
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button className="btn-primary w-full">{t("save")}</button>
+            {error && <p role="alert" className="text-red-600 text-sm">{error}</p>}
+            <button type="submit" className="btn-primary w-full disabled:opacity-60" disabled={saving} aria-busy={saving}>
+              {saving ? t("saving") : t("save")}
+            </button>
           </form>
         </div>
       )}

@@ -23,13 +23,16 @@ export async function GET() {
       .from("orders")
       .select("total, status")
       .eq("status", "paid"),
+    // `shop_products` existiert in Produktion nicht → Basistabelle `products` (ohne Papierkorb).
     service
-      .from("shop_products")
-      .select("id", { count: "exact", head: true }),
-    service
-      .from("shop_products")
+      .from("products")
       .select("id", { count: "exact", head: true })
-      .lte("stock", 10),
+      .is("deleted_at", null),
+    service
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .lte("stock_quantity", 10),
     service
       .from("discount_codes")
       .select("id", { count: "exact", head: true })

@@ -18,6 +18,8 @@ import {
   Images,
   Settings2,
   PencilRuler,
+  Inbox,
+  Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { StaffRole } from "@/types";
@@ -38,24 +40,60 @@ export default function AdminSidebar({
   const supabase = createClient();
   const { t, lang, setLang } = useAdminI18n();
 
-  const staffItems: { href: string; icon: typeof Package; key: AdminMsgKey }[] = [
-    { href: "/admin/dashboard", icon: LayoutDashboard, key: "dashboard" },
-    { href: "/admin/products", icon: Package, key: "products" },
-    { href: "/admin/categories", icon: FolderTree, key: "categories" },
-    { href: "/admin/sliders", icon: Images, key: "sliders" },
-    { href: "/admin/builder", icon: PencilRuler, key: "pageBuilder" },
-    { href: "/admin/site", icon: Settings2, key: "siteSettings" },
-    { href: "/admin/inventory", icon: Warehouse, key: "inventory" },
-    { href: "/admin/pos", icon: ScanLine, key: "pos" },
-    { href: "/admin/trash", icon: Trash2, key: "trash" },
+  type NavItem = { href: string; icon: typeof Package; key: AdminMsgKey; adminOnly?: boolean };
+  // Gruppiert nach Tagesgeschäft; Auswertungen und System-Funktionen stehen unten.
+  // adminOnly entspricht ADMIN_ONLY_PREFIXES in der Middleware (Server prüft zusätzlich).
+  const allGroups: { key: AdminMsgKey; items: NavItem[] }[] = [
+    {
+      key: "navOverview",
+      items: [{ href: "/admin/dashboard", icon: LayoutDashboard, key: "dashboard" }],
+    },
+    {
+      key: "navSales",
+      items: [
+        { href: "/admin/orders", icon: Inbox, key: "orders", adminOnly: true },
+        { href: "/admin/pos", icon: ScanLine, key: "pos" },
+      ],
+    },
+    {
+      key: "navCatalog",
+      items: [
+        { href: "/admin/products", icon: Package, key: "products" },
+        { href: "/admin/categories", icon: FolderTree, key: "categories" },
+        { href: "/admin/inventory", icon: Warehouse, key: "inventory" },
+      ],
+    },
+    {
+      key: "navContent",
+      items: [
+        { href: "/admin/sliders", icon: Images, key: "sliders" },
+        { href: "/admin/builder", icon: PencilRuler, key: "pageBuilder" },
+        { href: "/admin/site", icon: Settings2, key: "siteSettings" },
+      ],
+    },
+    {
+      key: "navReports",
+      items: [
+        { href: "/admin/analytics/finance", icon: Wallet, key: "analyticsFinance", adminOnly: true },
+        { href: "/admin/analytics/products", icon: Boxes, key: "analyticsProducts", adminOnly: true },
+        { href: "/admin/analytics/traffic", icon: Globe2, key: "analyticsTraffic", adminOnly: true },
+      ],
+    },
+    {
+      key: "navSystem",
+      items: [
+        { href: "/admin/users", icon: Users, key: "users", adminOnly: true },
+        { href: "/admin/activity", icon: ScrollText, key: "activity", adminOnly: true },
+        { href: "/admin/trash", icon: Trash2, key: "trash" },
+      ],
+    },
   ];
-  const adminItems: { href: string; icon: typeof Package; key: AdminMsgKey }[] = [
-    { href: "/admin/analytics/finance", icon: Wallet, key: "analyticsFinance" },
-    { href: "/admin/analytics/products", icon: Boxes, key: "analyticsProducts" },
-    { href: "/admin/analytics/traffic", icon: Globe2, key: "analyticsTraffic" },
-    { href: "/admin/activity", icon: ScrollText, key: "activity" },
-  ];
-  const items = role === "admin" ? [...staffItems, ...adminItems] : staffItems;
+  const groups = allGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => role === "admin" || !item.adminOnly),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <aside className="w-64 h-full bg-luxury-black text-white flex flex-col shrink-0">
@@ -81,45 +119,47 @@ export default function AdminSidebar({
           {role === "admin" ? t("admin") : t("employee")}
         </p>
       </div>
-      <nav className="flex-1 p-3 sm:p-4 space-y-1 overflow-y-auto">
-        {items.map(({ href, icon: Icon, key }) => {
-          const active =
-            href === "/admin/dashboard"
-              ? pathname === "/admin" || pathname === "/admin/dashboard"
-              : href.startsWith("/admin/analytics")
-                ? pathname.startsWith(href)
-                : pathname.startsWith(href);
-          const className = `flex items-center gap-3 px-4 py-3.5 min-h-12 rounded-xl text-sm transition-colors ${
-            active
-              ? "bg-gold text-luxury-black font-medium"
-              : "text-gray-300 hover:bg-white/10 hover:text-white"
-          }`;
-          // Builder: harte Navigation, damit kein COEP von anderen Admin-Seiten kleben bleibt
-          if (href === "/admin/builder") {
-            return (
-              <a
-                key={href}
-                href={href}
-                onClick={onNavigate}
-                className={className}
-              >
-                <Icon size={18} />
-                {t(key)}
-              </a>
-            );
-          }
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onNavigate}
-              className={className}
-            >
-              <Icon size={18} />
-              {t(key)}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 p-3 sm:p-4 space-y-5 overflow-y-auto" aria-label={t("intern")}>
+        {groups.map((group) => (
+          <div key={group.key}>
+            <p className="px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              {t(group.key)}
+            </p>
+            <ul className="space-y-0.5">
+              {group.items.map(({ href, icon: Icon, key }) => {
+                const active =
+                  href === "/admin/dashboard"
+                    ? pathname === "/admin" || pathname === "/admin/dashboard"
+                    : pathname.startsWith(href);
+                const className = `flex items-center gap-3 px-4 py-2.5 min-h-11 rounded-xl text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold ${
+                  active
+                    ? "bg-gold text-luxury-black font-medium"
+                    : "text-gray-300 hover:bg-white/10 hover:text-white"
+                }`;
+                const content = (
+                  <>
+                    <Icon size={18} aria-hidden />
+                    {t(key)}
+                  </>
+                );
+                return (
+                  <li key={href}>
+                    {/* Builder: harte Navigation, damit kein COEP von anderen Admin-Seiten kleben bleibt */}
+                    {href === "/admin/builder" ? (
+                      <a href={href} onClick={onNavigate} className={className} aria-current={active ? "page" : undefined}>
+                        {content}
+                      </a>
+                    ) : (
+                      <Link href={href} onClick={onNavigate} className={className} aria-current={active ? "page" : undefined}>
+                        {content}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
       <div className="p-3 sm:p-4 border-t border-white/10 space-y-1">
         <Link

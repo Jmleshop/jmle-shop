@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAdminI18n } from "@/components/admin/AdminI18n";
+import { AdminError, AdminLoading, AdminNotice } from "@/components/admin/AdminState";
 import AnalyticsPeriodFilter, {
   useAnalyticsFilter,
 } from "@/components/admin/analytics/AnalyticsPeriodFilter";
@@ -16,6 +18,7 @@ import {
 import { bucketToRange, type ChartBucket } from "@/lib/analytics-periods";
 
 type FinancePayload = {
+  ordersUnavailable?: boolean;
   bucket: ChartBucket;
   metrics: {
     revenue: { value: number; previous: number; changePct: number };
@@ -28,6 +31,7 @@ type FinancePayload = {
 };
 
 export default function FinanceAnalyticsPage() {
+  const { t } = useAdminI18n();
   const { state, setState, queryString } = useAnalyticsFilter("week");
   const [data, setData] = useState<FinancePayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,9 +98,18 @@ export default function FinanceAnalyticsPage() {
 
       <AnalyticsPeriodFilter value={state} onChange={setState} />
 
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      {loading || !data ? (
-        <p className="text-gray-500">…</p>
+      {data?.ordersUnavailable ? (
+        <AdminNotice>
+          {t("ordersTableMissing")}{" "}
+          <Link href="/admin/orders" className="font-medium underline">
+            {t("orders")}
+          </Link>
+        </AdminNotice>
+      ) : null}
+      {error ? (
+        <AdminError message={error} />
+      ) : loading || !data ? (
+        <AdminLoading />
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
