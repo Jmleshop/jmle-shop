@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminError, requireAdmin } from "@/lib/admin-server";
 import { createServiceClient } from "@/lib/supabase/admin";
-import { summarizeLines, type InquiryLine } from "@/lib/inquiry";
+import { sanitizeInquiryLines, summarizeLines } from "@/lib/inquiry";
 
 export async function GET(request: Request) {
   const auth = await requireAdmin();
@@ -47,8 +47,8 @@ export async function PATCH(request: Request) {
 
   if (body.status === "open" || body.status === "done") patch.status = body.status;
   if (typeof body.notes === "string") patch.notes = body.notes;
-  if (Array.isArray(body.items)) {
-    const items = body.items as InquiryLine[];
+  const items = sanitizeInquiryLines(body.items);
+  if (items) {
     const totals = summarizeLines(items);
     patch.items = items;
     patch.subtotal = totals.subtotal;

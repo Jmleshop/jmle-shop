@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { formatEuroDe } from "@/lib/pricing";
 import { lineGross, summarizeLines, type Inquiry, type InquiryLine } from "@/lib/inquiry";
 import { downloadQuotePdf } from "@/components/cart/QuotePdf";
+import { useAdminI18n } from "@/components/admin/AdminI18n";
+import { AdminEmpty, AdminError, AdminLoading, AdminPageHeader } from "@/components/admin/AdminState";
 
 type Tab = "whatsapp" | "callback" | "delivery" | "done";
 type ProductHit = {
@@ -16,6 +18,8 @@ type ProductHit = {
 };
 
 export default function AdminOrdersPage() {
+  const { t } = useAdminI18n();
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [rows, setRows] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,6 +28,7 @@ export default function AdminOrdersPage() {
 
   const load = () => {
     setLoading(true);
+    setError("");
     fetch("/api/admin/inquiries")
       .then(async (r) => {
         const data = await r.json();
@@ -47,8 +52,7 @@ export default function AdminOrdersPage() {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-semibold">Anfragen</h1>
-      <p className="mb-6 text-sm text-gray-500">WhatsApp-Anfragen und Rückrufe, ohne Online-Zahlung.</p>
+      <AdminPageHeader title={t("orders")} description="WhatsApp-Anfragen, Rückrufe und Lieferanfragen, ohne Online-Zahlung." />
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Stat label="Gesamtanfragen" value={rows.length} />
         <Stat label="Offene Rückrufe" value={openCallbacks} />
@@ -67,17 +71,19 @@ export default function AdminOrdersPage() {
             key={key}
             type="button"
             onClick={() => setTab(key)}
+            aria-pressed={tab === key}
             className={`min-h-11 rounded-full px-4 text-sm ${tab === key ? "bg-brand-orange text-white" : "bg-white border"}`}
           >
             {label}
           </button>
         ))}
       </div>
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-      {loading ? (
-        <p className="text-gray-500">Lade Anfragen…</p>
+      {error ? (
+        <AdminError message={error} onRetry={load} />
+      ) : loading ? (
+        <AdminLoading />
       ) : visible.length === 0 ? (
-        <p className="rounded-2xl border bg-white p-8 text-center text-gray-400">Keine Einträge in dieser Ansicht.</p>
+        <AdminEmpty>Keine Einträge in dieser Ansicht.</AdminEmpty>
       ) : (
         <div className="space-y-4">
           {visible.map((row) => (
@@ -112,8 +118,15 @@ export default function AdminOrdersPage() {
                 </button>
                 <button
                   type="button"
-                  className="min-h-11 rounded-xl border px-3 text-sm"
-                  onClick={() => void patch(row.id, { status: row.status === "done" ? "open" : "done" }).then(load)}
+                  disabled={busyId === row.id}
+                  className="min-h-11 rounded-xl border px-3 text-sm disabled:opacity-50"
+                  onClick={() => {
+                    setBusyId(row.id);
+                    void patch(row.id, { status: row.status === "done" ? "open" : "done" })
+                      .then((next) => setRows((list) => list.map((r) => (r.id === next.id ? next : r))))
+                      .catch((err: Error) => setError(err.message))
+                      .finally(() => setBusyId(null));
+                  }}
                 >
                   {row.status === "done" ? "Wieder öffnen" : "Abschließen"}
                 </button>
@@ -170,6 +183,7 @@ function InvoiceEditor({
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<ProductHit[]>([]);
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
   const totals = useMemo(() => summarizeLines(lines), [lines]);
 
   useEffect(() => {
@@ -186,7 +200,17 @@ function InvoiceEditor({
     return () => window.clearTimeout(timer);
   }, [query]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const save = async (issue = false) => {
+    if (saving) return;
+    setSaving(true);
     setMessage("");
     try {
       const next = await patch(inquiry.id, { items: lines, notes, issue });
@@ -194,15 +218,17 @@ function InvoiceEditor({
       setMessage(issue ? "Rechnung ausgestellt." : "Entwurf gespeichert.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Fehler");
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-3 sm:items-center">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5">
+      <div role="dialog" aria-modal="true" aria-labelledby="invoice-editor-title" className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Rechnungsentwurf</h2>
-          <button type="button" onClick={onClose} className="text-sm">Schließen</button>
+          <h2 id="invoice-editor-title" className="text-lg font-semibold">Rechnungsentwurf</h2>
+          <button type="button" onClick={onClose} className="min-h-11 rounded-xl px-3 text-sm hover:bg-gray-100">Schließen</button>
         </div>
         {lines.map((line, index) => (
           <div key={`${line.productId}-${index}`} className="mb-2 grid grid-cols-[1fr_5rem_auto] items-center gap-2 text-sm">
@@ -263,8 +289,8 @@ function InvoiceEditor({
         <p className="text-sm">MwSt. {formatEuroDe(totals.vat)}</p>
         <p className="font-semibold">Gesamt {formatEuroDe(totals.total)}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className="min-h-11 rounded-xl border px-3 text-sm" onClick={() => void save(false)}>Entwurf speichern</button>
-          <button type="button" className="min-h-11 rounded-xl bg-brand-orange px-3 text-sm text-white" onClick={() => void save(true)}>
+          <button type="button" disabled={saving} className="min-h-11 rounded-xl border px-3 text-sm disabled:opacity-50" onClick={() => void save(false)}>Entwurf speichern</button>
+          <button type="button" disabled={saving} className="min-h-11 rounded-xl bg-brand-orange px-3 text-sm text-white disabled:opacity-50" onClick={() => void save(true)}>
             Rechnung ausstellen / Aktivieren
           </button>
           <button
@@ -286,7 +312,7 @@ function InvoiceEditor({
             Offizielle Rechnung als PDF herunterladen
           </button>
         </div>
-        {message && <p className="mt-3 text-sm">{message}</p>}
+        {message && <p role="status" className="mt-3 text-sm">{message}</p>}
       </div>
     </div>
   );

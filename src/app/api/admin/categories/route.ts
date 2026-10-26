@@ -4,6 +4,7 @@ import { isAuthError, requireStaff } from "@/lib/admin-server";
 import type { FoodCategory } from "@/types";
 import { categoryCreateSchema } from "@/lib/validations/product";
 import { parseJsonBody } from "@/lib/validations";
+import { findDuplicateCategory } from "@/lib/category-duplicate";
 
 function slugify(value: string) {
   return value
@@ -72,6 +73,22 @@ export async function POST(request: Request) {
 
   const { name_ar, name_de, image, sort_order, parent_id, show_on_homepage } =
     parsed.data;
+  // Doppelte Anlage verhindern (Doppelklick, erneutes Absenden): gleicher Name unter gleicher Elternkategorie.
+  const { data: siblings, error: siblingsError } = await auth.supabase
+    .from("categories")
+    .select("id, name_ar, parent_id, deleted_at")
+    .is("deleted_at", null);
+  if (siblingsError) {
+    return NextResponse.json({ error: "Kategorien konnten nicht geprüft werden" }, { status: 500 });
+  }
+  const duplicate = findDuplicateCategory(siblings ?? [], { name_ar, parent_id });
+  if (duplicate) {
+    return NextResponse.json(
+      { error: "Diese Kategorie existiert bereits.", existingId: duplicate.id },
+      { status: 409 }
+    );
+  }
+
   const id =
     (parsed.data.id && parsed.data.id.trim()) ||
     slugify(name_de || name_ar) ||
@@ -104,17 +121,12 @@ export async function POST(request: Request) {
     error = retry.error;
   }
 
-  if (error) {
-    const withoutId = {
-      name_ar,
-      name_de,
-      image,
-      sort_order,
-      parent_id,
-    };
+  // ID schon vergeben (z. B. von einer Kategorie im Papierkorb): einmal mit eindeutiger ID erneut versuchen.
+  // Kein zweiter Insert bei anderen Fehlern, sonst entstehen Duplikate.
+  if (error?.code === "23505") {
     const retry = await auth.supabase
       .from("categories")
-      .insert(withoutId)
+      .insert({ ...payload, id: `${id}-${Date.now().toString(36)}` })
       .select()
       .single();
     data = retry.data;

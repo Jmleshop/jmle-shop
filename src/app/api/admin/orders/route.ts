@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isMissingTableError } from "@/lib/supabase-errors";
 import { isAdminError, requireAdmin } from "@/lib/admin-server";
 import { createServiceClient } from "@/lib/supabase/admin";
 
@@ -14,9 +15,11 @@ export async function GET() {
     .select("*, order_items(*)")
     .order("created_at", { ascending: false });
 
-  if (error) {
+  // Tabelle `orders` fehlt, solange Online-Zahlung aus ist → leere Auswertung statt 500.
+  const ordersUnavailable = isMissingTableError(error);
+  if (error && !ordersUnavailable) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ orders });
+  return NextResponse.json({ orders: orders ?? [], ordersUnavailable });
 }
