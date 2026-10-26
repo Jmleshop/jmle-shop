@@ -15,8 +15,8 @@ import DiscountCodeField, {
 import OrderCostBreakdown, {
   computeCheckoutTotals,
 } from "@/components/cart/OrderCostBreakdown";
-import { Button } from "@/components/ui";
 import { productShippingGrams } from "@/lib/shipping";
+import { CARD_CHECKOUT_ENABLED } from "@/lib/features";
 import CartRequestPanel from "@/components/cart/CartRequestPanel";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
@@ -181,12 +181,14 @@ export default function CartPage() {
       </div>
 
       <div className="space-y-4 mb-6">
-        <DiscountCodeField
-          subtotal={total}
-          applied={discount}
-          onApply={setDiscount}
-          onClear={() => setDiscount(null)}
-        />
+        {CARD_CHECKOUT_ENABLED && (
+          <DiscountCodeField
+            subtotal={total}
+            applied={discount}
+            onApply={setDiscount}
+            onClear={() => setDiscount(null)}
+          />
+        )}
         <OrderCostBreakdown subtotal={total} discount={discount} weightGrams={weightGrams} />
       </div>
 

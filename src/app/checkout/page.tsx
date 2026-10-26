@@ -17,10 +17,29 @@ import { Button } from "@/components/ui";
 import { toast } from "@/components/AppToaster";
 import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle } from "@/lib/shop-i18n";
+import { CARD_CHECKOUT_ENABLED } from "@/lib/features";
 
 const DISCOUNT_STORAGE_KEY = "jmle_cart_discount";
 
 export default function CheckoutPage() {
+  return CARD_CHECKOUT_ENABLED ? <CardCheckout /> : <CheckoutDisabled />;
+}
+
+/** Kartenzahlung ist ausgeschaltet: Hinweis statt Stripe-Formular. */
+function CheckoutDisabled() {
+  const { t } = useShopLocale();
+  return (
+    <div className="max-w-xl mx-auto px-4 py-16 text-center">
+      <h1 className="font-display text-2xl mb-3">{t("checkoutDisabledTitle")}</h1>
+      <p className="text-luxury-charcoal/80 mb-8">{t("checkoutDisabledBody")}</p>
+      <Link href="/cart" className="btn-primary inline-flex">
+        {t("backToCart")}
+      </Link>
+    </div>
+  );
+}
+
+function CardCheckout() {
   const { items, total, loading } = useCart();
   const { lang, t } = useShopLocale();
   const [processing, setProcessing] = useState(false);
