@@ -45,6 +45,10 @@ function writeGuest(ids: string[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify([...new Set(ids)]));
 }
 
+function isPermissionError(error: { code?: string; message?: string }): boolean {
+  return error.code === "42501" || /permission denied/i.test(error.message ?? "");
+}
+
 function shopLang(): ShopLang {
   if (typeof window === "undefined") return "ar";
   return localStorage.getItem("jmle-shop-lang") === "de" ? "de" : "ar";
@@ -56,6 +60,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const supabase = useMemo(() => createClient(), []);
   const revision = useRef(0);
+  /** false nach "permission denied": dann nur lokal speichern statt bei jedem Klick einen Fehler zu zeigen */
+  const dbUsable = useRef(true);
 
   const loadForUser = useCallback(
     async (u: User | null) => {
@@ -68,6 +74,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           .order("created_at", { ascending: false });
         if (revision.current !== started) return;
 
+        if (error && isPermissionError(error)) dbUsable.current = false;
         if (!error && data) {
           const next = [...new Set([...data.map((r) => String(r.product_id)), ...readGuest()])];
           setIds(next);
@@ -86,7 +93,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const mergeGuestIntoDb = useCallback(
     async (u: User) => {
       const guest = readGuest();
-      if (!guest.length) return;
+      if (!guest.length || !dbUsable.current) return;
       const rows = guest.map((product_id) => ({
         user_id: u.id,
         product_id,
@@ -154,7 +161,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       writeGuest(next);
       const lang = shopLang();
       toast(exists ? shopText(lang, "wishlistRemovedToast") : shopText(lang, "wishlistAddedToast"));
-      if (!user) return;
+      if (!user || !dbUsable.current) return;
       if (exists) {
         const { error } = await supabase
           .from("wishlist_items")
@@ -163,7 +170,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
           .eq("product_id", productId);
         if (error) {
           console.error("wishlist delete", error.message);
-          toast.error(shopText(shopLang(), "wishlistError"));
+          if (isPermissionError(error)) dbUsable.current = false;
+          else toast.error(shopText(shopLang(), "wishlistError"));
         }
       } else {
         const { error } = await supabase.from("wishlist_items").insert({
@@ -172,7 +180,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         });
         if (error) {
           console.error("wishlist insert", error.message);
-          toast.error(shopText(shopLang(), "wishlistError"));
+          if (isPermissionError(error)) dbUsable.current = false;
+          else toast.error(shopText(shopLang(), "wishlistError"));
         }
       }
     },
@@ -183,7 +192,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     async (productId: string) => {
       revision.current += 1;
       if (!ids.includes(productId)) return;
-      if (user) {
+      if (user && dbUsable.current) {
         await supabase
           .from("wishlist_items")
           .delete()
@@ -198,7 +207,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   );
 
   const clear = useCallback(async () => {
-    if (user) {
+    if (user && dbUsable.current) {
       await supabase.from("wishlist_items").delete().eq("user_id", user.id);
     }
     localStorage.removeItem(STORAGE_KEY);

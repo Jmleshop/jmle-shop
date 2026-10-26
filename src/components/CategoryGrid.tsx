@@ -40,7 +40,7 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
   return (
     <Link
       href={`/categories/${category.id}`}
-      className="group flex w-[5.75rem] sm:w-[6.25rem] md:w-28 flex-col items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+      className="group flex w-full max-w-28 flex-col items-center gap-1.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
     >
       <div
         className={cn(
@@ -95,7 +95,7 @@ export default function CategoryGrid({
           <div className="gold-divider mt-2 mb-0" aria-hidden />
         </div>
       ) : null}
-      <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-3 sm:gap-3.5 md:gap-4">
+      <div className="mx-auto grid max-w-5xl grid-cols-3 min-[400px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 justify-items-center gap-x-2 gap-y-3 sm:gap-4">
         {categories.map((category) => (
           <CategoryTile
             key={category.id}

@@ -6,6 +6,7 @@ import type { BrandLogo } from "@/types";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import { useShopLocale } from "@/components/ShopLocale";
 import { cn } from "@/lib/cn";
+import ScrollCarousel from "@/components/ScrollCarousel";
 
 interface BrandLogoTickerProps {
   logos: BrandLogo[];
@@ -41,7 +42,7 @@ function LogoItem({ logo }: { logo: BrandLogo }) {
   return (
     <Link
       href={href}
-      className="layout-brands-item"
+      className="layout-brands-item shrink-0 snap-start py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange rounded-lg"
       aria-label={
         logo.name
           ? t("brandViewAll", { brand: logo.name })
@@ -64,34 +65,26 @@ export default function BrandLogoTicker({
   if (!logos.length) return null;
 
   const heading = (title ?? "").trim();
-  const loop = logos.length === 1 ? logos : [...logos, ...logos];
-  const baseDuration = Math.max(18, logos.length * 4);
 
   return (
     <section
       data-home-section="brands"
       className={cn("layout-brands-frame", className)}
-      aria-label={heading || t("brandPartners")}
     >
       {heading ? (
         <div className="layout-section-title-wrap mb-2 sm:mb-3 px-4">
           <h2 className="section-title text-base sm:text-lg">{heading}</h2>
         </div>
       ) : null}
-      <div
-        className="jmle-marquee overflow-hidden bg-transparent"
-        style={
-          {
-            ["--marquee-duration" as string]: `calc(${baseDuration}s / var(--layout-brands-speed, 1))`,
-          } as React.CSSProperties
-        }
+      <ScrollCarousel
+        label={heading || t("brandPartners")}
+        autoplayMs={3500}
+        trackClassName="items-center [gap:var(--layout-brands-gap,0.25rem)] px-2 md:px-12"
       >
-        <div className="jmle-marquee-track items-center">
-          {loop.map((logo, i) => (
-            <LogoItem key={`${logo.id}-${i}`} logo={logo} />
-          ))}
-        </div>
-      </div>
+        {logos.map((logo) => (
+          <LogoItem key={logo.id} logo={logo} />
+        ))}
+      </ScrollCarousel>
     </section>
   );
 }

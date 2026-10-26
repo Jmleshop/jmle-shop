@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import { CATEGORY_MAX_DEPTH } from "@/lib/category-dnd";
 import type { FoodCategory } from "@/types";
@@ -58,13 +59,30 @@ export async function PUT(request: Request) {
         { status: 400 }
       );
     }
-    await auth.supabase
+  }
+
+  for (const row of order) {
+    const { error } = await auth.supabase
       .from("categories")
       .update({
         sort_order: row.sort_order,
-        parent_id: parentId,
+        parent_id: row.parent_id || null,
       })
       .eq("id", row.id);
+    if (error) {
+      console.error("[categories/reorder]", error.message);
+      return NextResponse.json(
+        { error: "Reihenfolge konnte nicht gespeichert werden" },
+        { status: 500 }
+      );
+    }
+  }
+  // Shop-Cache leeren, damit die neue Reihenfolge sofort sichtbar ist
+  try {
+    revalidateTag("catalog");
+    revalidateTag("categories");
+  } catch {
+    /* ignore */
   }
   return NextResponse.json({ success: true });
 }

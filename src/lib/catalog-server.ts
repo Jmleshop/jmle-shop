@@ -251,8 +251,11 @@ export function nestCategories(flat: Category[]): Category[] {
       roots.push(cat);
     }
   }
+  // Gleiche Reihenfolge wie im Admin (category-dnd): sort_order, dann Name, dann ID — stabil
   const sortFn = (a: Category, b: Category) =>
-    (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
+    (a.name || "").localeCompare(b.name || "") ||
+    a.id.localeCompare(b.id);
   const walk = (nodes: Category[]) => {
     nodes.sort(sortFn);
     nodes.forEach((n) => n.children && walk(n.children));

@@ -99,9 +99,9 @@ describe("layout-builder", () => {
     assert.equal(auto["--layout-banner-aspect"], "2.4 / 1");
 
     const mobile = layoutCssVars(defaultLayoutDocument(), "mobile");
-    assert.equal(mobile["--layout-banner-aspect"], "4 / 3");
+    assert.equal(mobile["--layout-banner-aspect"], "2.4 / 1");
     const tablet = layoutCssVars(defaultLayoutDocument(), "tablet");
-    assert.equal(tablet["--layout-banner-aspect"], "2 / 1");
+    assert.equal(tablet["--layout-banner-aspect"], "2.4 / 1");
   });
 
   it("normalizes builder content draft", () => {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkDeliveryArea } from "@/lib/delivery-area";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getProductsByIdsAsync } from "@/lib/catalog-server";
@@ -42,6 +43,16 @@ export async function POST(request: Request) {
   }
   if (data.channel === "delivery" && (!data.street || !data.postalCode || !data.city)) {
     return NextResponse.json({ error: "Bitte eine gültige Lieferadresse angeben." }, { status: 400 });
+  }
+  if (data.channel === "delivery") {
+    // Liefergebiet serverseitig erneut prüfen — nicht nur dem Browser vertrauen
+    const area = await checkDeliveryArea(`${data.postalCode} ${data.city}`);
+    if (area.status !== "ok") {
+      return NextResponse.json(
+        { error: "Diese Adresse liegt außerhalb unseres Liefergebiets." },
+        { status: 400 }
+      );
+    }
   }
 
   const products = await getProductsByIdsAsync(data.items.map((item) => item.productId));

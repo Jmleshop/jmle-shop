@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
+import { useShopLocale } from "@/components/ShopLocale";
 
 export default function ProductGallery({
   images,
@@ -15,6 +16,7 @@ export default function ProductGallery({
   alt: string;
   dimmed?: boolean;
 }) {
+  const { t } = useShopLocale();
   const slides = images.length ? images : ["/placeholder.svg"];
   const [index, setIndex] = useState(0);
   const pausedUntil = useRef(0);
@@ -96,15 +98,15 @@ export default function ProductGallery({
 
       {slides.length > 1 && (
         <>
-          {/* In RTL: start = rechts */}
+          {/* „Weiter“ am Ende (LTR rechts, RTL links), Pfeil zeigt jeweils nach außen */}
           <button
             type="button"
             onClick={() => {
               pauseAuto();
               next();
             }}
-            className="absolute start-2 top-1/2 -translate-y-1/2 p-2.5 min-h-11 min-w-11 rounded-full bg-white/85 backdrop-blur-sm border border-amber-200/50 text-luxury-ink shadow-gold-sm hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
-            aria-label="الصورة التالية"
+            className="absolute end-2 top-1/2 -translate-y-1/2 p-2.5 min-h-11 min-w-11 rounded-full bg-white/85 backdrop-blur-sm border border-amber-200/50 text-luxury-ink shadow-gold-sm hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+            aria-label={t("imageNext")}
           >
             <ChevronRight size={18} className="rtl:rotate-180" />
           </button>
@@ -114,8 +116,8 @@ export default function ProductGallery({
               pauseAuto();
               prev();
             }}
-            className="absolute end-2 top-1/2 -translate-y-1/2 p-2.5 min-h-11 min-w-11 rounded-full bg-white/85 backdrop-blur-sm border border-amber-200/50 text-luxury-ink shadow-gold-sm hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
-            aria-label="الصورة السابقة"
+            className="absolute start-2 top-1/2 -translate-y-1/2 p-2.5 min-h-11 min-w-11 rounded-full bg-white/85 backdrop-blur-sm border border-amber-200/50 text-luxury-ink shadow-gold-sm hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+            aria-label={t("imagePrev")}
           >
             <ChevronLeft size={18} className="rtl:rotate-180" />
           </button>
@@ -123,7 +125,7 @@ export default function ProductGallery({
           <div
             className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5"
             role="tablist"
-            aria-label="صور المنتج"
+            aria-label={t("productImages")}
           >
             {slides.map((_, i) => (
               <button
