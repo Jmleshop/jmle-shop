@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { Category } from "@/types";
 import { useShopLocale } from "@/components/ShopLocale";
 import { categoryTitle } from "@/lib/shop-i18n";
@@ -18,7 +18,7 @@ function CategoryBranch({
   depth: number;
   onNavigate?: () => void;
 }) {
-  const { lang } = useShopLocale();
+  const { lang, t } = useShopLocale();
   const children = category.children ?? [];
   const hasChildren = children.length > 0;
   const [open, setOpen] = useState(false);
@@ -41,47 +41,48 @@ function CategoryBranch({
     );
   }
 
-  // Hauptkategorie mit Kindern: Klick klappt auf — Navigation separat
+  // Kategorie mit Kindern: Name navigiert, nur der Pfeil klappt auf
+  const groupId = `cat-children-${category.id}`;
   return (
-    <div className="w-full">
+    <div className="w-full" role="none">
       <div
         className={cn(
           "flex items-stretch gap-0.5 rounded-xl",
           depth > 0 && "ms-3 border-s border-orange-100/80 ps-2"
         )}
       >
+        <Link
+          href={`/categories/${category.id}`}
+          onClick={onNavigate}
+          className={cn(
+            "flex-1 flex items-center px-3 py-3 min-h-11 text-start",
+            "text-sm font-ui font-medium text-luxury-charcoal",
+            "hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
+          )}
+        >
+          {label}
+        </Link>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className={cn(
-            "flex-1 flex items-center justify-between gap-2 px-3 py-3 min-h-11 text-start",
-            "text-sm font-ui font-medium text-luxury-charcoal",
-            "hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
-          )}
+          className="shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl text-gray-500 hover:bg-brand-orange/15 hover:text-brand-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
           aria-expanded={open}
+          aria-controls={groupId}
+          aria-label={t(open ? "collapseSubcategories" : "expandSubcategories", { name: label })}
         >
-          <span>{label}</span>
           <ChevronDown
             size={18}
             className={cn(
-              "shrink-0 transition-transform duration-200",
+              "shrink-0 transition-transform duration-200 motion-reduce:transition-none",
               open && "rotate-180"
             )}
             aria-hidden
           />
         </button>
-        <Link
-          href={`/categories/${category.id}`}
-          onClick={onNavigate}
-          className="shrink-0 px-2.5 min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl text-gray-400 hover:bg-brand-orange/15 hover:text-brand-orange"
-          aria-label={label}
-          title={label}
-        >
-          <ExternalLink size={16} aria-hidden />
-        </Link>
       </div>
       {open && (
-        <div className="mt-0.5 space-y-0.5" role="group">
+        <div id={groupId} className="mt-0.5 space-y-0.5">
           {children.map((child) => (
             <CategoryBranch
               key={child.id}
@@ -143,6 +144,7 @@ export default function CategoryNavTree({
           "hover:bg-brand-orange/15 hover:text-brand-orange rounded-xl transition-colors"
         )}
         aria-expanded={open}
+        aria-controls="cat-nav-roots"
       >
         <span>{t("categories")}</span>
         <ChevronDown
@@ -155,7 +157,7 @@ export default function CategoryNavTree({
         />
       </button>
       {open && (
-        <div className="mt-1 space-y-0.5 ps-1" role="tree">
+        <div id="cat-nav-roots" className="mt-1 space-y-0.5 ps-1">
           {roots.map((cat) => (
             <CategoryBranch
               key={cat.id}

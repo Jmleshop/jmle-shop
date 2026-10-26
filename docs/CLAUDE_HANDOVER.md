@@ -107,3 +107,13 @@ Local `.env.local` state [verified by shape, values not read]: Supabase URL + pu
 - Live Supabase schema, RLS policies, presence of `trg_protect_profile_role`, storage policies, auth redirect URLs.
 - Stripe mode (test/live) and webhook endpoint in production.
 - Whether the WhatsApp-checkout work should be merged onto `origin/main`.
+
+## 12. Storefront UX release (2026-10-26, branch `feat/storefront-ux`)
+- Banner (`CompactBannerSlider`): frame takes the first image's natural aspect ratio when the builder uses auto height + `contain` (removes the empty bands on mobile); one timer per slide, pauses on hover/focus/hidden tab, off with `prefers-reduced-motion`; arrows (md+), keyboard, swipe (RTL-aware). Default builder aspect is now 2.4/1 on all viewports. A fixed builder height (desktop currently 320px) still wins.
+- `ScrollCarousel` (native scroll-snap) replaces the CSS marquees for brands and product rows: swipe, arrows, keyboard and autoplay share one scroll position. The marquee CSS was removed.
+- `/categories`: 2 columns on phones (3/4/5 on larger). Homepage category tiles are a real grid.
+- `CategoryNavTree`: the name is a link; only the chevron toggles subcategories.
+- Category order: `nestCategories` uses `sort_order`, then `name_ar`, then id (same as admin `category-dnd`). Reorder/create routes now call `revalidateTag("catalog"/"categories")`.
+- Mobile bottom nav has a Merkliste tab with counter (WishlistContext). `wishlist_items` had no GRANT for `authenticated` in production → migration `20261026120000_wishlist_grants.sql`; until applied, the client silently keeps logged-in favourites in localStorage.
+- Cart: the main button opens a purchase dialog with the three existing inquiry channels (WhatsApp, callback/offer, delivery). Stripe `/checkout` stays reachable as a small link. `/api/inquiries` now re-checks the delivery radius server-side (`src/lib/delivery-area.ts`).
+- Test loader (`scripts/ts-ext.mjs`) resolves `@/` and `next/*` imports: 103/104 tests run; `image-editor.test.ts` "drops a near-white studio margin" fails (pre-existing, unrelated).

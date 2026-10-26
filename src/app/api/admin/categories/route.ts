@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { isAuthError, requireStaff } from "@/lib/admin-server";
 import type { FoodCategory } from "@/types";
 import { categoryCreateSchema } from "@/lib/validations/product";
@@ -124,5 +125,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  try {
+    revalidateTag("catalog");
+    revalidateTag("categories");
+  } catch {
+    /* ignore */
+  }
   return NextResponse.json({ category: data }, { status: 201 });
 }

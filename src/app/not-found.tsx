@@ -1,15 +1,14 @@
 import Link from "next/link";
+import { ShopHeading } from "@/components/ShopText";
 
 export default function NotFound() {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 text-center">
       <h1 className="text-6xl font-light text-gold mb-4">404</h1>
-      <p className="text-xl font-light mb-2">الصفحة غير موجودة</p>
-      <p className="text-gray-500 text-sm mb-8">
-        عذراً، لم نتمكن من العثور على الصفحة المطلوبة
-      </p>
+      <ShopHeading k="notFoundTitle" as="p" className="text-xl font-light mb-2" />
+      <ShopHeading k="notFoundBody" as="p" className="text-gray-500 text-sm mb-8" />
       <Link href="/" className="btn-primary">
-        العودة للرئيسية
+        <ShopHeading k="backHome" as="span" />
       </Link>
     </div>
   );

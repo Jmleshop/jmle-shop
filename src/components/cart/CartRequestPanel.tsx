@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
+import { ArrowLeft, MessageCircle, PhoneCall, Truck, X } from "lucide-react";
+import { Button } from "@/components/ui";
+import { cn } from "@/lib/cn";
+import type { ShopLang } from "@/lib/shop-i18n";
+import { shopText } from "@/lib/shop-i18n";
 import { useShopLocale } from "@/components/ShopLocale";
 import { whatsAppOrderUrl } from "@/lib/whatsapp-order";
 import { downloadQuotePdf } from "@/components/cart/QuotePdf";
@@ -27,7 +33,11 @@ function goToWhatsApp(win: Window | null, url: string) {
 }
 
 /** Speichert die Anfrage; liefert die Kurz-Nr. oder null, wenn das Speichern scheitert. */
-async function saveInquiry(body: Record<string, unknown>): Promise<{ reference: string | null; error?: string }> {
+async function saveInquiry(
+  body: Record<string, unknown>,
+  lang: ShopLang
+): Promise<{ reference: string | null; error?: string }> {
+  const fallback = shopText(lang, "inquiryFailed");
   try {
     const response = await fetch("/api/inquiries", {
       method: "POST",
@@ -35,12 +45,19 @@ async function saveInquiry(body: Record<string, unknown>): Promise<{ reference: 
       body: JSON.stringify(body),
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.id) return { reference: null, error: payload.error || "Anfrage konnte nicht gespeichert werden." };
+    // Server-Meldungen sind deutsch — im arabischen Shop die übersetzte Standardmeldung zeigen
+    if (!response.ok || !payload.id) {
+      return { reference: null, error: lang === "de" && payload.error ? String(payload.error) : fallback };
+    }
     return { reference: String(payload.id).slice(0, 8) };
   } catch {
-    return { reference: null, error: "Anfrage konnte nicht gespeichert werden." };
+    return { reference: null, error: fallback };
   }
 }
+
+type Channel = "whatsapp" | "callback" | "delivery";
+
+const CHANNEL_ICONS = { whatsapp: MessageCircle, callback: PhoneCall, delivery: Truck } as const;
 
 export default function CartRequestPanel({
   lines,
@@ -94,6 +111,7 @@ export default function CartRequestPanel({
   const whatsAppReady = agb && contactOk && phone.trim().length >= 6 && lines.length > 0;
 
   async function send(channel: "whatsapp" | "callback") {
+    if (busy) return;
     setError("");
     setBusy(true);
     const pending = channel === "whatsapp" ? openPendingWindow() : null;
@@ -108,7 +126,7 @@ export default function CartRequestPanel({
         postalCode: postalCode.trim(),
         city: city.trim(),
         items: lines,
-      });
+      }, lang);
 
       if (channel === "callback") {
         // Rückruf geht nur über die gespeicherte Anfrage — ohne Speichern kein Erfolg melden.
@@ -144,97 +162,297 @@ export default function CartRequestPanel({
     }
   }
 
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [choice, setChoice] = useState<Channel | null>(null);
+  const [step, setStep] = useState<"choose" | "form">("choose");
+
+  const openDialog = () => {
+    returnFocus.current = document.activeElement as HTMLElement | null;
+    setStep(choice ? "form" : "choose");
+    setError("");
+    setOpen(true);
+  };
+
+  const closeDialog = useCallback(() => {
+    setOpen(false);
+    returnFocus.current?.focus?.();
+  }, []);
+
+  // Ergebnis anzeigen → Auswahldialog schließen (Warenkorb bleibt unverändert)
+  useEffect(() => {
+    if (result) setOpen(false);
+  }, [result]);
+
+  useEffect(() => {
+    if (!open) return;
+    const root = dialogRef.current;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusables = () =>
+      Array.from(
+        root?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      );
+    window.setTimeout(() => {
+      const preferred = root?.querySelector<HTMLElement>("[data-autofocus]");
+      (preferred ?? focusables()[0])?.focus();
+    }, 0);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeDialog();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const list = focusables();
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, step, closeDialog]);
+
+  const options: Array<{ id: Channel; title: string; desc: string }> = [
+    { id: "whatsapp", title: t("whatsapp"), desc: t("optWhatsappDesc") },
+    { id: "callback", title: t("optCallbackTitle"), desc: t("optCallbackDesc") },
+    { id: "delivery", title: t("deliveryTitle"), desc: t("optDeliveryDesc") },
+  ];
+  const phoneOk = phone.trim().length >= 6;
+  const legalLinks = (
+    <>
+      {t("acceptLegal")}{" "}
+      <Link href="/legal/agb" className="underline">{t("termsLabel")}</Link>
+      {" · "}
+      <Link href="/legal/datenschutz" className="underline">{t("privacyLabel")}</Link>
+    </>
+  );
+  const inputCls = "min-h-11 w-full rounded-xl border border-amber-200 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50";
+
   return (
-    <section className="mt-6 space-y-4 rounded-2xl border border-amber-200/70 bg-white p-4 md:p-5">
-      <h2 className="font-ui text-lg font-semibold text-luxury-ink">{lang === "ar" ? "طلب بدون دفع مباشر" : "Anfrage statt Direktkauf"}</h2>
-      <p className="text-sm text-luxury-charcoal/70">{lang === "ar" ? `المجموع ${totalLabel}. لا يتم خصم أي مبلغ عبر الإنترنت.` : `Summe ${totalLabel}. Es wird nichts online abgebucht.`}</p>
+    <div className="mt-4">
+      <Button fullWidth size="lg" onClick={openDialog} disabled={lines.length === 0} aria-haspopup="dialog">
+        {t("buyNow", { total: totalLabel })}
+      </Button>
 
-      <div className="space-y-3 rounded-2xl bg-jmle-warm/50 p-4">
-        <p className="font-ui text-sm font-semibold">{t("whatsapp")}</p>
-        <label className="block text-sm">
-          {t("phone")}
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 w-full min-h-11 rounded-xl border border-amber-200 px-3"
-            inputMode="tel"
-            required
-          />
-        </label>
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" checked={agb} onChange={(e) => setAgb(e.target.checked)} className="mt-1" />
-          <span>
-            {t("acceptLegal")} <Link href="/legal/agb" className="underline">AGB</Link> · <Link href="/legal/datenschutz" className="underline">{lang === "ar" ? "الخصوصية" : "Datenschutz"}</Link>
-          </span>
-        </label>
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" checked={contactOk} onChange={(e) => setContactOk(e.target.checked)} className="mt-1" />
-          <span>{t("acceptContact")}</span>
-        </label>
-        <button
-          type="button"
-          disabled={!whatsAppReady || busy}
-          onClick={() => void send("whatsapp")}
-          className="min-h-12 w-full rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-white disabled:opacity-40"
+      {open && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 sm:items-center sm:p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeDialog();
+          }}
         >
-          {t("whatsapp")}
-        </button>
-      </div>
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            className="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-white shadow-boutique sm:rounded-3xl"
+          >
+            <div className="flex items-center gap-2 border-b border-amber-100 px-4 py-3">
+              {step === "form" && (
+                <button
+                  type="button"
+                  onClick={() => setStep("choose")}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl hover:bg-jmle-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
+                  aria-label={t("backBtn")}
+                >
+                  <ArrowLeft size={20} className="rtl:rotate-180" aria-hidden />
+                </button>
+              )}
+              <h2 id={titleId} className="flex-1 font-ui text-base font-semibold text-luxury-ink">
+                {step === "form" && choice ? options.find((o) => o.id === choice)?.title : t("buyDialogTitle")}
+              </h2>
+              <button
+                type="button"
+                onClick={closeDialog}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl hover:bg-jmle-warm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/50"
+                aria-label={t("close")}
+              >
+                <X size={20} aria-hidden />
+              </button>
+            </div>
 
-      <form
-        className="space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send("callback");
-        }}
-      >
-        <p className="font-ui text-sm font-semibold">{t("offerTitle")}</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input required placeholder={t("firstName")} value={firstName} onChange={(e) => setFirstName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
-          <input required placeholder={t("lastName")} value={lastName} onChange={(e) => setLastName(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
-        </div>
-        <input required placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
-        <input placeholder={lang === "ar" ? "البريد الإلكتروني (اختياري)" : "E-Mail (optional)"} value={email} onChange={(e) => setEmail(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
-        <input placeholder={lang === "ar" ? "الشارع ورقم المنزل (اختياري)" : "Straße und Hausnummer (optional)"} value={street} onChange={(e) => setStreet(e.target.value)} className="min-h-11 w-full rounded-xl border border-amber-200 px-3" />
-        <div className="relative grid gap-3 sm:grid-cols-2">
-          <input
-            placeholder={lang === "ar" ? "الرمز البريدي" : "PLZ"}
-            value={postalCode}
-            onChange={(e) => setPostalCode(e.target.value)}
-            className="min-h-11 rounded-xl border border-amber-200 px-3"
-            inputMode="numeric"
-          />
-          <input placeholder={lang === "ar" ? "المدينة" : "Ort"} value={city} onChange={(e) => setCity(e.target.value)} className="min-h-11 rounded-xl border border-amber-200 px-3" />
-          {places.length > 0 && (
-            <ul className="absolute z-20 top-12 inset-x-0 max-h-48 overflow-auto rounded-xl border border-amber-200 bg-white shadow-boutique">
-              {places.map((place) => (
-                <li key={`${place.postalCode}-${place.name}`}>
+            <div className="overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-4">
+              {step === "choose" && (
+                <div className="space-y-3">
+                  <p className="text-sm text-luxury-charcoal/70">{t("buyDialogHint", { total: totalLabel })}</p>
+                  <div role="radiogroup" aria-labelledby={titleId} className="space-y-2.5">
+                    {options.map((opt, i) => {
+                      const Icon = CHANNEL_ICONS[opt.id];
+                      const selected = choice === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          data-autofocus={selected || (!choice && i === 0) ? "" : undefined}
+                          onClick={() => setChoice(opt.id)}
+                          onDoubleClick={() => {
+                            setChoice(opt.id);
+                            setStep("form");
+                          }}
+                          className={cn(
+                            "flex w-full items-start gap-3 rounded-2xl border p-3.5 text-start transition-colors",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60",
+                            selected
+                              ? "border-brand-orange bg-brand-orange/5 ring-1 ring-brand-orange"
+                              : "border-amber-200 hover:border-brand-orange/50"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                              opt.id === "callback" ? "bg-brand-orange/10 text-brand-orange" : "bg-[#25D366]/10 text-[#128C7E]"
+                            )}
+                            aria-hidden
+                          >
+                            <Icon size={20} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-ui text-sm font-semibold text-luxury-ink">{opt.title}</span>
+                            <span className="mt-0.5 block text-xs text-luxury-charcoal/75">{opt.desc}</span>
+                          </span>
+                          <span
+                            className={cn(
+                              "mt-1 h-5 w-5 shrink-0 rounded-full border-2",
+                              selected ? "border-brand-orange bg-brand-orange shadow-[inset_0_0_0_3px_white]" : "border-amber-300"
+                            )}
+                            aria-hidden
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Button fullWidth size="lg" disabled={!choice} onClick={() => setStep("form")}>
+                    {t("continueBtn")}
+                  </Button>
+                  <Link href="/checkout" className="block py-2 text-center text-xs text-luxury-charcoal/70 underline">
+                    {t("payByCard")}
+                  </Link>
+                </div>
+              )}
+
+              {step === "form" && choice === "whatsapp" && (
+                <div className="space-y-3">
+                  <label className="block text-sm">
+                    {t("phone")}
+                    <input
+                      data-autofocus=""
+                      type="tel"
+                      autoComplete="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className={cn("mt-1", inputCls)}
+                      inputMode="tel"
+                      required
+                      aria-describedby="wa-phone-hint"
+                    />
+                    <span id="wa-phone-hint" className={cn("mt-1 block text-xs", phone && !phoneOk ? "text-red-600" : "text-luxury-charcoal/60")}>
+                      {t("phoneHint")}
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 text-sm">
+                    <input type="checkbox" checked={agb} onChange={(e) => setAgb(e.target.checked)} className="mt-1" />
+                    <span>{legalLinks}</span>
+                  </label>
+                  <label className="flex items-start gap-2 text-sm">
+                    <input type="checkbox" checked={contactOk} onChange={(e) => setContactOk(e.target.checked)} className="mt-1" />
+                    <span>{t("acceptContact")}</span>
+                  </label>
                   <button
                     type="button"
-                    className="w-full px-3 py-2 text-start text-sm hover:bg-jmle-warm"
-                    onClick={() => {
-                      setPostalCode(place.postalCode);
-                      setCity(place.name);
-                      setPlaces([]);
-                    }}
+                    disabled={!whatsAppReady || busy}
+                    onClick={() => void send("whatsapp")}
+                    className="min-h-12 w-full rounded-xl bg-[#25D366] px-4 text-sm font-semibold text-white disabled:opacity-40"
                   >
-                    {place.postalCode} {place.name}
+                    {t("whatsapp")}
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <button type="submit" disabled={busy || phone.trim().length < 6} className="min-h-12 w-full rounded-xl bg-brand-orange text-sm font-semibold text-white disabled:opacity-40">
-          {t("requestOffer")}
-        </button>
-      </form>
-      <HomeDelivery lines={lines} totals={totals} busy={busy} onDone={setResult} onError={setError} />
-      {error && <p className="text-sm text-red-600">{error}</p>}
+                </div>
+              )}
 
-      {result && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-boutique" role="dialog">
+              {step === "form" && choice === "callback" && (
+                <form
+                  className="space-y-3"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void send("callback");
+                  }}
+                >
+                  <p className="text-sm text-luxury-charcoal/70">{t("offerTitle")}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input data-autofocus="" required autoComplete="given-name" aria-label={t("firstName")} placeholder={t("firstName")} value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputCls} />
+                    <input required autoComplete="family-name" aria-label={t("lastName")} placeholder={t("lastName")} value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputCls} />
+                  </div>
+                  <input required type="tel" autoComplete="tel" minLength={6} aria-label={t("phone")} placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
+                  <input type="email" autoComplete="email" aria-label={t("emailOptional")} placeholder={t("emailOptional")} value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+                  <input autoComplete="street-address" aria-label={t("streetOptional")} placeholder={t("streetOptional")} value={street} onChange={(e) => setStreet(e.target.value)} className={inputCls} />
+                  <div className="relative grid gap-3 sm:grid-cols-2">
+                    <input
+                      aria-label={t("postalCodeLabel")}
+                      placeholder={t("postalCodeLabel")}
+                      autoComplete="postal-code"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      className={inputCls}
+                      inputMode="numeric"
+                    />
+                    <input aria-label={t("cityLabel")} placeholder={t("cityLabel")} autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} className={inputCls} />
+                    {places.length > 0 && (
+                      <ul className="absolute z-20 top-12 inset-x-0 max-h-48 overflow-auto rounded-xl border border-amber-200 bg-white shadow-boutique">
+                        {places.map((place) => (
+                          <li key={`${place.postalCode}-${place.name}`}>
+                            <button
+                              type="button"
+                              className="w-full px-3 py-2 text-start text-sm hover:bg-jmle-warm"
+                              onClick={() => {
+                                setPostalCode(place.postalCode);
+                                setCity(place.name);
+                                setPlaces([]);
+                              }}
+                            >
+                              {place.postalCode} {place.name}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <button type="submit" disabled={busy || !phoneOk} className="min-h-12 w-full rounded-xl bg-brand-orange text-sm font-semibold text-white disabled:opacity-40">
+                    {t("requestOffer")}
+                  </button>
+                </form>
+              )}
+
+              {step === "form" && choice === "delivery" && (
+                <HomeDelivery lines={lines} totals={totals} busy={busy} onDone={setResult} onError={setError} />
+              )}
+
+              {error && <p className="mt-3 text-sm text-red-600" role="alert">{error}</p>}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {result && createPortal(
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="max-w-md rounded-2xl bg-white p-6 text-center shadow-boutique" role="dialog" aria-modal="true">
             <p className="font-ui text-lg font-semibold">
               {result.kind === "saved" ? t("requestThanksTitle") : t("whatsappOpenedTitle")}
             </p>
@@ -254,13 +472,14 @@ export default function CartRequestPanel({
                 {t("whatsappOpenAgain")}
               </a>
             )}
-            <button type="button" className="mt-3 min-h-11 rounded-xl bg-brand-orange px-5 text-white" onClick={() => setResult(null)}>
+            <button type="button" autoFocus className="mt-3 min-h-11 rounded-xl bg-brand-orange px-5 text-white" onClick={() => setResult(null)}>
               {t("close")}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </section>
+    </div>
   );
 }
 
@@ -335,7 +554,7 @@ function HomeDelivery({
         postalCode: place.postalCode,
         city: place.city,
         items: lines,
-      });
+      }, lang);
       const reference = saved.reference ?? undefined;
       let pdfDownloaded = false;
       try {
@@ -377,12 +596,12 @@ function HomeDelivery({
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl border border-amber-200/80 p-4">
-      <p className="font-ui text-sm font-semibold">{t("deliveryTitle")}</p>
+    <form onSubmit={(event) => void submit(event)} className="space-y-3">
       <p className="text-xs text-luxury-charcoal/70">{t("deliveryHint")}</p>
       <label className="block text-sm">
         {t("deliveryQuery")}
         <input
+          data-autofocus=""
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t("deliveryPlaceholder")}
@@ -390,7 +609,7 @@ function HomeDelivery({
         />
       </label>
       {status === "not_found" && (
-        <p className="text-sm text-red-600">{t("deliveryNotFound")}</p>
+        <p className="text-sm text-red-600" role="alert">{t("deliveryNotFound")}</p>
       )}
       {status === "outside" && (
         <p className="text-sm text-amber-700">{t("deliveryOutside")}</p>
@@ -407,7 +626,7 @@ function HomeDelivery({
       </div>
       <label className={`flex items-start gap-2 text-sm ${unlocked ? "" : "pointer-events-none opacity-40"}`}>
         <input type="checkbox" checked={agb} disabled={!unlocked} onChange={(e) => setAgb(e.target.checked)} className="mt-1" />
-        <span>{t("acceptLegal")} <Link href="/legal/agb" className="underline">AGB</Link> · <Link href="/legal/datenschutz" className="underline">{lang === "ar" ? "الخصوصية" : "Datenschutz"}</Link></span>
+        <span>{t("acceptLegal")} <Link href="/legal/agb" className="underline">{t("termsLabel")}</Link> · <Link href="/legal/datenschutz" className="underline">{t("privacyLabel")}</Link></span>
       </label>
       <button type="submit" disabled={!canSend || busy || sending} className="min-h-12 w-full rounded-xl bg-[#25D366] text-sm font-semibold text-white disabled:opacity-40">
         {t("deliverySend")}

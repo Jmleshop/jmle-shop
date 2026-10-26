@@ -403,10 +403,10 @@ export function layoutCssVars(
 /** Sensible Banner-Seitenverhältnisse ohne feste Builder-Höhe. */
 export function defaultBannerAspect(viewport: LayoutViewport): string {
   switch (viewport) {
+    // Banner-Bilder sind breit (~2,4:1). 4:3 auf dem Handy erzeugte mit
+    // object-fit: contain große Leerflächen über/unter dem Bild.
     case "mobile":
-      return "4 / 3";
     case "tablet":
-      return "2 / 1";
     case "desktop":
     default:
       return "2.4 / 1";

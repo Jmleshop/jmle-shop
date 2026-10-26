@@ -9,6 +9,7 @@ import { useShopLocale } from "@/components/ShopLocale";
 import { productTitle, type ShopMsgKey } from "@/lib/shop-i18n";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import type { Product } from "@/types";
+import ScrollCarousel from "@/components/ScrollCarousel";
 
 interface OffersCarouselProps {
   products: Product[];
@@ -25,7 +26,7 @@ function OfferCard({ product }: { product: Product }) {
   const { lang } = useShopLocale();
   const title = productTitle(lang, product);
   return (
-    <div className="group relative w-44 sm:w-52 md:w-60 shrink-0 px-2">
+    <div className="group relative w-44 sm:w-52 md:w-60 shrink-0 snap-start px-2 py-1">
       <div className="absolute top-3 end-3 z-30">
         <WishlistButton productId={product.id} size="sm" />
       </div>
@@ -66,8 +67,8 @@ function OfferCard({ product }: { product: Product }) {
   );
 }
 
-/** Cap marquee DOM; full catalog still available on product/category pages. */
-const MARQUEE_MAX_ITEMS = 16;
+/** Begrenzte Karten-Anzahl; der vollständige Katalog bleibt auf Produkt-/Kategorieseiten. */
+const CAROUSEL_MAX_ITEMS = 16;
 
 export default function OffersCarousel({
   products,
@@ -80,11 +81,7 @@ export default function OffersCarousel({
 
   // Leerer Titel = Überschrift ausblenden (kein i18n-Fallback auf der Startseite)
   const heading = (title ?? "").trim() || (titleKey ? t(titleKey) : "");
-  // Never mount the entire catalog twice — keep a small, seamless track.
-  const visible = products.slice(0, MARQUEE_MAX_ITEMS);
-  const loop =
-    visible.length > 1 ? [...visible, ...visible] : visible;
-  const duration = Math.max(20, visible.length * 6);
+  const visible = products.slice(0, CAROUSEL_MAX_ITEMS);
 
   return (
     <section className="py-8 md:py-10 bg-gradient-to-b from-jmle-warm/60 to-transparent">
@@ -95,29 +92,16 @@ export default function OffersCarousel({
         </div>
       ) : null}
 
-      <div
-        dir="ltr"
-        className={`jmle-marquee relative w-full overflow-hidden ${
-          reverse ? "jmle-marquee-reverse" : ""
-        }`}
+      <ScrollCarousel
+        label={heading || t("homeFeatured")}
+        // Zweite Reihe leicht versetzt, damit beide Reihen nicht synchron springen
+        autoplayMs={reverse ? 5200 : 4400}
+        trackClassName="px-2 md:px-12"
       >
-        <div
-          className="jmle-marquee-track"
-          style={{ ["--marquee-duration" as string]: `${duration}s` }}
-        >
-          {loop.map((p, i) => (
-            <OfferCard key={`${p.id}-${i}`} product={p} />
-          ))}
-        </div>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 start-0 w-10 bg-gradient-to-r from-jmle-cream to-transparent"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 end-0 w-10 bg-gradient-to-l from-jmle-cream to-transparent"
-        />
-      </div>
+        {visible.map((p) => (
+          <OfferCard key={p.id} product={p} />
+        ))}
+      </ScrollCarousel>
     </section>
   );
 }

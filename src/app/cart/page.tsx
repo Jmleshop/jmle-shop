@@ -190,11 +190,6 @@ export default function CartPage() {
         <OrderCostBreakdown subtotal={total} discount={discount} weightGrams={weightGrams} />
       </div>
 
-      <Link href="/checkout" className="block">
-        <Button fullWidth size="lg">
-          {t("checkout")} · {formatPrice(grandTotal)}
-        </Button>
-      </Link>
       <CartRequestPanel
         totalLabel={formatPrice(grandTotal)}
         totals={{ discount: discountAmount, shipping, grandTotal }}
