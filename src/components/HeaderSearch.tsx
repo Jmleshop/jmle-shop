@@ -10,7 +10,7 @@ import {
 } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Search, Loader2 } from "lucide-react";
 import { formatEuroDe } from "@/lib/pricing";
 import { cn } from "@/lib/cn";
@@ -62,7 +62,9 @@ export default function HeaderSearch({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [, startTransition] = useTransition();
   const router = useRouter();
+  const pathname = usePathname();
   const inputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const inputId = useId();
   const abortRef = useRef<AbortController | null>(null);
@@ -88,6 +90,28 @@ export default function HeaderSearch({
       setActiveIndex(-1);
     }
   }, [open, persistent]);
+
+  // Seitenwechsel (Treffer angeklickt / Ergebnisseite) → Overlay schließen
+  const lastPath = useRef(pathname);
+  useEffect(() => {
+    if (lastPath.current === pathname) return;
+    lastPath.current = pathname;
+    if (persistent) setQuery("");
+    else onClose();
+  }, [pathname, persistent, onClose]);
+
+  // Klick außerhalb schließt das Such-Overlay
+  useEffect(() => {
+    if (persistent || !open) return;
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (!target || rootRef.current?.contains(target)) return;
+      if (target.closest("[data-search-toggle]")) return;
+      onClose();
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open, persistent, onClose]);
 
   useEffect(() => {
     if (!active) return;
@@ -148,6 +172,7 @@ export default function HeaderSearch({
   const goSearch = () => {
     if (!qTrim) return;
     if (!persistent) onClose();
+    else inputRef.current?.blur();
     router.push(`/shop?q=${encodeURIComponent(qTrim)}`);
   };
 
@@ -167,6 +192,12 @@ export default function HeaderSearch({
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      setActiveIndex(-1);
+      if (!persistent) onClose();
+      else setQuery("");
+      return;
+    }
     if (!showPanel || (!comboItems.length && !searched && !error)) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -174,14 +205,12 @@ export default function HeaderSearch({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, -1));
-    } else if (e.key === "Escape") {
-      setActiveIndex(-1);
-      if (!persistent) onClose();
     }
   };
 
   return (
     <div
+      ref={rootRef}
       className={cn(
         "relative z-[55] w-full",
         inline
@@ -249,7 +278,7 @@ export default function HeaderSearch({
             id={listId}
             role="listbox"
             className={cn(
-              "absolute inset-x-0 top-full mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-amber-200/50 bg-white shadow-boutique z-[60]",
+              "absolute inset-x-0 top-full mt-1.5 max-h-[min(20rem,55vh)] overflow-y-auto rounded-xl border border-amber-200/50 bg-white shadow-boutique z-[60]",
               inline && "min-w-[min(100%,22rem)] sm:min-w-[20rem]"
             )}
           >

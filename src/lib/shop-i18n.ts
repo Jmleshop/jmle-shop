@@ -189,6 +189,7 @@ const messages = {
     vatNote: "شامل {food} ضريبة (7٪ مواد غذائية){shipping}",
     vatShipping: " و {amount} ضريبة (19٪ شحن)",
     vatIncluded: "شامل {rate}٪ ضريبة",
+    youSave: "وفر {amount}",
     thanksTitle: "شكراً لطلبك!",
     thanksBody:
       "تم استلام طلبك بنجاح. ستتلقى تأكيداً عبر البريد الإلكتروني. يمكنك متابعة طلبك وتنزيل الفاتورة من حسابك.",
@@ -408,6 +409,7 @@ const messages = {
     vatNote: "inkl. {food} MwSt. (7 % Lebensmittel){shipping}",
     vatShipping: " und {amount} MwSt. (19 % Versand)",
     vatIncluded: "inkl. {rate} % MwSt.",
+    youSave: "Sie sparen {amount}",
     thanksTitle: "Danke für deine Bestellung!",
     thanksBody:
       "Deine Bestellung ist eingegangen. Du erhältst eine Bestätigung per E-Mail. Bestellung und Rechnung findest du in deinem Konto.",

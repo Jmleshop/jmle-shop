@@ -101,12 +101,15 @@ function CategoryBranch({
 export default function CategoryNavTree({
   categories,
   onNavigate,
+  defaultOpen = false,
 }: {
   categories: Category[];
   onNavigate?: () => void;
+  /** Hauptkategorien sofort sichtbar (Burger-Menü) */
+  defaultOpen?: boolean;
 }) {
   const { t } = useShopLocale();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   const roots = useMemo(() => {
     const cleaned = categories.filter(
