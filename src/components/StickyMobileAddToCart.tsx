@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { ShoppingBag, Check } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useCartFly } from "@/context/CartFlyContext";
@@ -26,6 +27,7 @@ export default function StickyMobileAddToCart({
   const { lang, t } = useShopLocale();
   const [visible, setVisible] = useState(false);
   const [added, setAdded] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
   const max = maxBuyQuantity(product.stock, product.maxOrderQuantity);
@@ -42,15 +44,25 @@ export default function StickyMobileAddToCart({
     }
     const io = new IntersectionObserver(
       ([entry]) => {
-        setVisible(!entry.isIntersecting);
+        // Nur zeigen, wenn der Haupt-Button nach OBEN hinausgescrollt ist —
+        // nie gleichzeitig mit ihm (auch nicht, wenn er noch unten wartet).
+        const rootTop = entry.rootBounds?.top ?? 0;
+        setVisible(
+          !entry.isIntersecting && entry.boundingClientRect.bottom <= rootTop
+        );
       },
-      { threshold: 0.15, rootMargin: "0px 0px -48px 0px" }
+      // oben: Höhe des Sticky-Headers abziehen
+      { threshold: 0, rootMargin: "-72px 0px 0px 0px" }
     );
     io.observe(el);
     return () => io.disconnect();
   }, [observeRef, out, product.id]);
 
-  if (out) return null;
+  // Portal an <body>: Eltern mit transform (Einblend-Animation) würden
+  // `fixed` sonst in den Seitenfluss ziehen → doppelter Warenkorb-Button.
+  useEffect(() => setMounted(true), []);
+
+  if (out || !mounted) return null;
 
   const handleAdd = async () => {
     const rect = btnRef.current?.getBoundingClientRect();
@@ -62,10 +74,12 @@ export default function StickyMobileAddToCart({
     window.setTimeout(() => setAdded(false), 1800);
   };
 
-  return (
+  return createPortal(
     <div
-      className={`fixed inset-x-0 z-[55] md:hidden transition-transform duration-300 ease-out ${
-        visible ? "translate-y-0" : "translate-y-[120%]"
+      className={`fixed inset-x-0 z-[55] md:hidden transition-[transform,opacity] duration-300 ease-out ${
+        visible
+          ? "translate-y-0 opacity-100"
+          : "translate-y-[120%] opacity-0 pointer-events-none"
       }`}
       style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}
       aria-hidden={!visible}
@@ -106,6 +120,7 @@ export default function StickyMobileAddToCart({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

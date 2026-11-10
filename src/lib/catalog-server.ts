@@ -352,7 +352,27 @@ async function fetchProductsFromBaseTable(
 }
 
 async function fetchAllCategories(): Promise<Category[]> {
-  const supabase = createPublicClient();
+  let rows = await fetchCategoryRows(createPublicClient());
+  // Service-Role-Fallback wie bei Produkten (z. B. ungültiger Anon-Key in Vercel)
+  if (!rows?.length && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const { createServiceClient } = await import("@/lib/supabase/admin");
+      rows = await fetchCategoryRows(createServiceClient());
+    } catch (e) {
+      console.error("[catalog] categories Service-Role-Fallback:", e);
+    }
+  }
+  if (!rows) return [];
+  return nestCategories(
+    rows
+      .map(mapCategory)
+      .filter((c) => !isSaleCategoryName(c.name, c.nameEn))
+  );
+}
+
+async function fetchCategoryRows(
+  supabase: ReturnType<typeof createPublicClient>
+): Promise<CategoryRow[] | null> {
   // show_on_homepage optional — Fallback ohne Spalte
   let data: CategoryRow[] | null = null;
   let error: { message: string } | null = null;
@@ -378,13 +398,9 @@ async function fetchAllCategories(): Promise<Category[]> {
 
   if (error || !data) {
     console.error("[catalog] categories:", error?.message);
-    return [];
+    return null;
   }
-  return nestCategories(
-    data
-      .map(mapCategory)
-      .filter((c) => !isSaleCategoryName(c.name, c.nameEn))
-  );
+  return data;
 }
 
 async function fetchSiteLogoUrl(): Promise<string> {

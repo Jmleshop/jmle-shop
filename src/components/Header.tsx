@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { User, ShoppingBag, Menu, X, Heart } from "lucide-react";
+import { User, ShoppingBag, Menu, X, Heart, Search } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useCartFly } from "@/context/CartFlyContext";
@@ -36,6 +36,8 @@ export default function Header({
   const { registerCartIcon, cartBumping } = useCartFly();
   const cartRef = useRef<HTMLAnchorElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
   const [scrolled, setScrolled] = useState(false);
   const [cartPos, setCartPos] = useState(layout.chrome.cartPosition);
 
@@ -106,6 +108,22 @@ export default function Header({
       aria-controls="shop-burger-menu"
     >
       <Menu size={22} />
+    </button>
+  );
+
+  const searchButton = (
+    <button
+      type="button"
+      data-search-toggle
+      onClick={() => setSearchOpen((v) => !v)}
+      className={cn(
+        "p-2 min-h-10 min-w-10 inline-flex items-center justify-center hover:text-brand-orange transition-colors rounded-xl",
+        searchOpen ? "text-brand-orange" : "text-luxury-charcoal"
+      )}
+      aria-label={t("search")}
+      aria-expanded={searchOpen}
+    >
+      {searchOpen ? <X size={20} aria-hidden /> : <Search size={20} aria-hidden />}
     </button>
   );
 
@@ -223,19 +241,19 @@ export default function Header({
             </nav>
           </div>
 
-          <div className="flex-1 min-w-0 max-w-2xl mx-auto">
-            <HeaderSearch open onClose={() => {}} persistent inline />
-          </div>
+          <div className="flex-1" />
 
           <div className="flex items-center gap-0.5 justify-end shrink-0">
+            {searchButton}
             {iconTrail}
           </div>
         </div>
 
-        {/* Mobile: Zeile 1 Logo/Icons · Zeile 2 kompakte Suche (Teil des Headers) */}
+        {/* Mobile: Logo/Icons — Suche öffnet sich über das Lupen-Icon */}
         <div className="lg:hidden">
           <div className="max-w-7xl mx-auto px-3 flex items-center gap-1 layout-header-row-mobile">
-            <div className="flex items-center gap-0.5 shrink-0 w-[4.5rem]">
+            <div className="flex items-center gap-0.5 shrink-0 w-[5.25rem]">
+              {searchButton}
               {cartPos === "start" ? cartLink : accountLink}
             </div>
             <div className="flex-1 flex justify-center min-w-0">
@@ -246,7 +264,7 @@ export default function Header({
                 textClassName="text-brand-orange hover:text-brand-red"
               />
             </div>
-            <div className="flex items-center justify-end gap-0.5 shrink-0 w-[4.5rem]">
+            <div className="flex items-center justify-end gap-0.5 shrink-0 w-[5.25rem]">
               {cartPos === "start" ? (
                 <>
                   {accountLink}
@@ -260,10 +278,13 @@ export default function Header({
               )}
             </div>
           </div>
-          <div className="max-w-7xl mx-auto px-3 pb-2.5 pt-0">
-            <HeaderSearch open onClose={() => {}} persistent inline />
-          </div>
         </div>
+
+        {searchOpen && (
+          <div className="border-t border-orange-200/50 pt-3">
+            <HeaderSearch open onClose={closeSearch} />
+          </div>
+        )}
       </header>
 
       {menuOpen && (
@@ -312,6 +333,7 @@ export default function Header({
               </Link>
               <CategoryNavTree
                 categories={categories}
+                defaultOpen
                 onNavigate={() => setMenuOpen(false)}
               />
               {navLinks
