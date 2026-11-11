@@ -24,6 +24,60 @@ import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 
 const DISCOUNT_STORAGE_KEY = "jmle_cart_discount";
 
+/**
+ * Menge direkt eintippen: beim Antippen wird die Zahl markiert, eine neue
+ * Zahl ersetzt sie. Übernommen wird bei Enter oder beim Verlassen des Felds;
+ * leere/ungültige Eingaben springen auf den alten Wert zurück. Das Maximum
+ * (Lager / Bestelllimit) prüft zusätzlich updateQuantity im CartContext.
+ */
+function QuantityInput({
+  value,
+  max,
+  label,
+  onCommit,
+}: {
+  value: number;
+  max: number;
+  label: string;
+  onCommit: (quantity: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+
+  const commit = () => {
+    const parsed = parseInt(draft, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      setDraft(String(value));
+      return;
+    }
+    const next = max > 0 ? Math.min(parsed, max) : parsed;
+    setDraft(String(next));
+    if (next !== value) onCommit(next);
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      aria-label={label}
+      value={draft}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") setDraft(String(value));
+      }}
+      maxLength={3}
+      dir="ltr"
+      // Schmal: Platz für max. 3 Ziffern, Zahl exakt mittig. `!text-center`,
+      // weil globals.css Zahlenfelder in RTL rechtsbündig setzt.
+      className="w-9 shrink-0 bg-transparent p-0 !text-center text-[13px] leading-none font-ui tabular-nums focus:outline-none focus:ring-2 focus:ring-brand-orange/40 rounded-md py-1.5"
+    />
+  );
+}
+
 export default function CartPage() {
   const { items, total, loading, updateQuantity, removeItem } = useCart();
   const { lang, t } = useShopLocale();
@@ -140,9 +194,15 @@ export default function CartPage() {
                   >
                     <Minus size={14} />
                   </button>
-                  <span className="px-3 text-sm font-ui tabular-nums">
-                    {item.quantity}
-                  </span>
+                  <QuantityInput
+                    value={item.quantity}
+                    max={maxBuyQuantity(
+                      item.product?.stock ?? 0,
+                      item.product?.maxOrderQuantity ?? null
+                    )}
+                    label={t("qtyLabel")}
+                    onCommit={(q) => updateQuantity(item.id, q)}
+                  />
                   <button
                     type="button"
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}

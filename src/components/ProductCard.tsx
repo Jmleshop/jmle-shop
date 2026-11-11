@@ -20,6 +20,7 @@ import {
   OriginBadge,
   SealBadge,
 } from "@/components/ui";
+import SectionHeading from "@/components/SectionHeading";
 
 /** Max. Produkte pro Seite (Kategorie / Alle / Suche). */
 export const PRODUCTS_PAGE_SIZE = 24;
@@ -277,12 +278,7 @@ export function ProductGrid({
 
   return (
     <section ref={sectionRef} className="py-8 md:py-14 px-2 sm:px-4 md:px-8">
-      {heading && (
-        <div className="text-center mb-6 sm:mb-8">
-          <h2 className="section-title">{heading}</h2>
-          <div className="gold-divider" aria-hidden />
-        </div>
-      )}
+      <SectionHeading text={heading} />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 max-w-7xl mx-auto">
         {pageItems.map((product) => (
           <ProductCard key={product.id} product={product} />

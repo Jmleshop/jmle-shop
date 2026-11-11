@@ -8,6 +8,7 @@ import { useShopLocale } from "@/components/ShopLocale";
 import { cn } from "@/lib/cn";
 import ScrollCarousel from "@/components/ScrollCarousel";
 import { hasBrandLogo } from "@/lib/brand-link";
+import SectionHeading from "@/components/SectionHeading";
 
 interface BrandLogoTickerProps {
   logos: BrandLogo[];
@@ -74,11 +75,7 @@ export default function BrandLogoTicker({
       data-home-section="brands"
       className={cn("layout-brands-frame", className)}
     >
-      {heading ? (
-        <div className="layout-section-title-wrap mb-2 sm:mb-3 px-4">
-          <h2 className="section-title text-base sm:text-lg">{heading}</h2>
-        </div>
-      ) : null}
+      <SectionHeading text={heading} />
       <ScrollCarousel
         label={heading || t("brandPartners")}
         speed={28}

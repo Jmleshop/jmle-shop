@@ -98,7 +98,7 @@ export default async function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body
-        className={`${amiri.variable} ${tajawal.variable} font-arabic antialiased bg-jmle-cream text-luxury-black min-h-screen flex flex-col`}
+        className={`${amiri.variable} ${tajawal.variable} font-arabic antialiased bg-jmle-page text-luxury-black min-h-screen flex flex-col`}
       >
         <JsonLd data={localBusinessJsonLd(site)} />
         <ConfettiBackground />

@@ -18,7 +18,7 @@ import { cn } from "@/lib/cn";
  *
  * - `autoplayMs`: schaltet schrittweise weiter (mit scroll-snap).
  * - `speed`: läuft durchgehend und endlos (px/s). Dafür wird die Liste
- *   als stille Kopie (aria-hidden, inert) wiederholt; beim Erreichen der
+ *   als anklickbare Kopie wiederholt; beim Erreichen der
  *   ersten Kopie springt die Position unsichtbar um eine Periode zurück.
  */
 export default function ScrollCarousel({
@@ -242,8 +242,8 @@ export default function ScrollCarousel({
               key={i}
               data-copy={i}
               className="contents"
-              aria-hidden={i > 0 || undefined}
-              inert={i > 0}
+              // Kopien bleiben voll anklickbar — sonst wirken Karten im
+              // Endlos-Lauf „tot“ (früher: inert).
             >
               {children}
             </div>

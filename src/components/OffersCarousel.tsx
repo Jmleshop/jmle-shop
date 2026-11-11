@@ -10,6 +10,7 @@ import { productTitle, type ShopMsgKey } from "@/lib/shop-i18n";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import type { Product } from "@/types";
 import ScrollCarousel from "@/components/ScrollCarousel";
+import SectionHeading from "@/components/SectionHeading";
 
 interface OffersCarouselProps {
   products: Product[];
@@ -85,12 +86,7 @@ export default function OffersCarousel({
 
   return (
     <section className="py-8 md:py-10 bg-gradient-to-b from-jmle-warm/60 to-transparent">
-      {heading ? (
-        <div className="text-center mb-6 px-4">
-          <h2 className="section-title">{heading}</h2>
-          <div className="gold-divider" aria-hidden />
-        </div>
-      ) : null}
+      <SectionHeading text={heading} />
 
       <ScrollCarousel
         label={heading || t("homeFeatured")}

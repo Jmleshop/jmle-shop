@@ -199,11 +199,11 @@ export default function Header({
     <>
       <header
         className={cn(
-          "sticky top-0 z-50 isolate bg-jmle-cream/95 backdrop-blur-md border-b border-orange-200/50",
-          "supports-[backdrop-filter]:bg-jmle-cream/90",
+          "sticky top-0 z-50 isolate bg-jmle-sand/95 backdrop-blur-md border-b border-orange-200/70",
+          "supports-[backdrop-filter]:bg-jmle-sand/90",
           "transition-[box-shadow,background-color] duration-200 ease-out will-change-transform",
           "[transform:translateZ(0)]",
-          scrolled && "shadow-gold-sm bg-jmle-cream/98",
+          scrolled && "shadow-gold-sm bg-jmle-sand/98",
           "layout-chrome-header"
         )}
         style={headerStyle}
