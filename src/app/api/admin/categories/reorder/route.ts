@@ -62,18 +62,27 @@ export async function PUT(request: Request) {
   }
 
   for (const row of order) {
-    const { error } = await auth.supabase
+    const { data: updated, error } = await auth.supabase
       .from("categories")
       .update({
         sort_order: row.sort_order,
         parent_id: row.parent_id || null,
       })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .select("id");
     if (error) {
       console.error("[categories/reorder]", error.message);
       return NextResponse.json(
         { error: "Reihenfolge konnte nicht gespeichert werden" },
         { status: 500 }
+      );
+    }
+    // RLS lehnt Updates still ab (0 Zeilen, kein Fehler) — melden statt „Erfolg“
+    if (!updated?.length) {
+      console.error("[categories/reorder] 0 Zeilen aktualisiert:", row.id);
+      return NextResponse.json(
+        { error: "Keine Berechtigung – Reihenfolge wurde nicht gespeichert" },
+        { status: 403 }
       );
     }
   }

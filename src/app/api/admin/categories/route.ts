@@ -5,6 +5,7 @@ import type { FoodCategory } from "@/types";
 import { categoryCreateSchema } from "@/lib/validations/product";
 import { parseJsonBody } from "@/lib/validations";
 import { findDuplicateCategory } from "@/lib/category-duplicate";
+import { withoutOrphans } from "@/lib/category-tree";
 
 function slugify(value: string) {
   return value
@@ -46,11 +47,13 @@ export async function GET(request: Request) {
     }
     const rows = (fallback.data ?? []) as FoodCategory[];
     return NextResponse.json({
-      categories: archived ? rows : rows.filter((c) => !c.deleted_at),
+      categories: archived ? rows : withoutOrphans(rows),
     });
   }
 
-  return NextResponse.json({ categories: (data ?? []) as FoodCategory[] });
+  const rows = (data ?? []) as FoodCategory[];
+  // Aktive Ansicht: Unterkategorien gelöschter Oberkategorien nicht anzeigen
+  return NextResponse.json({ categories: archived ? rows : withoutOrphans(rows) });
 }
 
 export async function POST(request: Request) {
@@ -76,7 +79,7 @@ export async function POST(request: Request) {
   // Doppelte Anlage verhindern (Doppelklick, erneutes Absenden): gleicher Name unter gleicher Elternkategorie.
   const { data: siblings, error: siblingsError } = await auth.supabase
     .from("categories")
-    .select("id, name_ar, parent_id, deleted_at")
+    .select("id, name_ar, parent_id, deleted_at, sort_order")
     .is("deleted_at", null);
   if (siblingsError) {
     return NextResponse.json({ error: "Kategorien konnten nicht geprüft werden" }, { status: 500 });
@@ -94,12 +97,22 @@ export async function POST(request: Request) {
     slugify(name_de || name_ar) ||
     `cat-${Date.now()}`;
 
+  // Ohne ausdrückliche Position: ans Ende der eigenen Gruppe statt auf 0
+  // (sonst rutscht jede neue Kategorie ganz nach vorne).
+  const sortProvided =
+    !!raw && typeof raw === "object" && "sort_order" in (raw as Record<string, unknown>);
+  const groupMax = Math.max(
+    -1,
+    ...(siblings ?? [])
+      .filter((c) => (c.parent_id ?? null) === (parent_id ?? null))
+      .map((c) => (c as { sort_order?: number }).sort_order ?? 0)
+  );
   const payload = {
     id,
     name_ar,
     name_de,
     image,
-    sort_order,
+    sort_order: sortProvided ? sort_order : groupMax + 1,
     parent_id,
     show_on_homepage,
   };

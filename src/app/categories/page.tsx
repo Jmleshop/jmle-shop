@@ -40,7 +40,7 @@ export default async function CategoriesPage() {
                 <CategoryHeading
                   as="h2"
                   category={category}
-                  className="text-white text-sm sm:text-base md:text-lg font-medium leading-snug line-clamp-2 text-start w-full"
+                  className="text-white text-sm sm:text-base md:text-lg font-medium leading-snug line-clamp-3 text-start w-full text-balance"
                 />
               </div>
             </Link>

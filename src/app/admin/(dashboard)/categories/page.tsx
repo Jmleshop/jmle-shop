@@ -419,11 +419,26 @@ export default function AdminCategoriesPage() {
     }
     resetDrag();
 
-    await fetch("/api/admin/categories/reorder", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order }),
-    });
+    // Fehler nicht verschlucken: sonst springt die Liste still zurück und
+    // die Sortierung wirkt gespeichert, obwohl die Datenbank nichts hat.
+    try {
+      const res = await fetch("/api/admin/categories/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order }),
+      });
+      if (res.ok) {
+        toast.success(t("saved"));
+      } else {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast.error(
+          `Reihenfolge NICHT gespeichert: ${body?.error || `Fehler ${res.status}`}`,
+          { duration: 8000 }
+        );
+      }
+    } catch {
+      toast.error("Reihenfolge NICHT gespeichert: keine Verbindung", { duration: 8000 });
+    }
     load();
   };
 

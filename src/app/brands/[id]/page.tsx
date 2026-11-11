@@ -11,7 +11,6 @@ import {
 import { parseCatalogFilters } from "@/lib/catalog-filters";
 import { getAppUrl } from "@/lib/site-defaults";
 import CatalogShop from "@/components/CatalogShop";
-import { ShopHeading } from "@/components/ShopText";
 import {
   absoluteCdnImageUrl,
   originalImageSrc,
@@ -99,8 +98,9 @@ export default async function BrandPage({
 
   return (
     <div>
-      <div className="bg-gradient-to-r from-gold to-jmle-orange-dark text-white py-10 px-4 text-center">
-        <div className="mx-auto flex h-16 w-44 items-center justify-center rounded-xl bg-white/95 px-3 shadow-sm md:h-20 md:w-52">
+      {/* Gleicher Seitenkopf wie Kategorien — ohne Anzahl */}
+      <div className="page-hero relative overflow-hidden px-4 py-9 text-center md:py-12">
+        <div className="relative mx-auto flex h-16 w-44 items-center justify-center rounded-xl bg-white px-3 shadow-sm ring-1 ring-orange-100 md:h-20 md:w-52">
           <div className="relative h-12 w-full md:h-14">
             <Image
               src={originalImageSrc(brand.image)}
@@ -113,12 +113,6 @@ export default async function BrandPage({
             />
           </div>
         </div>
-        <ShopHeading
-          as="p"
-          k="productCount"
-          vars={{ count: result.total }}
-          className="mt-4 text-sm text-white/90 font-ui"
-        />
       </div>
 
       <CatalogShop
@@ -129,7 +123,7 @@ export default async function BrandPage({
         categories={categories}
         brands={brands}
         lockedBrandId={brand.id}
-        headingKey="allProducts"
+        headingKey={null}
       />
     </div>
   );

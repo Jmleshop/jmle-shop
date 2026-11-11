@@ -105,12 +105,12 @@ export default async function CategoryPage({
   return (
     <div>
       <JsonLd data={categoryJsonLd(category, result.products, site)} />
-      <div className="bg-gradient-to-r from-gold to-jmle-orange-dark text-white py-10 px-4 text-center">
+      {/* Seitenkopf: sanfte Logo-Orange-Karte (globals.css .page-hero) — ohne Anzahl */}
+      <div className="page-hero relative overflow-hidden px-4 py-9 text-center md:py-12">
         <CategoryHeading
           category={category}
-          className="font-display text-2xl md:text-3xl tracking-wide"
+          className="page-hero-title relative font-display text-3xl md:text-4xl leading-snug text-balance"
         />
-        <p className="mt-2 text-sm text-white/90 font-ui">{result.total}</p>
       </div>
       {category.children && category.children.length > 0 && (
         <CategoryGrid categories={category.children} titleKey="subcategories" />
@@ -123,7 +123,7 @@ export default async function CategoryPage({
           pageCount={result.pageCount}
           categories={categories}
           brands={brands}
-          headingKey="allProducts"
+          headingKey={null}
         />
       ) : (
         <EmptyCategoryNotice />

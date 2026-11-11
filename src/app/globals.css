@@ -169,10 +169,6 @@
   .font-display:not(.brand-mark-text) {
     font-size: clamp(1.35rem, 5.5vw, 1.75rem);
   }
-
-  .section-title {
-    font-size: clamp(1.35rem, 5vw, 1.75rem);
-  }
 }
 
 /* Header-Logo: mobil 56px, Desktop 80px — contain, zentriert, Originalqualität.
@@ -236,11 +232,22 @@
   padding-inline: calc(0.5rem + var(--layout-brands-gap, 8px) * 0.5);
 }
 
-/* Section titles — Typografie aus Layout */
+/* Section titles — EINE Größe für alle Startseiten-Abschnitte
+   (Kategorien, Marken, Produkte, Banner). Page-Builder skaliert über
+   --layout-heading-scale. Nicht pro Komponente überschreiben. */
 .section-title {
   color: var(--layout-heading-color, inherit);
-  font-size: calc(1em * var(--layout-heading-scale, 1));
+  font-size: calc(clamp(1.4rem, 1.1rem + 1.2vw, 1.9rem) * var(--layout-heading-scale, 1));
+  line-height: 1.35;
   text-align: var(--layout-title-align, center);
+}
+.section-heading {
+  padding-inline: 1rem;
+  margin-bottom: 1.25rem;
+}
+.section-heading .gold-divider {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
 }
 .layout-section-title-wrap {
   text-align: var(--layout-title-align, center);
@@ -391,4 +398,22 @@
 
 .header-smart-compact .header-smart-full {
   display: none;
+}
+
+/* Seitenkopf Kategorie-/Markenseite: eigene abgerundete Karte mit Abstand
+   zur Kopfzeile, sanftes Logo-Orange #FCDAC3 (Inhaberin 2026-11-11, ohne
+   Strich), Titel #7C2A08. */
+.page-hero {
+  margin: 1.25rem 0.75rem 0.25rem;
+  border-radius: 1.25rem;
+  background: #fcdac3;
+}
+.page-hero-title {
+  color: #7c2a08;
+}
+@media (min-width: 768px) {
+  .page-hero {
+    margin: 1.5rem auto 0.5rem;
+    max-width: 72rem;
+  }
 }

@@ -14,6 +14,7 @@ import {
   type LayoutDocument,
 } from "@/lib/layout-builder-preview";
 import type { BrandLogo, Category, HomepageSection, Product, Slide } from "@/types";
+import SectionHeading from "@/components/SectionHeading";
 
 /** Optionale Sektions-Überschrift — leer = kein Abstand, immer AUSSERHALB des Banners */
 export function OptionalSectionTitle({
@@ -23,14 +24,7 @@ export function OptionalSectionTitle({
   title?: string | null;
   className?: string;
 }) {
-  const text = (title ?? "").trim();
-  if (!text) return null;
-  return (
-    <div className={cn("layout-section-title-wrap px-4 pt-5 sm:pt-6 pb-2.5", className)}>
-      <h2 className="section-title text-lg sm:text-xl md:text-2xl">{text}</h2>
-      <div className="gold-divider mt-2" aria-hidden />
-    </div>
-  );
+  return <SectionHeading text={title} className={cn("pt-6 sm:pt-8", className)} />;
 }
 
 export function BannerSection({

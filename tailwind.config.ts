@@ -31,6 +31,10 @@ const config: Config = {
           warm: "#FFF7ED",
           ocher: "#FED7AA",
           mahogany: "#7F1D1D",
+          /** Kopf- & Fußzeile: warmer Sandton aus dem Logo-Orange */
+          sand: "#FDE9D2",
+          /** Seitenmitte: heller als Kopf/Fuß, damit Inhalte „leuchten“ */
+          page: "#FFFAF4",
         },
         luxury: {
           black: "#7F1D1D",

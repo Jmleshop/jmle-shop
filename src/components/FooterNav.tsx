@@ -40,7 +40,7 @@ export default function FooterNav() {
 
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-50 bg-jmle-cream/95 backdrop-blur-md border-t border-amber-200/50 shadow-[0_-8px_30px_rgba(249,115,22,0.12)] md:hidden"
+      className="fixed bottom-0 inset-x-0 z-50 bg-jmle-sand/95 backdrop-blur-md border-t border-orange-200/70 shadow-[0_-8px_30px_rgba(249,115,22,0.12)] md:hidden"
       aria-label={t("mainNav")}
     >
       <div className="flex items-center justify-around h-[calc(4rem+env(safe-area-inset-bottom,0px))] px-0.5 max-w-lg mx-auto safe-pb">

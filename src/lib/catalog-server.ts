@@ -247,9 +247,11 @@ export function nestCategories(flat: Category[]): Category[] {
   for (const cat of byId.values()) {
     if (cat.parentId && byId.has(cat.parentId)) {
       byId.get(cat.parentId)!.children!.push(cat);
-    } else {
+    } else if (!cat.parentId) {
       roots.push(cat);
     }
+    // Sonst: Oberkategorie gelöscht → Unterkategorie („Waise“) ausblenden,
+    // statt sie fälschlich als Hauptkategorie zu zeigen.
   }
   // Gleiche Reihenfolge wie im Admin (category-dnd): sort_order, dann Name, dann ID — stabil
   const sortFn = (a: Category, b: Category) =>
@@ -539,7 +541,7 @@ async function fetchBrandLogos(): Promise<BrandLogo[]> {
 
 const getCategoriesCached = unstable_cache(
   fetchAllCategories,
-  ["catalog-categories-v4"],
+  ["catalog-categories-v5"],
   { revalidate: REVALIDATE_SECONDS, tags: ["catalog", "categories"] }
 );
 

@@ -15,7 +15,8 @@ type CatalogShopProps = {
   categories: Category[];
   brands: BrandLogo[];
   lockedBrandId?: string;
-  headingKey?: "allProducts" | "searchResults" | "brandProducts";
+  /** null = keine Überschrift (Kategorie-/Markenseite haben schon einen Kopf) */
+  headingKey?: "allProducts" | "searchResults" | "brandProducts" | null;
   headingVars?: Record<string, string | number>;
 };
 
@@ -32,20 +33,22 @@ function CatalogShopInner({
 }: CatalogShopProps) {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-6 md:py-10">
-      <div className="mb-6 text-center lg:text-start">
-        <ShopHeading
-          k={headingKey}
-          vars={headingVars}
-          className="font-display text-2xl md:text-3xl tracking-wide text-luxury-ink"
-        />
-      </div>
+      {headingKey ? (
+        <div className="mb-6 text-center lg:text-start">
+          <ShopHeading
+            k={headingKey}
+            vars={headingVars}
+            className="font-display text-2xl md:text-3xl tracking-wide text-luxury-ink"
+          />
+        </div>
+      ) : null}
 
       <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-8 lg:items-start">
         <CatalogFilters
           categories={categories}
           brands={brands}
           lockedBrandId={lockedBrandId}
-          resultCount={total}
+          resultCount={headingKey ? total : undefined}
           className="mb-4 lg:mb-0 lg:sticky lg:top-24"
         />
 

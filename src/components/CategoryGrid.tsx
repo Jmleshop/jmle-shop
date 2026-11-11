@@ -8,6 +8,7 @@ import { categoryTitle, type ShopMsgKey } from "@/lib/shop-i18n";
 import { useAutoTranslate } from "@/hooks/useAutoTranslate";
 import { originalImageSrc, SHOP_IMAGE_QUALITY } from "@/lib/sharp-image";
 import { cn } from "@/lib/cn";
+import SectionHeading from "@/components/SectionHeading";
 
 type CategoryTileVariant = "parent" | "sub";
 
@@ -58,7 +59,7 @@ export function CategoryTile({ category, variant = "parent" }: CategoryTileProps
           sizes="96px"
         />
       </div>
-      <span className="font-ui text-xs sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-2 min-h-[2.4em] w-full">
+      <span className="font-ui text-xs sm:text-xs font-medium text-luxury-charcoal group-hover:text-brand-orange transition-colors text-center leading-snug px-0.5 line-clamp-3 min-h-[2.4em] w-full text-balance [overflow-wrap:anywhere]">
         {label}
       </span>
     </Link>
@@ -87,14 +88,7 @@ export default function CategoryGrid({
 
   return (
     <section className="py-6 md:py-8 px-4 md:px-6">
-      {heading ? (
-        <div className="text-center mb-4 md:mb-5">
-          <h2 className="section-title text-xl sm:text-2xl md:text-[1.65rem]">
-            {heading}
-          </h2>
-          <div className="gold-divider mt-2 mb-0" aria-hidden />
-        </div>
-      ) : null}
+      <SectionHeading text={heading} className="px-0" />
       <div className="mx-auto grid max-w-5xl grid-cols-3 min-[400px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 justify-items-center gap-x-2 gap-y-3 sm:gap-4">
         {categories.map((category) => (
           <CategoryTile

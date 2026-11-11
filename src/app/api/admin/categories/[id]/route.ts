@@ -7,6 +7,7 @@ import {
 } from "@/lib/validations/product";
 import { parseJsonBody } from "@/lib/validations";
 import { detachProductsFromCategory } from "@/lib/category-product-guard";
+import { descendantIds } from "@/lib/category-tree";
 import { z } from "zod";
 
 interface RouteParams {
@@ -42,13 +43,37 @@ export async function PUT(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
+  // Position NUR ändern, wenn sie ausdrücklich mitgeschickt wird. Das
+  // Bearbeiten-Formular schickt keine — früher fiel sie dann auf 0 zurück und
+  // die Kategorie sprang nach jedem Umbenennen ganz nach vorne.
+  const sortProvided =
+    !!raw && typeof raw === "object" && "sort_order" in (raw as Record<string, unknown>);
+  let sortOrder: number | undefined = sortProvided ? parsed.data.sort_order : undefined;
+  if (!sortProvided) {
+    const { data: current } = await auth.supabase
+      .from("categories")
+      .select("parent_id")
+      .eq("id", id)
+      .maybeSingle();
+    const newParent = parsed.data.parent_id ?? null;
+    if (current && (current.parent_id ?? null) !== newParent) {
+      // In eine andere Ober-Kategorie verschoben → ans Ende der neuen Gruppe
+      const siblings = newParent
+        ? auth.supabase.from("categories").select("sort_order").eq("parent_id", newParent)
+        : auth.supabase.from("categories").select("sort_order").is("parent_id", null);
+      const { data: sib } = await siblings.is("deleted_at", null);
+      sortOrder = Math.max(-1, ...(sib ?? []).map((s) => s.sort_order ?? 0)) + 1;
+    }
+  }
+  const sortPatch = sortOrder === undefined ? {} : { sort_order: sortOrder };
+
   const { data, error } = await auth.supabase
     .from("categories")
     .update({
       name_ar: parsed.data.name_ar,
       name_de: parsed.data.name_de,
       image: parsed.data.image,
-      sort_order: parsed.data.sort_order,
+      ...sortPatch,
       parent_id: parsed.data.parent_id,
       show_on_homepage: parsed.data.show_on_homepage,
     })
@@ -63,7 +88,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
         name_ar: parsed.data.name_ar,
         name_de: parsed.data.name_de,
         image: parsed.data.image,
-        sort_order: parsed.data.sort_order,
+        ...sortPatch,
         parent_id: parsed.data.parent_id,
       })
       .eq("id", id)
@@ -127,16 +152,52 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   // erst beim endgültigen Löschen (DELETE unten).
   const productsDetached = 0;
 
+  // Unterkategorien wandern mit in den Papierkorb (gleicher Zeitstempel),
+  // sonst bleiben sie als „Waisen“ sichtbar. Beim Wiederherstellen kommen
+  // nur die mit genau diesem Zeitstempel zurück — früher einzeln gelöschte
+  // Unterkategorien bleiben im Papierkorb.
+  const { data: allRows, error: allErr } = await auth.supabase
+    .from("categories")
+    .select("id, parent_id, deleted_at");
+  if (allErr) {
+    return NextResponse.json({ error: allErr.message }, { status: 500 });
+  }
+  const self = (allRows ?? []).find((c) => c.id === id);
+  const descendants = descendantIds(allRows ?? [], id);
+  const archivedAt = new Date().toISOString();
+
   const { data, error } = await auth.supabase
     .from("categories")
     .update({
-      deleted_at: parsed.data.archived ? new Date().toISOString() : null,
+      deleted_at: parsed.data.archived ? archivedAt : null,
     })
     .eq("id", id)
     .select()
     .single();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (descendants.length) {
+    const cascade = parsed.data.archived
+      ? auth.supabase
+          .from("categories")
+          .update({ deleted_at: archivedAt })
+          .in("id", descendants)
+          .is("deleted_at", null)
+      : self?.deleted_at
+        ? auth.supabase
+            .from("categories")
+            .update({ deleted_at: null })
+            .in("id", descendants)
+            .eq("deleted_at", self.deleted_at)
+        : null;
+    if (cascade) {
+      const { error: cascadeErr } = await cascade;
+      if (cascadeErr) {
+        return NextResponse.json({ error: cascadeErr.message }, { status: 500 });
+      }
+    }
   }
   bustCatalogCache();
   return NextResponse.json({ category: data, productsDetached });

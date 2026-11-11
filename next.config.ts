@@ -107,6 +107,9 @@ const nextConfig: NextConfig = {
   async headers() {
     const immutableYear =
       "public, max-age=31536000, immutable, stale-while-revalidate=86400";
+    // Lokal (npm run dev) haben JS-Chunks feste Namen ohne Hash — ein
+    // Jahres-Cache würde Code-Änderungen im Browser „einfrieren“.
+    if (process.env.NODE_ENV !== "production") return [];
     return [
       {
         source: "/_next/image",
